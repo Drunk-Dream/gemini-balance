@@ -1,11 +1,28 @@
-from typing import List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+
+class FunctionCall(BaseModel):
+    name: str
+    args: Dict[str, Any] = Field(..., alias="args")
+
+
+class ToolCall(BaseModel):
+    function: FunctionCall
+
+
+class ToolResponse(BaseModel):
+    name: str
+    content: str
 
 
 class Part(BaseModel):
     text: Optional[str] = None
     inline_data: Optional[dict] = Field(None, alias="inlineData")
+    function_call: Optional[FunctionCall] = Field(None, alias="functionCall")
+    tool_calls: Optional[List[ToolCall]] = Field(None, alias="toolCalls")
+    tool_response: Optional[ToolResponse] = Field(None, alias="toolResponse")
 
 
 class Content(BaseModel):
@@ -36,13 +53,21 @@ class Tool(BaseModel):
     function_declarations: List[dict] = Field(..., alias="functionDeclarations")
 
 
+class ToolConfig(BaseModel):
+    function_calling_config: Optional[Dict[str, Any]] = Field(
+        None, alias="functionCallingConfig"
+    )
+
+
 class Request(BaseModel):
     contents: List[Content]
+    systemInstruction: Content
     generation_config: Optional[GenerationConfig] = Field(
         None, alias="generationConfig"
     )
     safety_settings: Optional[List[SafetySetting]] = Field(None, alias="safetySettings")
     tools: Optional[List[Tool]] = None
+    tool_config: Optional[ToolConfig] = Field(None, alias="toolConfig")
 
 
 class Candidate(BaseModel):

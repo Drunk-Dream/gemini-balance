@@ -3,13 +3,17 @@ import logging
 from fastapi import FastAPI
 
 from app.api.v1beta.endpoints import gemini
-from app.core.logging import setup_logging
+
+# Removed: from app.core.logging import setup_logging
+# setup_logging is now a no-op and handled at module level
+# in app/core/logging.py
 
 logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
-    setup_logging()
+    # Removed: setup_logging()
+    # Logging is now configured at module level in app/core/logging.py
     logger.info("Starting Gemini Balance API application...")
     app = FastAPI(
         title="Gemini Balance API",

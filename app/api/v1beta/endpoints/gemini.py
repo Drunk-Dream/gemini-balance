@@ -1,7 +1,7 @@
 import logging
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from starlette.responses import StreamingResponse
 
 from app.api.v1beta.schemas.gemini import Request as GeminiRequest
@@ -13,17 +13,16 @@ router = APIRouter()
 
 @router.post(
     "/models/{model_id}:generateContent",
-    response_model=None,
+    response_model=Dict[str, Any],
 )
 async def generate_content_endpoint(
     model_id: str,
     request: GeminiRequest,
-    stream: bool = Query(False),
     gemini_service: GeminiService = Depends(GeminiService),
-) -> Union[Dict[str, Any], StreamingResponse]:
-    logger.info(f"Received request for model: {model_id}, stream: {stream}")
-    response = await gemini_service.generate_content(model_id, request, stream)
-    return response
+) -> Dict[str, Any]:
+    logger.info(f"Received request for model: {model_id}, stream: false")
+    response = await gemini_service.generate_content(model_id, request, False)
+    return response if isinstance(response, Dict) else {}  # Should always be Dict
 
 
 @router.post(
@@ -35,6 +34,10 @@ async def stream_generate_content_endpoint(
     request: GeminiRequest,
     gemini_service: GeminiService = Depends(GeminiService),
 ) -> StreamingResponse:
-    logger.info(f"Received streaming request for model: {model_id}")
-    response = await gemini_service.stream_generate_content(model_id, request)
-    return response
+    logger.info(f"Received request for model: {model_id}, stream: true")
+    response = await gemini_service.generate_content(model_id, request, True)
+    return (
+        response
+        if isinstance(response, StreamingResponse)
+        else StreamingResponse(iter([]))
+    )  # Should always be StreamingResponse
