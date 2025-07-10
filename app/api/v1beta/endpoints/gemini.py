@@ -24,3 +24,17 @@ async def generate_content_endpoint(
     logger.info(f"Received request for model: {model_id}, stream: {stream}")
     response = await gemini_service.generate_content(model_id, request, stream)
     return response
+
+
+@router.post(
+    "/models/{model_id}:streamGenerateContent",
+    response_model=None,
+)
+async def stream_generate_content_endpoint(
+    model_id: str,
+    request: GeminiRequest,
+    gemini_service: GeminiService = Depends(GeminiService),
+) -> StreamingResponse:
+    logger.info(f"Received streaming request for model: {model_id}")
+    response = await gemini_service.stream_generate_content(model_id, request)
+    return response

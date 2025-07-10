@@ -67,3 +67,44 @@ class GeminiService:
             raise HTTPException(
                 status_code=500, detail=f"An unexpected error occurred: {e}"
             )
+
+    async def stream_generate_content(
+        self, model_id: str, request_data: GeminiRequest
+    ) -> StreamingResponse:
+        url = f"/v1beta/models/{model_id}:streamGenerateContent"
+        headers = {"Content-Type": "application/json", "x-goog-api-key": self.api_key}
+        params = {"alt": "sse"}
+
+        try:
+            logger.info(
+                f"Forwarding streaming request to Gemini API: {url}"
+                f" with model {model_id}"
+            )
+            response = await self.client.post(
+                url,
+                json=request_data.model_dump(by_alias=True, exclude_unset=True),
+                headers=headers,
+                params=params,
+                timeout=60.0,
+            )
+            response.raise_for_status()
+
+            return StreamingResponse(
+                self._stream_response(response), media_type="text/event-stream"
+            )
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"HTTP error occurred during streaming: "
+                f"{e.response.status_code} - {e.response.text}"
+            )
+            raise HTTPException(
+                status_code=e.response.status_code, detail=e.response.text
+            )
+        except httpx.RequestError as e:
+            logger.error(f"Request error occurred during streaming: {e}")
+            raise HTTPException(status_code=500, detail=f"Request error: {e}")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred during streaming: {e}")
+            raise HTTPException(
+                status_code=500, detail=f"An unexpected error occurred: {e}"
+            )
