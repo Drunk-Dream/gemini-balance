@@ -5,7 +5,7 @@ import httpx
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
-from app.api.v1.schemas.gemini import Request as GeminiRequest
+from app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)

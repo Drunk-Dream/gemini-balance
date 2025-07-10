@@ -2,7 +2,7 @@ import logging
 
 from fastapi import FastAPI
 
-from app.api.v1.endpoints import gemini
+from app.api.v1beta.endpoints import gemini
 from app.core.logging import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ def create_app() -> FastAPI:
         version="1.0.0",
     )
 
-    app.include_router(gemini.router, prefix="/v1", tags=["Gemini"])
+    app.include_router(gemini.router, prefix="/v1beta", tags=["Gemini"])
 
     @app.get("/health")
     async def health_check():

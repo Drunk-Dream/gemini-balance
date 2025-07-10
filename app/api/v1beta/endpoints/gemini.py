@@ -4,7 +4,7 @@ from typing import Any, Dict, Union
 from fastapi import APIRouter, Depends, Query
 from starlette.responses import StreamingResponse
 
-from app.api.v1.schemas.gemini import Request as GeminiRequest
+from app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from app.services.gemini_service import GeminiService
 
 logger = logging.getLogger(__name__)
