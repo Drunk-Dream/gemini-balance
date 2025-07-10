@@ -26,7 +26,7 @@ class GeminiService:
     async def generate_content(
         self, model_id: str, request_data: GeminiRequest, stream: bool = False
     ) -> Union[Dict[str, Any], StreamingResponse]:
-        url = f"/v1/models/{model_id}:generateContent"
+        url = f"/v1beta/models/{model_id}:generateContent"
         headers = {"Content-Type": "application/json", "x-goog-api-key": self.api_key}
         params = {"alt": "json"}
         if stream:
