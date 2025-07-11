@@ -11,7 +11,7 @@ RUN pip install uv
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies using uv
-RUN uv sync --system
+RUN uv sync
 
 # Copy the rest of the application code
 COPY . .
