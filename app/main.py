@@ -2,6 +2,7 @@ import logging
 
 from fastapi import FastAPI
 
+from app.api.openai.endpoints import chat as openai_chat  # 导入新的 OpenAI 兼容路由
 from app.api.v1beta.endpoints import gemini
 
 # Removed: from app.core.logging import setup_logging
@@ -22,6 +23,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(gemini.router, prefix="/v1beta", tags=["Gemini"])
+    app.include_router(openai_chat.router, prefix="/v1", tags=["OpenAI"]) # 注册 OpenAI 兼容路由
 
     @app.get("/health")
     async def health_check():

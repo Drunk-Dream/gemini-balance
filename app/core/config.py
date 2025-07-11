@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     GEMINI_API_BASE_URL: str = os.getenv(
         "GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com"
     )
+    OPENAI_API_BASE_URL: str = os.getenv(
+        "OPENAI_API_BASE_URL", "https://generativelanguage.googleapis.com"
+    )
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     DEBUG_LOG_ENABLED: bool = os.getenv("DEBUG_LOG_ENABLED", "False").lower() == "true"
     DEBUG_LOG_FILE: str = os.getenv("DEBUG_LOG_FILE", "logs/gemini_debug.log")
