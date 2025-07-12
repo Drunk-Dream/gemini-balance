@@ -12,8 +12,12 @@ __pycache__/
 .venv/
 
 .vscode/
-.clinerules
+.clinerules/
 
 logs/
 tests/
+
 .env
+.dockerignore
+.docker-compose.yml
+Dockerfile
