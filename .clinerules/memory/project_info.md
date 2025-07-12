@@ -11,10 +11,10 @@
 
 ## 核心系统架构
 本项目采用分层架构，主要模块包括：
-*   **API 层**: 使用 FastAPI 定义 RESTful API 端点，负责接收和验证客户端请求。`generateContent` 和 `streamGenerateContent` 端点已统一由 `GeminiService.generate_content` 方法处理，并移除了对 `stream` 查询参数的直接依赖。
-*   **服务层**: 封装与 Google Gemini API 的交互逻辑，处理请求转发和响应解析。`GeminiService` 现在统一处理内容生成和流式内容生成，并增加了对函数调用（Function Calling）和工具使用（Tool Usage）的支持。此外，引入了 `KeyManager` 服务，用于管理和轮询 Google API 密钥，并增强了错误处理机制，包括 API 密钥冷却。
-*   **核心配置层**: 管理应用配置和日志设置。新增了 `DEBUG_LOG_ENABLED` 和 `DEBUG_LOG_FILE` 配置项，用于控制和指定调试日志的输出，并增加了 API 密钥冷却时间配置。
-*   **日志管理**: 引入了结构化的日志系统，包含主应用日志 (`app_logger`)、事务日志 (`transaction_logger`) 和可选的调试日志 (`debug_logger`)。日志配置已移至模块级别，`setup_logging` 函数不再是必需的。
+*   **API 层**: 使用 FastAPI 定义 RESTful API 端点，负责接收和验证客户端请求。`generateContent` 和 `streamGenerateContent` 端点已统一由 `GeminiService.generate_content` 方法处理，并移除了对 `stream` 查询参数的直接依赖。同时，引入了 `ApiService` 作为基类，抽象了通用的 API 交互逻辑，并重构了 `OpenAIService` 和 `GeminiService` 以继承此基类。
+*   **服务层**: 封装与 Google Gemini API 的交互逻辑，处理请求转发和响应解析。`GeminiService` 现在统一处理内容生成和流式内容生成，并增加了对函数调用（Function Calling）和工具使用（Tool Usage）的支持。此外，引入了 `KeyManager` 服务，用于管理和轮询 Google API 密钥，并增强了错误处理机制，包括 API 密钥冷却、指数退避和失败阈值 (`API_KEY_FAILURE_THRESHOLD`)。
+*   **核心配置层**: 管理应用配置和日志设置。新增了 `DEBUG_LOG_ENABLED` 和 `DEBUG_LOG_FILE` 配置项，用于控制和指定调试日志的输出，并增加了 API 密钥冷却时间配置 (`MAX_COOL_DOWN_SECONDS`)。
+*   **日志管理**: 引入了结构化的日志系统，包含主应用日志 (`app_logger`)、事务日志 (`transaction_logger`) 和可选的调试日志 (`debug_logger`)。日志配置已移至模块级别，`setup_logging` 函数不再是必需的。调试日志的设置已集中到 `setup_debug_logger` 函数中，并利用 `RotatingFileHandler` 进行日志管理。
 
 ## 关键技术栈
 *   **后端框架**: FastAPI (Python)
@@ -34,15 +34,18 @@
 *   `app.main`: 应用入口，使用 `uvicorn` 启动 FastAPI 应用，支持通过环境变量配置主机和端口。
 *   `app.api.v1beta.endpoints.gemini`: 定义 API 端点，调用 `GeminiService` 处理请求。
 *   `app.api.v1beta.schemas.gemini`: 定义请求和响应的数据模型，包括对函数调用和工具使用的支持。
+*   `app.services.base_service`: 抽象了通用的 API 交互逻辑，包括 HTTP 客户端设置、请求处理、错误管理和调试日志。
 *   `app.services.gemini_service`: 核心业务逻辑，负责与 Google Gemini API 进行通信，统一处理内容生成和流式响应，并支持函数调用。
-*   `app.services.key_manager`: 管理和轮询 Google API 密钥，处理密钥冷却逻辑。
+*   `app.services.openai_service`: 继承自 `ApiService`，处理 OpenAI API 的请求转发，并支持 `reasoning_effort` 参数。
+*   `app.services.key_manager`: 管理和轮询 Google API 密钥，处理密钥冷却逻辑，包括指数退避和失败阈值。
 *   `app.core.config`: 加载和管理应用配置，包括新的日志配置项和 API 密钥冷却时间。
-*   `app.core.logging`: 配置应用日志系统，提供结构化的日志记录。
+*   `app.core.logging`: 配置应用日志系统，提供结构化的日志记录。调试日志的设置已集中到 `setup_debug_logger` 函数中，并利用 `RotatingFileHandler` 进行日志管理。
 
 ## 重要设计模式
 *   **分层架构**: 将应用逻辑划分为 API、服务和核心配置层，提高模块化和可维护性。
+*   **服务抽象**: 引入 `ApiService` 作为基类，抽象通用 API 交互逻辑，减少代码重复。
 *   **依赖注入**: FastAPI 内置的依赖注入机制将用于管理服务和配置的依赖关系。
 *   **异步编程**: 利用 Python 的 `async/await` 语法处理 I/O 密集型操作，提高并发性能。
 *   **函数调用/工具使用**: 支持通过 Pydantic 模型和 Gemini API 进行函数调用和工具使用。
-*   **API 密钥轮询与冷却**: 引入 `KeyManager` 实现 API 密钥的轮询使用和失败后的冷却机制，提高 API 调用的可靠性。
+*   **API 密钥轮询冷却**: 引入 `KeyManager` 实现 API 密钥的轮询使用和失败后的冷却机制，提高 API 调用的可靠性。
 *   **容器化部署**: 通过 Docker 和 Docker Compose 实现应用的快速部署和环境一致性，并集成了 `v2raya` 作为网络代理。

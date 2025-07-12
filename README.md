@@ -6,8 +6,10 @@
 
 - **请求转发**: 将客户端请求转发至 Google Gemini API。
 - **响应返回**: 将 Gemini API 的响应原样返回给客户端，支持普通响应和流式响应。
-- **配置管理**: 通过环境变量灵活配置 API Key 和其他设置。
-- **日志记录**: 详细的日志输出，便于监控和问题排查。
+- **API 密钥管理**: 引入 `KeyManager`，支持 API 密钥的轮询、冷却和指数退避，提高服务可靠性。
+- **服务抽象**: 引入 `ApiService` 基类，抽象通用 API 交互逻辑，减少代码重复。
+- **配置管理**: 通过环境变量灵活配置 API Key 和其他设置，包括 API 密钥冷却时间。
+- **日志记录**: 详细的结构化日志输出，支持主应用日志、事务日志和可选的调试日志（通过 `RotatingFileHandler` 管理），便于监控和问题排查。
 - **健康检查**: 提供 `/health` 端点用于服务健康状态检查。
 
 ## 技术栈
@@ -19,6 +21,7 @@
 - **Google Gemini SDK**: google-generativeai
 - **异步**: Python `asyncio`
 - **容器化**: Docker, Docker Compose
+- **测试**: pytest, pytest-asyncio
 
 ## 项目结构
 
@@ -33,7 +36,12 @@ gemini-balance/
 ├── .python-version
 ├── app/
 │   ├── api/
-│   │   └── v1/
+│   │   ├── openai/
+│   │   │   ├── endpoints/
+│   │   │   │   └── chat.py
+│   │   │   └── schemas/
+│   │   │       └── chat.py
+│   │   └── v1beta/
 │   │       ├── endpoints/
 │   │       │   └── gemini.py
 │   │       └── schemas/
@@ -42,12 +50,16 @@ gemini-balance/
 │   │   ├── config.py
 │   │   └── logging.py
 │   ├── services/
-│   │   └── gemini_service.py
+│   │   ├── base_service.py
+│   │   ├── gemini_service.py
+│   │   ├── key_manager.py
+│   │   └── openai_service.py
 │   └── main.py
 ├── pyproject.toml
 ├── README.md
 └── tests/
-    └── test_gemini.py
+    ├── test_gemini.py
+    └── test_key_manager.py
 ```
 
 ## 安装与运行
@@ -124,4 +136,17 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ## 测试
 
-暂无测试用例。
+本项目包含针对 `KeyManager` 和 `Gemini` 服务的单元测试。
+- 所有自动化测试代码应统一放置于 `tests/` 目录，使用 `test_` 前缀命名，例如 `test_xxx.py`。
+- 推荐使用 `pytest` 工具进行测试组织与断言，测试代码同样需加类型提示。
+- 测试用例应避免对覆盖率、持续集成（CI）和测试数据纳入版本控制的硬性要求。
+- 如因外部依赖数据文件缺失，需用 `pytest.mark.skipif` 跳过该测试，并给出原因说明。
+- 测试代码及其断言风格，需通过 `Flake8` 检查，要求与主代码一致的代码风格和结构。
+- 测试代码示例：
+
+  ```python
+  import pytest
+
+  @pytest.mark.skipif(not Path("data/example.csv").exists(), reason="缺测试数据")
+  def test_xxx():
+      ...
