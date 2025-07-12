@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Dict, Union
 
@@ -136,6 +137,10 @@ class ApiService(ABC):
                     error_type = "auth_error"
                 elif e.response.status_code == 429:
                     error_type = "rate_limit_error"
+                    logger.warning(
+                        f"Rate limit hit for API Key {key_identifier}. Waiting 20 seconds before retrying."  # noqa:E501
+                    )
+                    await asyncio.sleep(20)  # Wait for 20 seconds on 429 error
                 else:
                     error_type = "other_http_error"
 
