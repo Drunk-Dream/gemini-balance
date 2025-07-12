@@ -140,7 +140,7 @@ class ApiService(ABC):
                     logger.warning(
                         f"Rate limit hit for API Key {key_identifier}. Waiting 20 seconds before retrying."  # noqa:E501
                     )
-                    await asyncio.sleep(20)  # Wait for 20 seconds on 429 error
+                    await asyncio.sleep(61)  # Wait for 61 seconds on 429 error
                 else:
                     error_type = "other_http_error"
 
