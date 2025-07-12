@@ -23,7 +23,9 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(gemini.router, prefix="/v1beta", tags=["Gemini"])
-    app.include_router(openai_chat.router, prefix="/v1", tags=["OpenAI"]) # 注册 OpenAI 兼容路由
+    app.include_router(
+        openai_chat.router, prefix="/v1", tags=["OpenAI"]
+    )  # 注册 OpenAI 兼容路由
 
     @app.get("/health")
     async def health_check():

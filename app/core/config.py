@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     DEBUG_LOG_ENABLED: bool = os.getenv("DEBUG_LOG_ENABLED", "False").lower() == "true"
     DEBUG_LOG_FILE: str = os.getenv("DEBUG_LOG_FILE", "logs/gemini_debug.log")
     API_KEY_COOL_DOWN_SECONDS: int = int(os.getenv("API_KEY_COOL_DOWN_SECONDS", "300"))
+    API_KEY_FAILURE_THRESHOLD: int = int(os.getenv("API_KEY_FAILURE_THRESHOLD", "3"))
+    MAX_COOL_DOWN_SECONDS: int = int(os.getenv("MAX_COOL_DOWN_SECONDS", 3600 * 12))
 
     @field_validator("GOOGLE_API_KEYS", mode="before")
     @classmethod

@@ -84,7 +84,7 @@ class ApiService(ABC):
             key_identifier = f"...{api_key[-4:]}"
             logger.info(
                 f"Attempt {attempt + 1}/{self.max_retries}: "
-                f"Using API key {key_identifier} for {self.service_name}, stream={stream}"
+                f"Using API key {key_identifier} for {self.service_name}, stream={stream}"  # noqa:E501
             )
 
             headers = self._prepare_headers(api_key)
@@ -108,13 +108,14 @@ class ApiService(ABC):
                 )
                 response.raise_for_status()
 
+                # 请求成功，标记 key 成功
+                await key_manager.mark_key_success(api_key)
+
                 if stream:
                     logger.info(
                         f"Request with key {key_identifier} succeeded (streaming)."
                     )
-                    # Subclasses might need to override media_type
                     return StreamingResponse(
-                        # self._stream_response(response), media_type="application/json"
                         self._stream_response(response), media_type="text/event-stream"
                     )
                 else:
@@ -131,33 +132,31 @@ class ApiService(ABC):
 
             except httpx.HTTPStatusError as e:
                 last_exception = e
-                if e.response.status_code in [401, 403, 429]:
-                    logger.warning(
-                        f"API Key {key_identifier} failed with status {e.response.status_code}. "
-                        f"Deactivating it for {settings.API_KEY_COOL_DOWN_SECONDS} seconds. "
-                        f"Attempt {attempt + 1}/{self.max_retries}."
-                    )
-                    await key_manager.deactivate_key(api_key)
-                    continue
+                if e.response.status_code in [401, 403]:
+                    error_type = "auth_error"
+                elif e.response.status_code == 429:
+                    error_type = "rate_limit_error"
                 else:
-                    logger.error(
-                        f"HTTP error with key {key_identifier}: "
-                        f"{e.response.status_code} - {e.response.text}. No retry."
-                    )
-                    raise HTTPException(
-                        status_code=e.response.status_code, detail=e.response.text
-                    )
+                    error_type = "other_http_error"
+
+                logger.warning(
+                    f"API Key {key_identifier} failed with status {e.response.status_code}. "  # noqa:E501
+                    f"Deactivating it. Attempt {attempt + 1}/{self.max_retries}."
+                )
+                await key_manager.deactivate_key(api_key, error_type)
+                continue
             except httpx.RequestError as e:
                 last_exception = e
                 logger.error(
                     f"Request error with key {key_identifier}: {e}. "
-                    f"Attempt {attempt + 1}/{self.max_retries}. Retrying..."
+                    f"Attempt {attempt + 1}/{self.max_retries}. Deactivating and retrying..."  # noqa:E501
                 )
+                await key_manager.deactivate_key(api_key, "request_error")
                 continue
             except Exception as e:
                 last_exception = e
                 logger.critical(
-                    f"An unexpected error occurred with key {key_identifier}: {e}. No retry."
+                    f"An unexpected error occurred with key {key_identifier}: {e}. No retry."  # noqa:E501
                 )
                 raise HTTPException(
                     status_code=500, detail=f"An unexpected error occurred: {e}"
@@ -173,7 +172,7 @@ class ApiService(ABC):
             else:
                 raise HTTPException(
                     status_code=500,
-                    detail=f"All API key attempts failed. Last error: {str(last_exception)}",
+                    detail=f"All API key attempts failed. Last error: {str(last_exception)}",  # noqa:E501
                 )
         else:
             raise HTTPException(
