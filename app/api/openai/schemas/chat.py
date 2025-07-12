@@ -4,9 +4,15 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
+class ChatCompletionContent(BaseModel):
+    type: Literal["text", "image"]
+    text: Optional[str] = None
+    image_url: Optional[Dict[str, str]] = None
+
+
 class ChatCompletionMessage(BaseModel):
     role: Literal["system", "user", "assistant", "tool"]
-    content: Optional[str] = None
+    content: Optional[Union[str, ChatCompletionContent]] = None
     tool_calls: Optional[List[Dict[str, Any]]] = None  # For assistant messages
     tool_call_id: Optional[str] = None  # For tool messages
 
