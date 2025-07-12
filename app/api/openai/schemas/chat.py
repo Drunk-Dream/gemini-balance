@@ -13,6 +13,7 @@ class ChatCompletionMessage(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     model: str
+    reasoning_effort: Optional[Literal["low", "medium", "high"]] = None
     messages: List[ChatCompletionMessage]
     temperature: Optional[float] = Field(default=0.7, ge=0.0, le=2.0)
     top_p: Optional[float] = Field(default=1.0, ge=0.0, le=1.0)
