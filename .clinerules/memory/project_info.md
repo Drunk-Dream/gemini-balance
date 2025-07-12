@@ -26,9 +26,12 @@
 *   **异步**: Python `asyncio`
 *   **日志**: Python `logging` 模块，支持多日志记录器和可配置的调试日志。
 *   **测试**: pytest, pytest-asyncio (用于单元测试)
+*   **容器化**: Docker, Docker Compose
 
 ## 主要模块关系
-*   `app.main`: 应用入口，使用 `uvicorn` 启动 FastAPI 应用。
+*   `Dockerfile`: 定义了用于构建应用镜像的说明。
+*   `docker-compose.yml`: 用于编排和运行多容器应用，包括主应用和代理服务。
+*   `app.main`: 应用入口，使用 `uvicorn` 启动 FastAPI 应用，支持通过环境变量配置主机和端口。
 *   `app.api.v1beta.endpoints.gemini`: 定义 API 端点，调用 `GeminiService` 处理请求。
 *   `app.api.v1beta.schemas.gemini`: 定义请求和响应的数据模型，包括对函数调用和工具使用的支持。
 *   `app.services.gemini_service`: 核心业务逻辑，负责与 Google Gemini API 进行通信，统一处理内容生成和流式响应，并支持函数调用。
@@ -42,3 +45,4 @@
 *   **异步编程**: 利用 Python 的 `async/await` 语法处理 I/O 密集型操作，提高并发性能。
 *   **函数调用/工具使用**: 支持通过 Pydantic 模型和 Gemini API 进行函数调用和工具使用。
 *   **API 密钥轮询与冷却**: 引入 `KeyManager` 实现 API 密钥的轮询使用和失败后的冷却机制，提高 API 调用的可靠性。
+*   **容器化部署**: 通过 Docker 和 Docker Compose 实现应用的快速部署和环境一致性，并集成了 `v2raya` 作为网络代理。

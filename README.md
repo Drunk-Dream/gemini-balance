@@ -4,20 +4,21 @@
 
 ## 功能特性
 
-*   **请求转发**: 将客户端请求转发至 Google Gemini API。
-*   **响应返回**: 将 Gemini API 的响应原样返回给客户端，支持普通响应和流式响应。
-*   **配置管理**: 通过环境变量灵活配置 API Key 和其他设置。
-*   **日志记录**: 详细的日志输出，便于监控和问题排查。
-*   **健康检查**: 提供 `/health` 端点用于服务健康状态检查。
+- **请求转发**: 将客户端请求转发至 Google Gemini API。
+- **响应返回**: 将 Gemini API 的响应原样返回给客户端，支持普通响应和流式响应。
+- **配置管理**: 通过环境变量灵活配置 API Key 和其他设置。
+- **日志记录**: 详细的日志输出，便于监控和问题排查。
+- **健康检查**: 提供 `/health` 端点用于服务健康状态检查。
 
 ## 技术栈
 
-*   **后端框架**: FastAPI
-*   **HTTP 客户端**: httpx
-*   **数据验证**: Pydantic
-*   **环境变量管理**: python-dotenv
-*   **Google Gemini SDK**: google-generativeai
-*   **异步**: Python `asyncio`
+- **后端框架**: FastAPI
+- **HTTP 客户端**: httpx
+- **数据验证**: Pydantic
+- **环境变量管理**: python-dotenv
+- **Google Gemini SDK**: google-generativeai
+- **异步**: Python `asyncio`
+- **容器化**: Docker, Docker Compose
 
 ## 项目结构
 
@@ -58,15 +59,7 @@ git clone https://github.com/your-repo/gemini-balance.git
 cd gemini-balance
 ```
 
-### 2. 安装依赖
-
-本项目使用 `uv` 进行依赖管理。请确保您已安装 `uv`。
-
-```bash
-uv sync
-```
-
-### 3. 配置环境变量
+### 2. 配置环境变量
 
 创建 `.env` 文件，并根据 `.env.example` 填写您的 Google Gemini API Key。
 
@@ -80,29 +73,50 @@ cp .env.example .env
 GOOGLE_API_KEY="YOUR_GEMINI_API_KEY"
 ```
 
-### 4. 运行服务
+### 3. 使用 Docker Compose 启动服务
+
+本项目推荐使用 Docker Compose 进行部署，它会同时启动应用服务和代理服务。
 
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+docker-compose up -d
 ```
 
 服务将在 `http://localhost:8000` 启动。您可以通过访问 `http://localhost:8000/docs` 查看 API 文档。
+
+### 4. (可选) 本地运行
+
+如果您希望在本地直接运行，请确保已安装 `uv` 并执行以下命令：
+
+```bash
+# 安装依赖
+uv sync
+
+# 启动服务
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
 ## API 端点
 
 ### 健康检查
 
-*   **GET** `/health`
-    *   **响应**: `{"status": "ok"}`
+- **GET** `/health`
+  - **响应**: `{"status": "ok"}`
 
 ### Gemini 内容生成
 
-*   **POST** `/v1/models/{model_id}:generateContent`
-    *   **参数**:
-        *   `model_id` (path): Gemini 模型 ID (例如 `gemini-pro`)
-        *   `stream` (query, optional): 是否启用流式响应 (默认为 `false`)
-    *   **请求体**: 遵循 Google Gemini API 的 `GenerateContentRequest` 格式。
-    *   **响应**: 遵循 Google Gemini API 的 `GenerateContentResponse` 格式，如果 `stream=true`，则为流式响应。
+- **POST** `/v1beta/models/{model_id}:generateContent`
+  - **参数**:
+    - `model_id` (path): Gemini 模型 ID (例如 `gemini-pro`)
+  - **请求体**: 遵循 Google Gemini API 的 `GenerateContentRequest` 格式。
+  - **响应**: 遵循 Google Gemini API 的 `GenerateContentResponse` 格式，支持流式响应。
+- **POST** `/v1beta/models/{model_id}:streamGenerateContent`
+  - **参数**:
+    - `model_id` (path): Gemini 模型 ID (例如 `gemini-pro`)
+  - **请求体**: 遵循 Google Gemini API 的 `GenerateContentRequest` 格式。
+  - **响应**: 流式响应。
+- **POST** `/v1/chat/completions`
+  - **请求体**: 遵循 OpenAI `chat.completions` API 格式。
+  - **响应**: 遵循 OpenAI `chat.completions` API 格式，支持流式响应。
 
 ## 日志
 
