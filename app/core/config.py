@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     API_KEY_COOL_DOWN_SECONDS: int = int(os.getenv("API_KEY_COOL_DOWN_SECONDS", "300"))
     API_KEY_FAILURE_THRESHOLD: int = int(os.getenv("API_KEY_FAILURE_THRESHOLD", "3"))
     MAX_COOL_DOWN_SECONDS: int = int(os.getenv("MAX_COOL_DOWN_SECONDS", 3600 * 12))
+    RATE_LIMIT_DEFAULT_WAIT_SECONDS: int = int(
+        os.getenv("RATE_LIMIT_DEFAULT_WAIT_SECONDS", "90")
+    )
 
     @field_validator("GOOGLE_API_KEYS", mode="before")
     @classmethod

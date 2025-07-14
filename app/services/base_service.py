@@ -148,13 +148,33 @@ class ApiService(ABC):
                 await key_manager.deactivate_key(api_key, error_type)
 
                 if e.response.status_code == 429:
-                    wait_time = 60 + random.randint(1, 9)
-                    logger.warning(
-                        f"Rate limit hit for API Key {key_identifier}. Waiting {wait_time} seconds before retrying."  # noqa:E501
-                    )
-                    await asyncio.sleep(
-                        wait_time
-                    )  # Wait for 61-69 seconds on 429 error
+                    retry_after = e.response.headers.get("Retry-After")
+                    if retry_after:
+                        try:
+                            wait_time = int(retry_after) + random.randint(1, 9)
+                            logger.warning(
+                                f"Rate limit hit for API Key {key_identifier}. "
+                                f"Retrying after Retry-After header: {wait_time} seconds."  # noqa:E501
+                            )
+                        except ValueError:
+                            wait_time = (
+                                settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
+                                + random.randint(1, 9)
+                            )
+                            logger.warning(
+                                f"Rate limit hit for API Key {key_identifier}. "
+                                f"Invalid Retry-After header. Waiting {wait_time} seconds before retrying."  # noqa:E501
+                            )
+                    else:
+                        wait_time = (
+                            settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
+                            + random.randint(1, 9)
+                        )
+                        logger.warning(
+                            f"Rate limit hit for API Key {key_identifier}. "
+                            f"No Retry-After header. Waiting {wait_time} seconds before retrying."  # noqa:E501
+                        )
+                    await asyncio.sleep(wait_time)
 
                 continue
             except httpx.RequestError as e:

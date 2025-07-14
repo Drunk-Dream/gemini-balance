@@ -4,6 +4,7 @@ from collections import deque
 from typing import Dict, List, Optional, TypedDict
 
 from app.core.config import settings
+from app.core.logging import app_logger
 
 
 class KeyState(TypedDict):
@@ -104,6 +105,11 @@ class KeyManager:
                     time.time() + key_state["current_cool_down_seconds"]
                 )
                 self._cool_down_keys[key] = key_state["cool_down_until"]
+                app_logger.warning(
+                    f"API key '{key[-4:]}...' entered cool-down for "
+                    f"{key_state['current_cool_down_seconds']:.2f} seconds "
+                    f"due to {error_type}."
+                )
 
     async def mark_key_success(self, key: str):
         async with self._lock:
