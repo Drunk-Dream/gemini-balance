@@ -1,6 +1,10 @@
 # Use an official Python runtime as a parent image
 FROM python:3.12-slim-bookworm
 
+# Set environment variables, avoid .pyc files, and unbuffered output
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
 # Set the working directory in the container
 WORKDIR /app
 
