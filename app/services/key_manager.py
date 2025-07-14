@@ -106,7 +106,7 @@ class KeyManager:
                 )
                 self._cool_down_keys[key] = key_state["cool_down_until"]
                 app_logger.warning(
-                    f"API key '{key[-4:]}...' entered cool-down for "
+                    f"API key '...{key[-4:]}' entered cool-down for "
                     f"{key_state['current_cool_down_seconds']:.2f} seconds "
                     f"due to {error_type}."
                 )
