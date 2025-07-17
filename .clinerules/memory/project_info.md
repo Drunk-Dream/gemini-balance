@@ -11,6 +11,7 @@
 
 ## 核心系统架构
 本项目采用分层架构，主要模块包括：
+*   **前端层**: 使用 Svelte 构建用户界面，用于展示日志信息和 API Key 状态，并提供未来的 Key 管理功能。
 *   **API 层**: 使用 FastAPI 定义 RESTful API 端点，负责接收和验证客户端请求。`generateContent` 和 `streamGenerateContent` 端点已统一由 `GeminiService.generate_content` 方法处理，并移除了对 `stream` 查询参数的直接依赖。同时，引入了 `ApiService` 作为基类，抽象了通用的 API 交互逻辑，并重构了 `OpenAIService` 和 `GeminiService` 以继承此基类。
 *   **服务层**: 封装与 Google Gemini API 的交互逻辑，处理请求转发和响应解析。`GeminiService` 现在统一处理内容生成和流式内容生成，并增加了对函数调用（Function Calling）和工具使用（Tool Usage）的支持。此外，引入了 `KeyManager` 服务，用于管理和轮询 Google API 密钥，并增强了错误处理机制，包括 API 密钥冷却、指数退避和失败阈值 (`API_KEY_FAILURE_THRESHOLD`)。
 *   **核心配置层**: 管理应用配置和日志设置。新增了 `DEBUG_LOG_ENABLED` 和 `DEBUG_LOG_FILE` 配置项，用于控制和指定调试日志的输出，并增加了 API 密钥冷却时间配置 (`MAX_COOL_DOWN_SECONDS`)。
@@ -29,17 +30,17 @@
 *   **容器化**: Docker, Docker Compose
 
 ## 主要模块关系
-*   `Dockerfile`: 定义了用于构建应用镜像的说明。
-*   `docker-compose.yml`: 用于编排和运行多容器应用，包括主应用和代理服务。
-*   `app.main`: 应用入口，使用 `uvicorn` 启动 FastAPI 应用，支持通过环境变量配置主机和端口。
-*   `app.api.v1beta.endpoints.gemini`: 定义 API 端点，调用 `GeminiService` 处理请求。
-*   `app.api.v1beta.schemas.gemini`: 定义请求和响应的数据模型，包括对函数调用和工具使用的支持。
-*   `app.services.base_service`: 抽象了通用的 API 交互逻辑，包括 HTTP 客户端设置、请求处理、错误管理和调试日志。
-*   `app.services.gemini_service`: 核心业务逻辑，负责与 Google Gemini API 进行通信，统一处理内容生成和流式响应，并支持函数调用。
-*   `app.services.openai_service`: 继承自 `ApiService`，处理 OpenAI API 的请求转发，并支持 `reasoning_effort` 参数。
-*   `app.services.key_manager`: 管理和轮询 Google API 密钥，处理密钥冷却逻辑，包括指数退避和失败阈值。
-*   `app.core.config`: 加载和管理应用配置，包括新的日志配置项和 API 密钥冷却时间。
-*   `app.core.logging`: 配置应用日志系统，提供结构化的日志记录。调试日志的设置已集中到 `setup_debug_logger` 函数中，并利用 `RotatingFileHandler` 进行日志管理。
+*   `backend/Dockerfile`: 定义了用于构建后端应用镜像的说明。
+*   `docker-compose.yml`: 用于编排和运行多容器应用，包括后端服务、前端服务和代理服务。
+*   `backend/main.py`: 后端应用入口，使用 `uvicorn` 启动 FastAPI 应用，支持通过环境变量配置主机和端口。
+*   `backend/app/api/v1beta/endpoints/gemini.py`: 定义 API 端点，调用 `GeminiService` 处理请求。
+*   `backend/app/api/v1beta/schemas/gemini.py`: 定义请求和响应的数据模型，包括对函数调用和工具使用的支持。
+*   `backend/app/services/base_service.py`: 抽象了通用的 API 交互逻辑，包括 HTTP 客户端设置、请求处理、错误管理和调试日志。
+*   `backend/app/services/gemini_service.py`: 核心业务逻辑，负责与 Google Gemini API 进行通信，统一处理内容生成和流式响应，并支持函数调用。
+*   `backend/app/services/openai_service.py`: 继承自 `ApiService`，处理 OpenAI API 的请求转发，并支持 `reasoning_effort` 参数。
+*   `backend/app/services/key_manager.py`: 管理和轮询 Google API 密钥，处理密钥冷却逻辑，包括指数退避和失败阈值。
+*   `backend/app/core/config.py`: 加载和管理应用配置，包括新的日志配置项和 API 密钥冷却时间。
+*   `backend/app/core/logging.py`: 配置应用日志系统，提供结构化的日志记录。调试日志的设置已集中到 `setup_debug_logger` 函数中，并利用 `RotatingFileHandler` 进行日志管理。
 
 ## 重要设计模式
 *   **分层架构**: 将应用逻辑划分为 API、服务和核心配置层，提高模块化和可维护性。

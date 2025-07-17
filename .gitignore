@@ -12,3 +12,6 @@ wheels/
 logs/
 .env*
 *.http
+
+# Frontend files
+frontend/node_modules/

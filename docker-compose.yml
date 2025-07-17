@@ -1,12 +1,12 @@
 services:
   gemini-balance:
-    build: .
+    build: ./backend
     ports:
       - "8090:8090"
     env_file:
       - .env
     volumes:
-      - ./logs:/app/logs
+      - ./backend/logs:/app/logs
     # 与Open Webui 共享网络，如果不需要，可删除shared_net
     networks:
       - shared_net
