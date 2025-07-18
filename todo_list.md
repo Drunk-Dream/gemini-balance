@@ -2,20 +2,20 @@
 
 ## 阶段一：项目重构与后端基础建设
 
-- [ ] **项目结构调整**
+- [x] **项目结构调整**
     - [x] 将所有现有后端代码（`app`, `tests`, `Dockerfile` 等）移动到新的 `backend/` 目录中。
     - [x] 创建 `frontend/` 目录，用于存放 Svelte 前端项目。
     - [x] 更新 `docker-compose.yml` 和 `backend/Dockerfile` 中的路径，以适应新的目录结构。
     - [x] 调整 `.gitignore` 文件，添加前端相关的忽略项（如 `frontend/node_modules`）。
 
-- [ ] **KeyManager 功能增强**
-    - [ ] 在 `KeyManager` 中为每个 key 增加用量统计功能，例如记录今日调用次数。
+- [x] **KeyManager 功能增强**
+    - [x] 在 `KeyManager` 中为每个 key 增加用量统计功能，例如记录今日调用次数。
     - [ ] 考虑将 key 的状态（包括用量、冷却时间等）持久化，以防服务重启后数据丢失（初期可先用内存存储，后续再优化）。
 
-- [ ] **新增后端 API**
-    - [ ] 创建 `GET /api/status/keys` 端点：返回所有 API key 的详细状态列表，包括 `key` 的部分信息（出于安全，不应返回完整 key）、是否可用、今日用量、冷却状态及剩余时间。
-    - [ ] 创建 `GET /api/status/logs` 端点：提供查看日志文件的功能。可以考虑分页或返回最新的 N 条日志。
-    - [ ] (可选) 为日志查看功能实现 WebSocket，以便实时将新日志推送到前端。
+- [x] **新增后端 API**
+    - [x] 创建 `GET /api/status/keys` 端点：返回所有 API key 的详细状态列表，包括 `key` 的部分信息（出于安全，不应返回完整 key）、是否可用、今日用量、冷却状态及剩余时间。
+    - [x] 创建 `GET /api/status/logs` 端点：提供查看日志文件的功能。可以考虑分页或返回最新的 N 条日志。
+    - [x] (可选) 为日志查看功能实现 WebSocket，以便实时将新日志推送到前端。
 
 ## 阶段二：前端界面实现
 

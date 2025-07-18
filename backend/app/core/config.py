@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT_WAIT_SECONDS: int = int(
         os.getenv("RATE_LIMIT_DEFAULT_WAIT_SECONDS", "90")
     )
+    WEBSOCKET_LOG_REFRESH_SECONDS: float = float(
+        os.getenv("WEBSOCKET_LOG_REFRESH_SECONDS", "1.0")
+    )
 
     @field_validator("GOOGLE_API_KEYS", mode="before")
     @classmethod

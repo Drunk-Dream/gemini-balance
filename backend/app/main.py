@@ -1,11 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
 
+from app.services.key_manager import key_manager
 from fastapi import FastAPI
 
 from app.api.openai.endpoints import chat as openai_chat  # 导入新的 OpenAI 兼容路由
+from app.api.v1beta.endpoints import status  # 导入 status 路由
 from app.api.v1beta.endpoints import gemini
-from app.services.key_manager import key_manager
 
 # Removed: from app.core.logging import setup_logging
 # setup_logging is now a no-op and handled at module level
@@ -40,6 +41,9 @@ def create_app() -> FastAPI:
     app.include_router(
         openai_chat.router, prefix="/v1", tags=["OpenAI"]
     )  # 注册 OpenAI 兼容路由
+    app.include_router(
+        status.router, prefix="/api", tags=["Status"]
+    )  # 注册 status 路由
 
     @app.get("/health")
     async def health_check():

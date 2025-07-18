@@ -1,11 +1,10 @@
 from typing import Any, Dict, Union
 
-from starlette.responses import StreamingResponse
-
 from app.api.openai.schemas.chat import ChatCompletionRequest
 from app.core.config import settings
 from app.core.logging import app_logger
 from app.services.base_service import ApiService
+from starlette.responses import StreamingResponse
 
 logger = app_logger
 
@@ -38,6 +37,7 @@ class OpenAIService(ApiService):
             request_data=request_data,
             stream=stream,
             params=params,
+            model_id=request_data.model,  # 传递 model_id
         )
 
         # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type

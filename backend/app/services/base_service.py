@@ -1,15 +1,14 @@
 import asyncio
 import random
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Dict, Union
+from typing import Any, AsyncGenerator, Dict, Optional, Union
 
 import httpx
-from fastapi import HTTPException
-from starlette.responses import StreamingResponse
-
 from app.core.config import settings
 from app.core.logging import app_logger, setup_debug_logger
 from app.services.key_manager import key_manager
+from fastapi import HTTPException
+from starlette.responses import StreamingResponse
 
 logger = app_logger
 
@@ -27,6 +26,7 @@ class ApiService(ABC):
         self.max_retries = len(settings.GOOGLE_API_KEYS or []) or 1
         if self.max_retries == 0:
             raise ValueError("No Google API keys configured.")
+        self._current_api_key: Optional[str] = None  # 初始化 _current_api_key
 
         self.debug_logger = setup_debug_logger(f"{service_name}_debug_logger")
 
@@ -66,6 +66,7 @@ class ApiService(ABC):
         request_data: Any,
         stream: bool,
         params: Dict[str, str],
+        model_id: Optional[str] = None,  # 新增 model_id 参数
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
         Handles sending the HTTP request, including API key management and retries.
@@ -73,6 +74,7 @@ class ApiService(ABC):
         last_exception = None
         for attempt in range(self.max_retries):
             api_key = await key_manager.get_next_key()
+            self._current_api_key = api_key  # 存储当前使用的 key
             if not api_key:
                 logger.error(
                     f"Attempt {attempt + 1}/{self.max_retries}: "
@@ -112,6 +114,9 @@ class ApiService(ABC):
 
                 # 请求成功，标记 key 成功
                 await key_manager.mark_key_success(api_key)
+                # 记录成功调用的 key 和 model 用量
+                if model_id:
+                    await key_manager.record_usage(api_key, model_id)
 
                 if stream:
                     logger.info(

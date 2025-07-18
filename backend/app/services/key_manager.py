@@ -1,6 +1,7 @@
 import asyncio
 import time
 from collections import deque
+from datetime import datetime
 from typing import Dict, List, Optional, TypedDict
 
 from app.core.config import settings
@@ -12,6 +13,8 @@ class KeyState(TypedDict):
     request_fail_count: int
     cool_down_entry_count: int
     current_cool_down_seconds: int
+    usage_today: Dict[str, int]  # 新增：记录每个模型当日用量
+    last_usage_date: str  # 新增：记录上次使用日期
 
 
 class KeyManager:
@@ -39,6 +42,8 @@ class KeyManager:
                 "request_fail_count": 0,
                 "cool_down_entry_count": 0,
                 "current_cool_down_seconds": self._initial_cool_down_seconds,
+                "usage_today": {},  # 初始化用量统计
+                "last_usage_date": datetime.now().strftime("%Y-%m-%d"),  # 初始化日期
             }
 
     async def _release_cooled_down_keys(self):
@@ -132,6 +137,50 @@ class KeyManager:
                 self._key_states[key][
                     "current_cool_down_seconds"
                 ] = self._initial_cool_down_seconds
+
+    async def record_usage(self, key: str, model: str):
+        """记录指定 key 和模型的用量。"""
+        async with self._lock:
+            if key not in self._key_states:
+                return
+
+            key_state = self._key_states[key]
+            today_str = datetime.now().strftime("%Y-%m-%d")
+
+            # 如果日期变更，重置当日用量
+            if key_state["last_usage_date"] != today_str:
+                key_state["usage_today"] = {}
+                key_state["last_usage_date"] = today_str
+
+            key_state["usage_today"][model] = key_state["usage_today"].get(model, 0) + 1
+            app_logger.debug(
+                f"Key '...{key[-4:]}' usage for model '{model}': "
+                f"{key_state['usage_today'][model]}"
+            )
+
+    async def get_key_states(self) -> List[Dict]:
+        """返回所有 API key 的详细状态列表。"""
+        async with self._lock:
+            states = []
+            now = time.time()
+            for key, key_state in self._key_states.items():
+                cool_down_remaining = max(0, key_state["cool_down_until"] - now)
+                status = "cooling_down" if cool_down_remaining > 0 else "active"
+
+                states.append(
+                    {
+                        "key_identifier": f"...{key[-4:]}",  # 安全起见，只显示后四位
+                        "status": status,
+                        "cool_down_seconds_remaining": round(cool_down_remaining, 2),
+                        "daily_usage": key_state["usage_today"],
+                        "failure_count": key_state["request_fail_count"],
+                        "cool_down_entry_count": key_state["cool_down_entry_count"],
+                        "current_cool_down_seconds": key_state[
+                            "current_cool_down_seconds"
+                        ],
+                    }
+                )
+            return states
 
 
 key_manager = KeyManager(
