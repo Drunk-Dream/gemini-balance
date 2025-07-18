@@ -1,5 +1,5 @@
 # Use an official uv runtime as a parent image
-FROM ghcr.io/astral-sh/uv:python-3.12-slim-bookworm
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # Set environment variables, avoid .pyc files, and unbuffered output
 ENV PYTHONDONTWRITEBYTECODE 1
