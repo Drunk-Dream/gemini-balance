@@ -4,9 +4,9 @@
 
 - [ ] **项目结构调整**
     - [x] 将所有现有后端代码（`app`, `tests`, `Dockerfile` 等）移动到新的 `backend/` 目录中。
-    - [ ] 创建 `frontend/` 目录，用于存放 Svelte 前端项目。
-    - [ ] 更新 `docker-compose.yml` 和 `backend/Dockerfile` 中的路径，以适应新的目录结构。
-    - [ ] 调整 `.gitignore` 文件，添加前端相关的忽略项（如 `frontend/node_modules`）。
+    - [x] 创建 `frontend/` 目录，用于存放 Svelte 前端项目。
+    - [x] 更新 `docker-compose.yml` 和 `backend/Dockerfile` 中的路径，以适应新的目录结构。
+    - [x] 调整 `.gitignore` 文件，添加前端相关的忽略项（如 `frontend/node_modules`）。
 
 - [ ] **KeyManager 功能增强**
     - [ ] 在 `KeyManager` 中为每个 key 增加用量统计功能，例如记录今日调用次数。
