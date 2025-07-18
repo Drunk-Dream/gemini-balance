@@ -1,5 +1,5 @@
-# Use an official Python runtime as a parent image
-FROM python:3.12-slim-bookworm
+# Use an official uv runtime as a parent image
+FROM ghcr.io/astral-sh/uv:python-3.12-slim-bookworm
 
 # Set environment variables, avoid .pyc files, and unbuffered output
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -7,9 +7,6 @@ ENV PYTHONUNBUFFERED 1
 
 # Set the working directory in the container
 WORKDIR /app
-
-# Install uv
-RUN pip install uv
 
 # Copy pyproject.toml and uv.lock to the working directory
 COPY pyproject.toml uv.lock ./
