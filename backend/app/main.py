@@ -1,37 +1,28 @@
 import logging
-import os  # 导入 os 模块
 from contextlib import asynccontextmanager
-from pathlib import Path  # 导入 Path 模块
+from pathlib import Path
 
+from app.api.openai.endpoints.chat import router as openai_chat_router
+from app.api.v1beta.endpoints.gemini import router as gemini_router
+from app.api.v1beta.endpoints.status import router as status_router
 from app.services.key_manager import key_manager
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles  # 导入 StaticFiles
-
-from app.api.openai.endpoints import chat as openai_chat  # 导入新的 OpenAI 兼容路由
-from app.api.v1beta.endpoints import status  # 导入 status 路由
-from app.api.v1beta.endpoints import gemini
-
-# Removed: from app.core.logging import setup_logging
-# setup_logging is now a no-op and handled at module level
-# in app/core/logging.py
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     logger.info("Starting background task for KeyManager...")
     key_manager.start_background_task()
     yield
-    # Shutdown
     logger.info("Stopping background task for KeyManager...")
     key_manager.stop_background_task()
 
 
 def create_app() -> FastAPI:
-    # Removed: setup_logging()
-    # Logging is now configured at module level in app/core/logging.py
     logger.info("Starting Gemini Balance API application...")
     app = FastAPI(
         title="Gemini Balance API",
@@ -40,28 +31,33 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    app.include_router(gemini.router, prefix="/v1beta", tags=["Gemini"])
-    app.include_router(
-        openai_chat.router, prefix="/v1", tags=["OpenAI"]
-    )  # 注册 OpenAI 兼容路由
-    app.include_router(
-        status.router, prefix="/api", tags=["Status"]
-    )  # 注册 status 路由
+    app.include_router(gemini_router, prefix="/v1beta", tags=["Gemini"])
+    app.include_router(openai_chat_router, prefix="/v1", tags=["OpenAI"])
+    app.include_router(status_router, prefix="/api", tags=["Status"])
 
-    # 仅在生产环境且前端文件存在时挂载
-    if os.getenv("APP_ENV") == "production":
-        frontend_dist = Path("frontend/build")
-        if frontend_dist.exists():
-            logger.info(f"Mounting static files from {frontend_dist.absolute()}")
-            app.mount(
-                "/", StaticFiles(directory=frontend_dist, html=True), name="frontend"
-            )
-        else:
-            logger.warning(
-                "Frontend build directory not found, skipping static file mount."
-            )
+    frontend_dir = Path("frontend/build")
+
+    if frontend_dir.exists() and (frontend_dir / "index.html").exists():
+        logger.info(f"Serving frontend from: {frontend_dir.absolute()}")
+        app.mount(
+            "/_app",
+            StaticFiles(directory=frontend_dir / "_app"),
+            name="static_assets",
+        )
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_frontend(request: Request):
+            return FileResponse(frontend_dir / "index.html")
+
     else:
-        logger.info("Running in development mode, skipping static file mount.")
+        logger.warning(
+            "Frontend build directory or index.html not found in "
+            f"{frontend_dir.absolute()}. Skipping frontend serving."
+        )
+
+        @app.get("/", include_in_schema=False)
+        def root():
+            return {"message": "Backend is running, but frontend is not available."}
 
     @app.get("/health")
     async def health_check():

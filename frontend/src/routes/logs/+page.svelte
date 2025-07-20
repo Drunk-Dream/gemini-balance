@@ -36,7 +36,16 @@
 			};
 
 			eventSource.onmessage = (event) => {
-				logs = [...logs, event.data];
+				let parsedData;
+				try {
+					parsedData = JSON.parse(event.data);
+					// Assuming the actual log message is in a 'message' field if it's JSON
+					// Adjust this based on actual backend JSON structure if it changes
+					logs = [...logs, parsedData.message || event.data];
+				} catch (e) {
+					// If not JSON, treat as plain text
+					logs = [...logs, event.data];
+				}
 				scrollToBottom();
 			};
 
