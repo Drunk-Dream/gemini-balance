@@ -15,8 +15,28 @@ services:
       # 根据需要配置代理环境，如不需要，可删除v2rayA
       - HTTP_PROXY=http://v2raya:20170
       - HTTPS_PROXY=http://v2raya:20170
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
-      - v2raya
+      redis:
+        condition: service_healthy
+      v2raya:
+        condition: service_started
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shared_net
 
   v2raya:
     image: mzz2017/v2raya
@@ -35,6 +55,7 @@ services:
       - v2raya_config:/etc/v2raya
 
 volumes:
+  redis_data:
   v2raya_config:
 
 # 与Open Webui 共享网络，如果不需要，可删除shared_net
