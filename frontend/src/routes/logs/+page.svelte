@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 
 	let logs: string[] = [];
 	let eventSource: EventSource | null = null;
@@ -17,7 +17,8 @@
 		if (logContainer) {
 			const { scrollTop, scrollHeight, clientHeight } = logContainer;
 			// If scrolled near the bottom, re-enable auto-scroll
-			if (scrollHeight - scrollTop <= clientHeight + 50) { // 50px buffer
+			if (scrollHeight - scrollTop <= clientHeight + 50) {
+				// 50px buffer
 				autoScroll = true;
 			} else {
 				autoScroll = false;
@@ -71,13 +72,36 @@
 			eventSource.close();
 		}
 	});
+
+	function colorizeLog(logLine: string): string {
+		const patterns = [
+			{ regex: /(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})/, class: 'text-gray-400' }, // Timestamp
+			{ regex: /\b(INFO)\b/, class: 'font-bold text-emerald-400' }, // Log Level INFO
+			{ regex: /\b(ERROR)\b/, class: 'font-bold text-red-400' }, // Log Level ERROR
+			{ regex: /\b(WARNING)\b/, class: 'font-bold text-amber-400' }, // Log Level WARNING
+			{ regex: /\b(DEBUG)\b/, class: 'font-bold text-blue-400' }, // Log Level DEBUG
+			{ regex: /\b(true)\b/gi, class: 'text-green-400' }, // Boolean true
+			{ regex: /\b(false)\b/gi, class: 'text-red-400' }, // Boolean false
+			{ regex: /(\.\.\.[a-zA-Z0-9]{4})\b/g, class: 'text-violet-400' }, // Key suffix
+			{ regex: /\b(gemini-[\w.-]+|gpt-[\w.-]+)\b/g, class: 'text-pink-400' } // Model name
+		];
+
+		let coloredLogLine = logLine;
+		for (const pattern of patterns) {
+			coloredLogLine = coloredLogLine.replace(pattern.regex, `<span class="${pattern.class}">$&</span>`);
+		}
+		return coloredLogLine;
+	}
 </script>
 
 <div class="container mx-auto p-4">
-	<h1 class="text-3xl font-bold mb-6 text-gray-800">日志查看器</h1>
+	<h1 class="mb-6 text-3xl font-bold text-gray-800">日志查看器</h1>
 
 	{#if errorMessage}
-		<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+		<div
+			class="relative mb-4 rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700"
+			role="alert"
+		>
 			<strong class="font-bold">错误!</strong>
 			<span class="block sm:inline"> {errorMessage}</span>
 		</div>
@@ -86,10 +110,10 @@
 	<div
 		bind:this={logContainer}
 		on:scroll={handleScroll}
-		class="bg-gray-900 text-gray-100 p-4 rounded-lg shadow-md font-mono text-sm overflow-y-auto h-[calc(100vh-180px)]"
+		class="h-[calc(100vh-180px)] overflow-y-auto rounded-lg bg-gray-900 p-4 font-mono text-sm text-gray-100 shadow-md"
 	>
-		{#each logs as logLine, i}
-			<p class="whitespace-pre-wrap break-words">{logLine}</p>
+		{#each logs as logLine}
+			<p class="whitespace-pre-wrap break-words">{@html colorizeLog(logLine)}</p>
 		{/each}
 		{#if logs.length === 0 && !errorMessage}
 			<p class="text-gray-500">等待日志数据...</p>
