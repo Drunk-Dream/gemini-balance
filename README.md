@@ -11,10 +11,12 @@
 - **配置管理**: 通过环境变量灵活配置 API Key 和其他设置，包括 API 密钥冷却时间。
 - **日志记录**: 详细的结构化日志输出，支持主应用日志、事务日志和可选的调试日志（通过 `RotatingFileHandler` 管理），便于监控和问题排查。
 - **健康检查**: 提供 `/health` 端点用于服务健康状态检查。
+- **前端界面**: 提供基于 Svelte 的前端界面，用于查看 API Key 状态和后端日志。
 
 ## 技术栈
 
 - **后端框架**: FastAPI
+- **前端框架**: SvelteKit
 - **HTTP 客户端**: httpx
 - **数据验证**: Pydantic
 - **环境变量管理**: python-dotenv
@@ -34,8 +36,8 @@ gemini-balance/
 │       └── project_info.md
 ├── .gitignore
 ├── .python-version
-├── Dockerfile # Dockerfile 移动到根目录
-├── backend/ # 后端服务目录
+├── Dockerfile
+├── backend/
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── openai/
@@ -45,8 +47,8 @@ gemini-balance/
 │   │   │   │       └── chat.py
 │   │   │   └── v1beta/
 │   │   │       ├── endpoints/
-│   │   │       │   └── gemini.py
-│   │   │       │   └── status.py # 新增 status 路由
+│   │   │       │   ├── gemini.py
+│   │   │       │   └── status.py
 │   │   │       └── schemas/
 │   │   │           └── gemini.py
 │   │   ├── core/
@@ -59,11 +61,11 @@ gemini-balance/
 │   │   │   └── openai_service.py
 │   │   └── main.py
 │   ├── pyproject.toml
-│   └── uv.lock
+│   ├── uv.lock
 │   └── tests/
 │       ├── test_gemini.py
 │       └── test_key_manager.py
-├── frontend/ # 前端服务目录
+├── frontend/
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── svelte.config.js
@@ -79,34 +81,11 @@ gemini-balance/
 │           ├── +page.svelte
 │           └── logs/
 │               └── +page.svelte
-├── logs/ # 日志目录
+├── logs/
 ├── docker-compose.yml
 ├── README.md
 └── todo_list.md
 ```
-
-## 功能特性
-
-- **请求转发**: 将客户端请求转发至 Google Gemini API。
-- **响应返回**: 将 Gemini API 的响应原样返回给客户端，支持普通响应和流式响应。
-- **API 密钥管理**: 引入 `KeyManager`，支持 API 密钥的轮询、冷却和指数退避，提高服务可靠性。
-- **服务抽象**: 引入 `ApiService` 基类，抽象通用 API 交互逻辑，减少代码重复。
-- **配置管理**: 通过环境变量灵活配置 API Key 和其他设置，包括 API 密钥冷却时间。
-- **日志记录**: 详细的结构化日志输出，支持主应用日志、事务日志和可选的调试日志（通过 `RotatingFileHandler` 管理），便于监控和问题排查。
-- **健康检查**: 提供 `/health` 端点用于服务健康状态检查。
-- **前端界面**: 提供基于 Svelte 的前端界面，用于查看 API Key 状态和后端日志。
-
-## 技术栈
-
-- **后端框架**: FastAPI
-- **前端框架**: SvelteKit
-- **HTTP 客户端**: httpx
-- **数据验证**: Pydantic
-- **环境变量管理**: python-dotenv
-- **Google Gemini SDK**: google-generativeai
-- **异步**: Python `asyncio`
-- **容器化**: Docker, Docker Compose
-- **测试**: pytest, pytest-asyncio
 
 ## 安装与运行
 
@@ -141,6 +120,12 @@ docker-compose up -d --build
 
 服务将在 `http://localhost:8090` 启动。您可以通过访问 `http://localhost:8090` 访问前端界面，并通过 `http://localhost:8090/docs` 查看 API 文档。
 
+**关于代理服务 (v2raya) 和网络配置：**
+
+`docker-compose.yml` 中包含了 `v2raya` 代理服务，用于处理后端服务的网络请求。如果您不需要理，可以从 `docker-compose.yml` 中删除 `v2raya` 服务及其相关的 `depends_on`、`networks` 和 `environment` 配置。
+
+此外，`docker-compose.yml` 配置了一个名为 `gemini-balance-open-webui` 的外部网络 `shared_net`，旨在与 Open WebUI 等其他服务共享网络。如果您不使用此功能，可以删除 `gemini-balance` 和 `v2raya` 服务下的 `networks` 配置。
+
 ### 4. (可选) 本地运行 (开发环境)
 
 如果您希望在本地进行开发，可以分别启动前端和后端服务：
@@ -154,6 +139,8 @@ cd backend
 uv sync
 uvicorn app.main:app --host 0.0.0.0 --port 8090
 ```
+
+**注意**：`Dockerfile` 中使用的启动命令是 `uv run -m main`，它会运行 `backend/main.py`。在本地开发时，推荐使用 `uvicorn app.main:app` 来启动 `backend/app/main.py`，以便更好地进行开发调试。
 
 #### 启动前端服务
 
