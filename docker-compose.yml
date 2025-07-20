@@ -1,12 +1,14 @@
 services:
   gemini-balance:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
       - "8090:8090"
     env_file:
       - .env
     volumes:
-      - ./backend/logs:/app/logs
+      - ./logs:/app/backend/logs # 调整日志路径
     # 与Open Webui 共享网络，如果不需要，可删除shared_net
     networks:
       - shared_net
