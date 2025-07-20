@@ -32,7 +32,6 @@ class Settings(BaseSettings):
         os.getenv("RATE_LIMIT_DEFAULT_WAIT_SECONDS", "90")
     )
     LOG_HISTORY_SIZE: int = int(os.getenv("LOG_HISTORY_SIZE", "100"))
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
     @field_validator("GOOGLE_API_KEYS", mode="before")
     @classmethod
