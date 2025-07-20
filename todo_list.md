@@ -21,21 +21,21 @@
 
 ## 阶段二：前端界面实现
 
-- [ ] **Svelte 项目初始化**
+- [x] **Svelte 项目初始化**
 
-  - [ ] 在 `frontend/` 目录下初始化一个 SvelteKit 项目。
-  - [ ] 集成 TailwindCSS 并完成基础配置。
+  - [x] 在 `frontend/` 目录下初始化一个 SvelteKit 项目。
+  - [x] 集成 TailwindCSS 并完成基础配置。
 
-- [ ] **前端页面开发**
-  - [ ] 创建一个统一的仪表盘布局（Dashboard Layout）。
-  - [ ] **Key 状态监控页面**
-    - [ ] 调用 `GET /api/status/keys` API 获取数据。
-    - [ ] 将数据显示在一个表格或卡片列表中。
-    - [ ] 实现定时刷新或通过 WebSocket 实时更新数据。
-  - [ ] **日志查看页面**
-    - [ ] 调用 `GET /api/status/logs/ws` 通过 WebSocket 连接获取日志。
-    - [ ] 创建一个可滚动的日志展示窗口。
-    - [ ] (可选) 添加日志级别筛选、关键词搜索等功能。
+- [x] **前端页面开发**
+  - [x] 创建一个统一的仪表盘布局（Dashboard Layout）。
+  - [x] **Key 状态监控页面**
+    - [x] 调用 `GET /api/status/keys` API 获取数据。
+    - [x] 将数据显示在一个表格或卡片列表中。
+    - [x] 实现定时刷新或通过 WebSocket 实时更新数据。
+  - [x] **日志查看页面**
+    - [x] 调用 `GET /api/status/logs/ws` 通过 WebSocket 连接获取日志。
+    - [x] 创建一个可滚动的日志展示窗口。
+    - [x] (可选) 添加日志级别筛选、关键词搜索等功能。
 
 ## 阶段三：集成、测试与部署
 
