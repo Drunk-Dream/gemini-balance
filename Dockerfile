@@ -29,7 +29,7 @@ RUN uv sync
 COPY backend/ . .
 
 # Copy frontend build artifacts from the frontend-builder stage
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+COPY --from=frontend-builder /app/frontend/build ./frontend/build
 
 # Expose the port the app runs on
 EXPOSE 8090
