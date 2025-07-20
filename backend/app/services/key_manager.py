@@ -147,6 +147,12 @@ class KeyManager:
                         app_logger.warning("Timeout waiting for an available key.")
                         return None
 
+    async def has_available_keys(self) -> bool:
+        """检查是否有可用的API key"""
+        async with self._lock:
+            count = await self._redis.zcount(self._available_keys_zset, 0, 0)
+            return count > 0
+
     async def deactivate_key(self, key: str, error_type: str):
         """将key标记为失效并进入冷却"""
         async with self._lock:

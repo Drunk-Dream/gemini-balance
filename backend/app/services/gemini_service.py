@@ -4,15 +4,18 @@ from app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from app.core.config import settings
 from app.core.logging import app_logger
 from app.services.base_service import ApiService
+from app.services.key_manager import KeyManager
 from starlette.responses import StreamingResponse
 
 logger = app_logger
 
 
 class GeminiService(ApiService):
-    def __init__(self):
+    def __init__(self, key_manager: KeyManager):
         super().__init__(
-            base_url=settings.GEMINI_API_BASE_URL, service_name="Gemini API"
+            base_url=settings.GEMINI_API_BASE_URL,
+            service_name="Gemini API",
+            key_manager=key_manager,
         )
 
     def _get_api_url(self, model_id: str, stream: bool = False) -> str:
