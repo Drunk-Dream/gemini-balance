@@ -40,9 +40,13 @@
 	});
 
 	function formatDailyUsage(usage: { [model: string]: number }): string {
-		return Object.entries(usage)
+		const entries = Object.entries(usage);
+		if (entries.length === 0) {
+			return '无';
+		}
+		return entries
 			.map(([model, count]) => `${model}: ${count}`)
-			.join(', ');
+			.join('<br>');
 	}
 </script>
 
@@ -131,7 +135,7 @@
 								</p>
 							</td>
 							<td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-								<p class="text-gray-900 whitespace-no-wrap">{formatDailyUsage(keyStatus.daily_usage)}</p>
+								<div class="text-gray-900">{@html formatDailyUsage(keyStatus.daily_usage)}</div>
 							</td>
 							<td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
 								<p class="text-gray-900 whitespace-no-wrap">{keyStatus.failure_count}</p>
