@@ -1,3 +1,4 @@
+import asyncio
 import time
 from collections import deque
 from datetime import datetime
@@ -412,3 +413,190 @@ async def test_get_key_states(key_manager_instance):
     assert key2_status.failure_count == 0
     assert key2_status.cool_down_entry_count == 0
     assert key2_status.current_cool_down_seconds == manager._initial_cool_down_seconds
+
+
+@pytest.mark.asyncio
+async def test_release_cooled_down_keys_efficiency(key_manager_instance):
+    """
+    测试 _release_cooled_down_keys 的效率，确保它在没有密钥冷却时长时间休眠，
+    并在有密钥进入冷却时被唤醒。
+    """
+    manager = key_manager_instance
+    manager.start_background_task()
+    await asyncio.sleep(0.1)  # 确保后台任务启动
+
+    # 停用所有 key，使其进入冷却
+    await manager.deactivate_key("key1", "auth_error")
+    await manager.deactivate_key("key2", "auth_error")
+    await manager.deactivate_key("key3", "auth_error")
+
+    # 此时所有 key 都应该在冷却中，_release_cooled_down_keys 应该被唤醒并处理
+    # 模拟时间流逝，使 key1 冷却结束
+    cool_down_time = manager._key_states["key1"].current_cool_down_seconds
+    with patch("time.time", return_value=time.time() + cool_down_time + 1):
+        # 强制唤醒一次，确保它检查时间
+        manager._wakeup_event.set()
+        await asyncio.sleep(0.1)  # 给任务一点时间处理
+
+    assert "key1" in manager._available_keys
+    assert manager._key_states["key1"].cool_down_until == 0.0
+
+    manager.stop_background_task()
+
+
+@pytest.mark.asyncio
+async def test_deactivate_key_adds_to_heap_and_wakes_up(key_manager_instance):
+    """
+    测试 deactivate_key 是否正确地将密钥添加到最小堆中，并唤醒后台任务。
+    """
+    manager = key_manager_instance
+    manager.start_background_task()
+    await asyncio.sleep(0.1)  # 确保后台任务启动
+
+    initial_time = time.time()
+    with patch("time.time", return_value=initial_time):
+        # 停用 key1
+        await manager.deactivate_key("key1", "auth_error")
+
+    # 检查 key1 是否被添加到冷却堆中
+    assert len(manager._cooled_down_keys) == 1
+    assert manager._cooled_down_keys[0][1] == "key1"
+    assert manager._cooled_down_keys[0][0] == pytest.approx(
+        initial_time + manager._initial_cool_down_seconds
+    )
+
+    # 检查 _wakeup_event 是否被设置
+    assert manager._wakeup_event.is_set()
+
+    manager.stop_background_task()
+
+
+@pytest.mark.asyncio
+async def test_release_cooled_down_keys_with_multiple_keys(key_manager_instance):
+    """
+    测试 _release_cooled_down_keys 处理多个冷却密钥的场景。
+    """
+    manager = key_manager_instance
+    manager.start_background_task()
+    await asyncio.sleep(0.1)
+
+    initial_time = time.time()
+    with patch("time.time", return_value=initial_time):
+        await manager.deactivate_key("key1", "auth_error")
+        # 模拟 key2 稍后冷却
+        await asyncio.sleep(0.5)
+        await manager.deactivate_key("key2", "auth_error")
+        # 模拟 key3 更晚冷却
+        await asyncio.sleep(0.5)
+        await manager.deactivate_key("key3", "auth_error")
+
+    # 此时所有 key 都应该在冷却中
+    assert "key1" not in manager._available_keys
+    assert "key2" not in manager._available_keys
+    assert "key3" not in manager._available_keys
+    assert len(manager._cooled_down_keys) == 3
+
+    # 模拟时间流逝，使 key1 冷却结束
+    cool_down_time_key1 = manager._key_states["key1"].current_cool_down_seconds
+    with patch("time.time", return_value=initial_time + cool_down_time_key1 + 1):
+        manager._wakeup_event.set()
+        await asyncio.sleep(0.1)
+
+    assert "key1" in manager._available_keys
+    assert "key2" not in manager._available_keys
+    assert "key3" not in manager._available_keys
+    assert manager._key_states["key1"].cool_down_until == 0.0
+    assert len(manager._cooled_down_keys) == 2
+
+    # 模拟时间流逝，使 key2 冷却结束
+    cool_down_time_key2 = manager._key_states["key2"].current_cool_down_seconds
+    with patch("time.time", return_value=initial_time + 0.5 + cool_down_time_key2 + 1):
+        manager._wakeup_event.set()
+        await asyncio.sleep(0.1)
+
+    assert "key1" in manager._available_keys
+    assert "key2" in manager._available_keys
+    assert "key3" not in manager._available_keys
+    assert manager._key_states["key2"].cool_down_until == 0.0
+    assert len(manager._cooled_down_keys) == 1
+
+    # 模拟时间流逝，使 key3 冷却结束
+    cool_down_time_key3 = manager._key_states["key3"].current_cool_down_seconds
+    with patch("time.time", return_value=initial_time + 1.0 + cool_down_time_key3 + 1):
+        manager._wakeup_event.set()
+        await asyncio.sleep(0.1)
+
+    assert "key1" in manager._available_keys
+    assert "key2" in manager._available_keys
+    assert "key3" in manager._available_keys
+    assert manager._key_states["key3"].cool_down_until == 0.0
+    assert len(manager._cooled_down_keys) == 0
+
+    manager.stop_background_task()
+
+
+@pytest.mark.asyncio
+async def test_release_cooled_down_keys_handles_re_deactivated_keys(
+    key_manager_instance,
+):
+    """
+    测试 _release_cooled_down_keys 是否能正确处理在冷却期间再次被停用的密钥。
+    """
+    manager = key_manager_instance
+    manager.start_background_task()
+    await asyncio.sleep(0.1)
+
+    initial_time = time.time()
+    with patch("time.time", return_value=initial_time):
+        await manager.deactivate_key("key1", "auth_error")
+        # 此时 key1 冷却到 initial_time + initial_cool_down_seconds
+
+    # 模拟时间流逝，但未到冷却结束
+    with patch("time.time", return_value=initial_time + 1):
+        # 再次停用 key1，使其冷却时间延长，并添加新的堆条目
+        await manager.deactivate_key("key1", "auth_error")
+        # 此时 key1 冷却到 initial_time + 1 + new_cool_down_seconds
+        # 堆中应该有两个 key1 的条目，旧的和新的
+
+    assert len(manager._cooled_down_keys) == 2
+    # 确保旧的条目在堆顶
+    assert manager._cooled_down_keys[0][1] == "key1"
+    assert manager._cooled_down_keys[0][0] == pytest.approx(
+        initial_time + manager._initial_cool_down_seconds
+    )
+
+    # 模拟时间流逝，使第一（旧的）冷却时间到期
+    with patch(
+        "time.time", return_value=initial_time + manager._initial_cool_down_seconds + 1
+    ):
+        manager._wakeup_event.set()
+        await asyncio.sleep(0.1)
+
+    # 此时旧的 key1 条目应该被弹出，但因为 key1 状态已更新，它不会被重新激活
+    assert "key1" not in manager._available_keys  # 仍然处于冷却状态
+    assert len(manager._cooled_down_keys) == 1  # 旧的条目被移除
+    # 堆中只剩下新的 key1 条目
+    assert manager._cooled_down_keys[0][1] == "key1"
+    assert manager._cooled_down_keys[0][0] == pytest.approx(
+        initial_time
+        + 1
+        + manager._key_states["key1"].current_cool_down_seconds
+    )
+
+    # 模拟时间流逝，使第二个（新的）冷却时间到期
+    with patch(
+        "time.time",
+        return_value=initial_time
+        + 1
+        + manager._key_states["key1"].current_cool_down_seconds
+        + 1,
+    ):
+        manager._wakeup_event.set()
+        await asyncio.sleep(0.1)
+
+    # 此时 key1 应该被重新激活
+    assert "key1" in manager._available_keys
+    assert manager._key_states["key1"].cool_down_until == 0.0
+    assert len(manager._cooled_down_keys) == 0
+
+    manager.stop_background_task()

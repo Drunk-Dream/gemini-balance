@@ -1,4 +1,5 @@
 import asyncio
+import heapq
 import time
 from collections import deque
 from datetime import datetime
@@ -48,6 +49,10 @@ class KeyManager:
         self._lock = asyncio.Lock()
         self._condition = asyncio.Condition(self._lock)
         self._background_task: Optional[asyncio.Task] = None
+        self._cooled_down_keys: List[tuple[float, str]] = (
+            []
+        )  # (cool_down_until, key) min-heap
+        self._wakeup_event = asyncio.Event()
 
         for key in api_keys:
             self._key_states[key] = KeyState(
@@ -58,22 +63,38 @@ class KeyManager:
         while True:
             async with self._lock:
                 now = time.time()
-                keys_to_reactivate = []
-                for key, state in self._key_states.items():
+                # 释放所有已冷却完毕的密钥
+                while self._cooled_down_keys and self._cooled_down_keys[0][0] <= now:
+                    cool_down_until, key = heapq.heappop(self._cooled_down_keys)
+                    # 检查密钥是否仍然处于冷却状态且不在可用队列中
                     if (
-                        state.cool_down_until > 0
-                        and now >= state.cool_down_until
+                        self._key_states[key].cool_down_until == cool_down_until
                         and key not in self._available_keys
                     ):
-                        keys_to_reactivate.append(key)
-
-                if keys_to_reactivate:
-                    for key in keys_to_reactivate:
                         self._available_keys.append(key)
                         self._key_states[key].cool_down_until = 0.0
                         self._key_states[key].request_fail_count = 0
-                    self._condition.notify_all()
-            await asyncio.sleep(1)  # Check every second
+                        app_logger.info(f"API key '...{key[-4:]}' reactivated.")
+                    # 如果密钥状态已改变（例如，在冷却期间再次被停用），则忽略此旧条目
+                    # 并继续检查下一个堆顶元素
+                self._wakeup_event.clear()  # 清除事件，等待下一次设置
+
+                if self._cooled_down_keys:
+                    next_release_time = self._cooled_down_keys[0][0]
+                    sleep_duration = max(0.1, next_release_time - time.time())
+                    self._condition.notify_all()  # 通知等待密钥的消费者
+                else:
+                    sleep_duration = (
+                        3600  # 如果没有冷却中的密钥，长时间休眠，直到有新密钥进入冷却
+                    )
+
+            try:
+                # 等待唤醒事件或休眠直到下一个密钥冷却结束
+                await asyncio.wait_for(
+                    self._wakeup_event.wait(), timeout=sleep_duration
+                )
+            except asyncio.TimeoutError:
+                pass  # 超时是预期行为，表示到达了下一个密钥的冷却时间
 
     def start_background_task(self):
         if self._background_task is None:
@@ -131,6 +152,11 @@ class KeyManager:
                 key_state.cool_down_until = (
                     time.time() + key_state.current_cool_down_seconds
                 )
+                heapq.heappush(
+                    self._cooled_down_keys,
+                    (key_state.cool_down_until, key),
+                )
+                self._wakeup_event.set()  # 唤醒后台任务
                 app_logger.warning(
                     f"API key '...{key[-4:]}' entered cool-down for "
                     f"{key_state.current_cool_down_seconds:.2f} seconds "
