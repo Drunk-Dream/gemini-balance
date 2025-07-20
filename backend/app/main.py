@@ -50,7 +50,7 @@ def create_app() -> FastAPI:
 
     # 仅在生产环境且前端文件存在时挂载
     if os.getenv("APP_ENV") == "production":
-        frontend_dist = Path("frontend/dist")
+        frontend_dist = Path("frontend/build")
         if frontend_dist.exists():
             logger.info(f"Mounting static files from {frontend_dist.absolute()}")
             app.mount(
