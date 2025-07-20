@@ -15,16 +15,16 @@ services:
       # 根据需要配置代理环境，如不需要，可删除v2rayA
       - HTTP_PROXY=http://v2raya:20170
       - HTTPS_PROXY=http://v2raya:20170
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://gemini-balance-redis:6379/0
     depends_on:
-      redis:
+      gemini-balance-redis:
         condition: service_healthy
       v2raya:
         condition: service_started
 
-  redis:
+  gemini-balance-redis:
     image: redis:alpine
-    container_name: redis
+    container_name: gemini-balance-redis
     restart: always
     ports:
       - "6379:6379"
