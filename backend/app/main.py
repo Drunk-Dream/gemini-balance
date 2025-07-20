@@ -5,6 +5,7 @@ from pathlib import Path
 from app.api.openai.endpoints.chat import router as openai_chat_router
 from app.api.v1beta.endpoints.gemini import router as gemini_router
 from app.api.v1beta.endpoints.status import router as status_router
+from app.core.logging import setup_app_logger, setup_transaction_logger
 from app.services.key_manager import key_manager
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
@@ -23,6 +24,10 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    # Setup loggers first
+    setup_app_logger()
+    setup_transaction_logger()
+
     logger.info("Starting Gemini Balance API application...")
     app = FastAPI(
         title="Gemini Balance API",

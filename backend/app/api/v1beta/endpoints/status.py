@@ -1,7 +1,7 @@
 import asyncio
-from pathlib import Path
 from typing import AsyncGenerator, List
 
+from app.core.config import LOG_DIR
 from app.core.logging import app_logger, log_broadcaster
 from app.services.key_manager import key_manager
 from fastapi import APIRouter, Query
@@ -9,7 +9,6 @@ from starlette.responses import StreamingResponse
 
 router = APIRouter()
 
-LOG_DIR = Path("logs")
 ALLOWED_LOG_FILES = {"app.log", "transactions.log"}
 
 
