@@ -134,14 +134,27 @@ class KeyManager:
                 )
                 if available_keys:
                     key = available_keys[0].decode("utf-8")
-                    # 将key的score更新为当前时间，实现轮询效果
-                    await self._redis.zadd(
-                        self._available_keys_zset, {key: time.time()}
+                    # 原子性地移除这个key，表示它正在被使用
+                    removed_count = await self._redis.zrem(
+                        self._available_keys_zset, key
                     )
-                    return key
+                    if removed_count > 0:  # 确保成功移除
+                        app_logger.debug(
+                            f"Key '...{key[-4:]}' acquired and removed from "
+                            "available pool."
+                        )
+                        return key
+                    else:
+                        # 如果移除失败，说明key可能已经被其他并发操作移除，继续尝试
+                        app_logger.warning(
+                            f"Failed to remove key '...{key[-4:]}' from "
+                            "available pool, retrying."
+                        )
+                        continue  # 继续循环，尝试获取下一个key
                 else:
                     app_logger.info("No active keys, waiting for keys to cool down...")
                     try:
+                        # 等待 _release_cooled_down_keys 或 mark_key_success 唤醒
                         await asyncio.wait_for(self._condition.wait(), timeout=5.0)
                     except asyncio.TimeoutError:
                         app_logger.warning("Timeout waiting for an available key.")
@@ -186,6 +199,7 @@ class KeyManager:
                     f"{key_state.current_cool_down_seconds:.2f} seconds "
                     f"due to {error_type}."
                 )
+                self._condition.notify_all()  # 添加这一行
             else:
                 await self._save_key_state(key, key_state)  # 保存失败计数
 

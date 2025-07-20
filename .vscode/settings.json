@@ -2,5 +2,16 @@
   "python.testing.pytestArgs": ["backend/tests"],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
-  "cSpell.words": ["autouse", "levelname", "pyproject"]
+  "cSpell.words": [
+    "autouse",
+    "levelname",
+    "pyproject",
+    "withscores",
+    "zadd",
+    "zcount",
+    "zrange",
+    "zrangebyscore",
+    "zrem",
+    "zset"
+  ]
 }
