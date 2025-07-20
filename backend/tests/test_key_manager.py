@@ -1,11 +1,12 @@
 import time
 from collections import deque
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 
 # 导入待测试的 KeyManager 类
-from app.services.key_manager import KeyManager
+from app.services.key_manager import KeyManager, KeyState, KeyStatusResponse
 
 
 # 模拟 settings 模块，因为 KeyManager 依赖它
@@ -48,13 +49,17 @@ async def test_key_manager_init(mock_settings):
     assert manager._initial_cool_down_seconds == cool_down
     assert len(manager._key_states) == len(api_keys)
     for key in api_keys:
-        assert manager._key_states[key] == {
-            "cool_down_until": 0.0,
-            "request_fail_count": 0,
-            "cool_down_entry_count": 0,
-            "current_cool_down_seconds": cool_down,
-        }
-    assert not manager._cool_down_keys
+        expected_state = KeyState(
+            cool_down_until=0.0,
+            request_fail_count=0,
+            cool_down_entry_count=0,
+            current_cool_down_seconds=cool_down,
+            usage_today={},
+            last_usage_date=datetime.now().strftime("%Y-%m-%d"),
+        )
+        assert manager._key_states[key] == expected_state
+    for key_state in manager._key_states.values():
+        assert key_state.cool_down_until == 0.0
 
     with pytest.raises(ValueError, match="API key list cannot be empty."):
         KeyManager([], 5, 3, 3600)
@@ -100,7 +105,7 @@ async def test_get_next_key_reactivates_cooled_down_keys(key_manager_instance):
     # 停用 key1
     await manager.deactivate_key("key1", "auth_error")
     assert "key1" not in manager._available_keys
-    assert "key1" in manager._cool_down_keys
+    assert manager._key_states["key1"].cool_down_until > 0  # 检查是否进入冷却状态
 
     # 模拟时间流逝，使 key1 冷却结束
     with patch(
@@ -109,7 +114,7 @@ async def test_get_next_key_reactivates_cooled_down_keys(key_manager_instance):
         key = await manager.get_next_key()
         # 此时 key1 应该被重新激活并可用
         assert "key1" in manager._available_keys
-        assert "key1" not in manager._cool_down_keys
+        assert manager._key_states["key1"].cool_down_until == 0.0  # 检查是否退出冷却状态
         # 再次获取 key，确保轮询正常
         assert key in [
             "key2",
@@ -129,15 +134,15 @@ async def test_deactivate_key_auth_error(key_manager_instance):
         await manager.deactivate_key("key1", "auth_error")
 
     assert "key1" not in manager._available_keys
-    assert "key1" in manager._cool_down_keys
-    assert manager._key_states["key1"]["request_fail_count"] == 1
-    assert manager._key_states["key1"]["cool_down_entry_count"] == 1
+    assert manager._key_states["key1"].cool_down_until > 0
+    assert manager._key_states["key1"].request_fail_count == 1
+    assert manager._key_states["key1"].cool_down_entry_count == 1
     assert (
-        manager._key_states["key1"]["current_cool_down_seconds"]
+        manager._key_states["key1"].current_cool_down_seconds
         == manager._initial_cool_down_seconds
     )
     assert (
-        manager._key_states["key1"]["cool_down_until"]
+        manager._key_states["key1"].cool_down_until
         == initial_time + manager._initial_cool_down_seconds
     )
 
@@ -153,15 +158,15 @@ async def test_deactivate_key_rate_limit_error(key_manager_instance):
         await manager.deactivate_key("key2", "rate_limit_error")
 
     assert "key2" not in manager._available_keys
-    assert "key2" in manager._cool_down_keys
-    assert manager._key_states["key2"]["request_fail_count"] == 1
-    assert manager._key_states["key2"]["cool_down_entry_count"] == 1
+    assert manager._key_states["key2"].cool_down_until > 0
+    assert manager._key_states["key2"].request_fail_count == 1
+    assert manager._key_states["key2"].cool_down_entry_count == 1
     assert (
-        manager._key_states["key2"]["current_cool_down_seconds"]
+        manager._key_states["key2"].current_cool_down_seconds
         == manager._initial_cool_down_seconds
     )
     assert (
-        manager._key_states["key2"]["cool_down_until"]
+        manager._key_states["key2"].cool_down_until
         == initial_time + manager._initial_cool_down_seconds
     )
 
@@ -185,18 +190,18 @@ async def test_deactivate_key_other_http_error_threshold(
         await manager.deactivate_key("key1", "other_http_error")  # 达到阈值，停用
 
     assert "key1" not in manager._available_keys
-    assert "key1" in manager._cool_down_keys
+    assert manager._key_states["key1"].cool_down_until > 0
     assert (
-        manager._key_states["key1"]["request_fail_count"]
+        manager._key_states["key1"].request_fail_count
         == mock_settings.API_KEY_FAILURE_THRESHOLD
     )
-    assert manager._key_states["key1"]["cool_down_entry_count"] == 1
+    assert manager._key_states["key1"].cool_down_entry_count == 1
     assert (
-        manager._key_states["key1"]["current_cool_down_seconds"]
+        manager._key_states["key1"].current_cool_down_seconds
         == manager._initial_cool_down_seconds
     )
     assert (
-        manager._key_states["key1"]["cool_down_until"]
+        manager._key_states["key1"].cool_down_until
         == initial_time + manager._initial_cool_down_seconds
     )
 
@@ -220,18 +225,18 @@ async def test_deactivate_key_request_error_threshold(
         await manager.deactivate_key("key2", "request_error")  # 达到阈值，停用
 
     assert "key2" not in manager._available_keys
-    assert "key2" in manager._cool_down_keys
+    assert manager._key_states["key2"].cool_down_until > 0
     assert (
-        manager._key_states["key2"]["request_fail_count"]
+        manager._key_states["key2"].request_fail_count
         == mock_settings.API_KEY_FAILURE_THRESHOLD
     )
-    assert manager._key_states["key2"]["cool_down_entry_count"] == 1
+    assert manager._key_states["key2"].cool_down_entry_count == 1
     assert (
-        manager._key_states["key2"]["current_cool_down_seconds"]
+        manager._key_states["key2"].current_cool_down_seconds
         == manager._initial_cool_down_seconds
     )
     assert (
-        manager._key_states["key2"]["cool_down_until"]
+        manager._key_states["key2"].cool_down_until
         == initial_time + manager._initial_cool_down_seconds
     )
 
@@ -345,19 +350,65 @@ async def test_mark_key_success(key_manager_instance):
 
     # 先停用 key1
     await manager.deactivate_key("key1", "auth_error")
-    assert manager._key_states["key1"]["cool_down_entry_count"] > 0
+    assert manager._key_states["key1"].cool_down_entry_count > 0
     assert (
-        manager._key_states["key1"]["current_cool_down_seconds"]
+        manager._key_states["key1"].current_cool_down_seconds
         > manager._initial_cool_down_seconds - 1
     )  # 确保不是初始值
 
     # 标记成功
     await manager.mark_key_success("key1")
-    assert manager._key_states["key1"]["cool_down_entry_count"] == 0
+    assert manager._key_states["key1"].cool_down_entry_count == 0
     assert (
-        manager._key_states["key1"]["current_cool_down_seconds"]
+        manager._key_states["key1"].current_cool_down_seconds
         == manager._initial_cool_down_seconds
     )
 
     # 确保对未管理 key 的调用不会出错
     await manager.mark_key_success("non_existent_key")
+
+
+@pytest.mark.asyncio
+async def test_get_key_states(key_manager_instance):
+    """
+    测试 get_key_states 方法返回 KeyStatusResponse 列表。
+    """
+    manager = key_manager_instance
+    key_states = await manager.get_key_states()
+
+    assert isinstance(key_states, list)
+    assert len(key_states) == len(manager._key_states)
+
+    for state in key_states:
+        assert isinstance(state, KeyStatusResponse)
+        assert state.key_identifier in ["key1", "key2", "key3"]
+        assert state.status in ["active", "cool_down"]
+        assert state.cool_down_seconds_remaining >= 0
+        assert isinstance(state.daily_usage, dict)
+        assert state.failure_count >= 0
+        assert state.cool_down_entry_count >= 0
+        assert state.current_cool_down_seconds >= 0
+
+    # 模拟一个 key 进入冷却状态，再次检查
+    await manager.deactivate_key("key1", "auth_error")
+    key_states_after_deactivation = await manager.get_key_states()
+
+    key1_status = next(
+        (s for s in key_states_after_deactivation if s.key_identifier == "key1"), None
+    )
+    assert key1_status is not None
+    assert key1_status.status == "cool_down"
+    assert key1_status.cool_down_seconds_remaining > 0
+    assert key1_status.failure_count == 1
+    assert key1_status.cool_down_entry_count == 1
+    assert key1_status.current_cool_down_seconds == manager._initial_cool_down_seconds
+
+    key2_status = next(
+        (s for s in key_states_after_deactivation if s.key_identifier == "key2"), None
+    )
+    assert key2_status is not None
+    assert key2_status.status == "active"
+    assert key2_status.cool_down_seconds_remaining == 0
+    assert key2_status.failure_count == 0
+    assert key2_status.cool_down_entry_count == 0
+    assert key2_status.current_cool_down_seconds == manager._initial_cool_down_seconds
