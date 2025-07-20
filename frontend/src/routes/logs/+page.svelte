@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 
 	let logs: string[] = [];
-	let ws: WebSocket | null = null;
+	let eventSource: EventSource | null = null;
 	let errorMessage: string | null = null;
 	let logContainer: HTMLElement;
 	let autoScroll = true;
@@ -26,46 +26,40 @@
 	}
 
 	onMount(() => {
-		const connectWebSocket = () => {
+		const connectSSE = () => {
 			errorMessage = null;
-			ws = new WebSocket(`ws://${window.location.host}/api/status/logs/ws?log_file_name=app.log`);
+			eventSource = new EventSource(`/api/status/logs/sse`);
 
-			ws.onopen = () => {
-				console.log('WebSocket connection opened for logs.');
+			eventSource.onopen = () => {
+				console.log('SSE connection opened for logs.');
 				logs = []; // Clear logs on new connection
 			};
 
-			ws.onmessage = (event) => {
+			eventSource.onmessage = (event) => {
 				logs = [...logs, event.data];
 				scrollToBottom();
 			};
 
-			ws.onclose = (event) => {
-				console.log('WebSocket connection closed:', event.code, event.reason);
-				errorMessage = `WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason || 'Unknown'}. Attempting to reconnect...`;
-				// Attempt to reconnect after a delay
-				setTimeout(connectWebSocket, 3000);
-			};
-
-			ws.onerror = (error) => {
-				console.error('WebSocket error:', error);
-				errorMessage = 'WebSocket error. Check console for details. Attempting to reconnect...';
-				if (ws) ws.close(); // Close to trigger onclose and reconnect
+			eventSource.onerror = (error) => {
+				console.error('SSE error:', error);
+				errorMessage = 'SSE error. Check console for details. Attempting to reconnect...';
+				if (eventSource) eventSource.close(); // Close to trigger reconnect
+				setTimeout(connectSSE, 3000); // Attempt to reconnect after a delay
 			};
 		};
 
-		connectWebSocket();
+		connectSSE();
 
 		return () => {
-			if (ws) {
-				ws.close();
+			if (eventSource) {
+				eventSource.close();
 			}
 		};
 	});
 
 	onDestroy(() => {
-		if (ws) {
-			ws.close();
+		if (eventSource) {
+			eventSource.close();
 		}
 	});
 </script>
