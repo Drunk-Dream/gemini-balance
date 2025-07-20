@@ -36,11 +36,16 @@ class Settings(BaseSettings):
     @field_validator("GOOGLE_API_KEYS", mode="before")
     @classmethod
     def _parse_api_keys(cls, v: Any) -> List[str]:
-        if v is None:
-            return []
-        if isinstance(v, str):
+        # 优先从 GOOGLE_API_KEYS 环境变量中解析逗号分隔的密钥
+        if isinstance(v, str) and v.strip():
             return [key.strip() for key in v.split(",") if key.strip()]
-        return []
+
+        # 否则，遍历所有环境变量，查找以 GOOGLE_API_KEY_ 为前缀的密钥
+        api_keys = []
+        for key, value in os.environ.items():
+            if key.startswith("GOOGLE_API_KEY_") and value.strip():
+                api_keys.append(value.strip())
+        return api_keys
 
 
 settings = Settings()
