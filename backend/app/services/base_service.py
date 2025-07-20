@@ -6,7 +6,7 @@ from typing import Any, AsyncGenerator, Dict, Optional, Union
 import httpx
 from app.core.config import settings
 from app.core.logging import app_logger, setup_debug_logger
-from app.services.key_manager import KeyManager
+from app.services.key_manager import key_manager
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
@@ -19,10 +19,9 @@ class ApiService(ABC):
     API key management, retry mechanisms, and streaming responses.
     """
 
-    def __init__(self, base_url: str, service_name: str, key_manager: KeyManager):
+    def __init__(self, base_url: str, service_name: str):
         self.base_url = base_url
         self.service_name = service_name
-        self.key_manager = key_manager  # Store the KeyManager instance
         self.client = httpx.AsyncClient(base_url=self.base_url)
         self.max_retries = len(settings.GOOGLE_API_KEYS or []) or 1
         if self.max_retries == 0:
@@ -74,7 +73,7 @@ class ApiService(ABC):
         """
         last_exception = None
         for attempt in range(self.max_retries):
-            api_key = await self.key_manager.get_next_key()
+            api_key = await key_manager.get_next_key()
             self._current_api_key = api_key  # 存储当前使用的 key
             if not api_key:
                 logger.error(
@@ -114,10 +113,10 @@ class ApiService(ABC):
                 response.raise_for_status()
 
                 # 请求成功，标记 key 成功
-                await self.key_manager.mark_key_success(api_key)
+                await key_manager.mark_key_success(api_key)
                 # 记录成功调用的 key 和 model 用量
                 if model_id:
-                    await self.key_manager.record_usage(api_key, model_id)
+                    await key_manager.record_usage(api_key, model_id)
 
                 if stream:
                     logger.info(
@@ -151,7 +150,7 @@ class ApiService(ABC):
                     f"API Key {key_identifier} failed with status {e.response.status_code}. "  # noqa:E501
                     f"Deactivating it. Attempt {attempt + 1}/{self.max_retries}."
                 )
-                await self.key_manager.deactivate_key(api_key, error_type)
+                await key_manager.deactivate_key(api_key, error_type)
 
                 if e.response.status_code == 429:
                     retry_after = e.response.headers.get("Retry-After")
@@ -189,7 +188,7 @@ class ApiService(ABC):
                     f"Request error with key {key_identifier}: {e}. "
                     f"Attempt {attempt + 1}/{self.max_retries}. Deactivating and retrying..."  # noqa:E501
                 )
-                await self.key_manager.deactivate_key(api_key, "request_error")
+                await key_manager.deactivate_key(api_key, "request_error")
                 continue
             except Exception as e:
                 last_exception = e

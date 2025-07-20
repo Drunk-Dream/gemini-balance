@@ -3,10 +3,8 @@ from typing import Any, Dict, Optional
 
 from app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from app.core.config import settings
-from app.dependencies import KeyManagerDep
 from app.services.gemini_service import GeminiService
-from app.services.key_manager import KeyManager
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException
 from starlette.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
@@ -28,18 +26,10 @@ async def verify_api_key(x_goog_api_key: Optional[str] = Header(None)):
 async def generate_content_endpoint(
     model_id: str,
     request: GeminiRequest,
-    key_manager: KeyManagerDep,
+    gemini_service: GeminiService = Depends(GeminiService),
     api_key: str = Depends(verify_api_key),  # 添加依赖项
 ) -> Dict[str, Any]:
-    # Type assertion to help Pylance
-    km: KeyManager = key_manager
-    if not km.has_available_keys():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="No available API keys. Please try again later.",
-        )
     logger.info(f"Received request for model: {model_id}, stream: false")
-    gemini_service = GeminiService(key_manager)
     response = await gemini_service.generate_content(model_id, request, False)
     return response if isinstance(response, Dict) else {}  # Should always be Dict
 
@@ -51,18 +41,10 @@ async def generate_content_endpoint(
 async def stream_generate_content_endpoint(
     model_id: str,
     request: GeminiRequest,
-    key_manager: KeyManagerDep,
+    gemini_service: GeminiService = Depends(GeminiService),
     api_key: str = Depends(verify_api_key),  # 添加依赖项
 ) -> StreamingResponse:
-    # Type assertion to help Pylance
-    km: KeyManager = key_manager
-    if not km.has_available_keys():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="No available API keys. Please try again later.",
-        )
     logger.info(f"Received request for model: {model_id}, stream: true")
-    gemini_service = GeminiService(key_manager)
     response = await gemini_service.generate_content(model_id, request, True)
     return (
         response

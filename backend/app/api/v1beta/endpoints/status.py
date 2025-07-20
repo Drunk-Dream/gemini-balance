@@ -3,7 +3,7 @@ from typing import AsyncGenerator, List
 
 from app.core.config import LOG_DIR
 from app.core.logging import app_logger, log_broadcaster
-from app.dependencies import KeyManagerDep
+from app.services.key_manager import key_manager
 from fastapi import APIRouter, Query
 from starlette.responses import StreamingResponse
 
@@ -13,7 +13,7 @@ ALLOWED_LOG_FILES = {"app.log", "transactions.log"}
 
 
 @router.get("/status/keys", summary="获取所有 API Key 的状态和用量信息")
-async def get_api_key_status(key_manager: KeyManagerDep):
+async def get_api_key_status():
     """
     返回所有配置的 API Key 的详细状态列表，包括：
     - key_identifier: API Key 的部分标识（末尾四位），用于安全展示。

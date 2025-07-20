@@ -2,13 +2,11 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import redis.asyncio as redis
 from app.api.openai.endpoints.chat import router as openai_chat_router
 from app.api.v1beta.endpoints.gemini import router as gemini_router
 from app.api.v1beta.endpoints.status import router as status_router
-from app.core.config import settings
 from app.core.logging import setup_app_logger, setup_transaction_logger
-from app.services.key_manager import KeyManager
+from app.services.key_manager import key_manager
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,28 +16,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize Redis client
-    app.state.redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
-    await app.state.redis_client.ping()  # Test connection
-    logger.info("Redis client initialized.")
-
-    # Initialize KeyManager
-    app.state.key_manager = KeyManager(
-        settings.GOOGLE_API_KEYS if settings.GOOGLE_API_KEYS is not None else [],
-        settings.API_KEY_COOL_DOWN_SECONDS,
-        settings.API_KEY_FAILURE_THRESHOLD,
-        settings.MAX_COOL_DOWN_SECONDS,
-        app.state.redis_client,
-    )
-    logger.info("KeyManager initialized.")
-
     logger.info("Starting background task for KeyManager...")
-    app.state.key_manager.start_background_task()
+    key_manager.start_background_task()
     yield
     logger.info("Stopping background task for KeyManager...")
-    app.state.key_manager.stop_background_task()
-    await app.state.redis_client.close()
-    logger.info("Redis client closed.")
+    key_manager.stop_background_task()
 
 
 def create_app() -> FastAPI:
