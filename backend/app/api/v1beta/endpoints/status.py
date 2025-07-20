@@ -1,11 +1,11 @@
 import asyncio
 from pathlib import Path
-from typing import List
+from typing import AsyncGenerator, List
 
-from app.core.config import settings
-from app.core.logging import app_logger
+from app.core.logging import app_logger, log_broadcaster
 from app.services.key_manager import key_manager
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query
+from starlette.responses import StreamingResponse
 
 router = APIRouter()
 
@@ -58,48 +58,24 @@ async def get_logs(
         return [f"Error reading log file: {e}"]
 
 
-@router.websocket("/status/logs/ws")
-async def websocket_log_stream(
-    websocket: WebSocket,
-    log_file_name: str = Query("app.log", description="要监控的日志文件名"),
-):
+@router.get("/status/logs/sse", summary="通过 SSE 实时推送应用日志")
+async def sse_log_stream() -> StreamingResponse:
     """
-    建立 WebSocket 连接，实时将指定日志文件的新增内容推送到前端。
+    建立 Server-Sent Events (SSE) 连接，实时将应用日志推送到前端。
     """
-    if log_file_name not in ALLOWED_LOG_FILES:
-        app_logger.warning(
-            f"WebSocket: Attempted to access disallowed log file: {log_file_name}"
-        )
-        await websocket.close(
-            code=1008, reason="Access to this log file is not allowed."
-        )
-        return
+    client_queue: asyncio.Queue[str] = asyncio.Queue()
 
-    log_file_path = LOG_DIR / log_file_name
-    if not log_file_path.exists():
-        app_logger.warning(f"WebSocket: Log file not found: {log_file_path}")
-        await websocket.close(
-            code=1008, reason=f"Log file '{log_file_name}' not found."
-        )
-        return
+    await log_broadcaster.register(client_queue)
+    app_logger.info("SSE client registered for log stream.")
 
-    await websocket.accept()
-    app_logger.info(f"WebSocket connection established for log file: {log_file_name}")
-
-    try:
-        # Open the file and seek to the end
-        with open(log_file_path, "r", encoding="utf-8", errors="ignore") as f:
-            f.seek(0, 2)  # Go to the end of the file
-
+    async def event_generator() -> AsyncGenerator[str, None]:
+        try:
             while True:
-                line = f.readline()
-                if not line:
-                    # No new line, wait a bit and try again
-                    await asyncio.sleep(settings.WEBSOCKET_LOG_REFRESH_SECONDS)
-                    continue
-                await websocket.send_text(line.strip())
-    except WebSocketDisconnect:
-        app_logger.info(f"WebSocket connection for {log_file_name} disconnected.")
-    except Exception as e:
-        app_logger.error(f"WebSocket error for {log_file_name}: {e}")
-        await websocket.close(code=1011, reason=f"Server error: {e}")
+                message = await client_queue.get()
+                yield f"data: {message}\n\n"
+        except asyncio.CancelledError:
+            app_logger.info("SSE client disconnected from log stream.")
+        finally:
+            log_broadcaster.unregister(client_queue)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

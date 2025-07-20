@@ -1,7 +1,10 @@
+import asyncio
 import logging
 import sys
+from collections import deque
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Deque, List
 
 from app.core.config import settings
 
@@ -47,6 +50,68 @@ transaction_logger.addHandler(transaction_file_handler)
 
 # Prevent transaction logs from propagating to the root logger
 transaction_logger.propagate = False
+
+
+# --- SSE Log Broadcasting ---
+class LogBroadcaster:
+    """
+    Manages active SSE connections and broadcasts log messages to all clients.
+    """
+
+    def __init__(self):
+        self.subscribers: List[asyncio.Queue] = []
+        self._history: Deque[str] = deque(maxlen=settings.LOG_HISTORY_SIZE)
+
+    async def register(self, queue: asyncio.Queue):
+        """Registers a new client queue to receive log messages."""
+        # Send history to the new client
+        for msg in self._history:
+            await queue.put(msg)
+        self.subscribers.append(queue)
+
+    def unregister(self, queue: asyncio.Queue):
+        """Removes a client queue."""
+        self.subscribers.remove(queue)
+
+    async def broadcast(self, message: str):
+        """Broadcasts a log message to all registered clients."""
+        self._history.append(message)
+        for queue in self.subscribers:
+            await queue.put(message)
+
+
+# Singleton instance of the broadcaster
+log_broadcaster = LogBroadcaster()
+
+
+class SSELogHandler(logging.Handler):
+    """
+    A logging handler that broadcasts log records to SSE clients.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+
+    def emit(self, record):
+        """
+        Formats the log record and broadcasts it.
+        """
+        try:
+            msg = self.format(record)
+            try:
+                loop = asyncio.get_running_loop()
+                asyncio.run_coroutine_threadsafe(log_broadcaster.broadcast(msg), loop)
+            except RuntimeError:  # No running loop
+                asyncio.run(log_broadcaster.broadcast(msg))
+        except Exception:
+            self.handleError(record)
+
+
+# Add the SSE handler to the application logger
+app_logger.addHandler(SSELogHandler())
 
 
 def setup_debug_logger(logger_name: str) -> logging.Logger:

@@ -1,15 +1,15 @@
 import logging
+import os  # 导入 os 模块
 from contextlib import asynccontextmanager
+from pathlib import Path  # 导入 Path 模块
 
 from app.services.key_manager import key_manager
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles  # 导入 StaticFiles
 
 from app.api.openai.endpoints import chat as openai_chat  # 导入新的 OpenAI 兼容路由
 from app.api.v1beta.endpoints import status  # 导入 status 路由
 from app.api.v1beta.endpoints import gemini
-import os # 导入 os 模块
-from pathlib import Path # 导入 Path 模块
-from fastapi.staticfiles import StaticFiles # 导入 StaticFiles
 
 # Removed: from app.core.logging import setup_logging
 # setup_logging is now a no-op and handled at module level
@@ -57,7 +57,9 @@ def create_app() -> FastAPI:
                 "/", StaticFiles(directory=frontend_dist, html=True), name="frontend"
             )
         else:
-            logger.warning("Frontend build directory not found, skipping static file mount.")
+            logger.warning(
+                "Frontend build directory not found, skipping static file mount."
+            )
     else:
         logger.info("Running in development mode, skipping static file mount.")
 

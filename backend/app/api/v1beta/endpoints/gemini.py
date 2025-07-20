@@ -1,12 +1,11 @@
 import logging
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException
-from starlette.responses import StreamingResponse
-
 from app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from app.core.config import settings
 from app.services.gemini_service import GeminiService
+from fastapi import APIRouter, Depends, Header, HTTPException
+from starlette.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
