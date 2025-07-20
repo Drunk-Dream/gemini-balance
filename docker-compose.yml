@@ -1,8 +1,6 @@
 services:
   gemini-balance:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    build: .
     ports:
       - "8090:8090"
     env_file:
