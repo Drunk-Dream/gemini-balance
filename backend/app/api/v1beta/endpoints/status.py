@@ -65,7 +65,7 @@ async def sse_log_stream() -> StreamingResponse:
     client_queue: asyncio.Queue[str] = asyncio.Queue()
 
     await log_broadcaster.register(client_queue)
-    app_logger.info("SSE client registered for log stream.")
+    app_logger.debug("SSE client registered for log stream.")
 
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
@@ -73,7 +73,7 @@ async def sse_log_stream() -> StreamingResponse:
                 message = await client_queue.get()
                 yield f"data: {message}\n\n"
         except asyncio.CancelledError:
-            app_logger.info("SSE client disconnected from log stream.")
+            app_logger.debug("SSE client disconnected from log stream.")
         finally:
             log_broadcaster.unregister(client_queue)
 
