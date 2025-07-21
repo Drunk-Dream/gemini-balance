@@ -88,14 +88,17 @@
 
 		let coloredLogLine = logLine;
 		for (const pattern of patterns) {
-			coloredLogLine = coloredLogLine.replace(pattern.regex, `<span class="${pattern.class}">$&</span>`);
+			coloredLogLine = coloredLogLine.replace(
+				pattern.regex,
+				`<span class="${pattern.class}">$&</span>`
+			);
 		}
 		return coloredLogLine;
 	}
 </script>
 
-<div class="container mx-auto p-4">
-	<h1 class="mb-6 text-3xl font-bold text-gray-800">日志查看器</h1>
+<div class="container mx-auto p-2 sm:p-4">
+	<h1 class="mb-4 text-2xl font-bold text-gray-800 sm:mb-6 sm:text-3xl">日志查看器</h1>
 
 	{#if errorMessage}
 		<div
@@ -110,7 +113,7 @@
 	<div
 		bind:this={logContainer}
 		on:scroll={handleScroll}
-		class="h-[calc(100vh-180px)] overflow-y-auto rounded-lg bg-gray-900 p-4 font-mono text-sm text-gray-100 shadow-md"
+		class="h-[calc(100vh-180px)] overflow-y-auto rounded-lg bg-gray-900 p-2 font-mono text-sm text-gray-100 shadow-md sm:p-4"
 	>
 		{#each logs as logLine}
 			<p class="whitespace-pre-wrap break-words">{@html colorizeLog(logLine)}</p>

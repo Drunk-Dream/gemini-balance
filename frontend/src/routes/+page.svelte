@@ -44,19 +44,17 @@
 		if (entries.length === 0) {
 			return '无';
 		}
-		return entries
-			.map(([model, count]) => `${model}: ${count}`)
-			.join('<br>');
+		return entries.map(([model, count]) => `${model}: ${count}`).join('<br>');
 	}
 </script>
 
-<div class="container mx-auto p-4">
-	<h1 class="text-3xl font-bold mb-6 text-gray-800">密钥状态监控</h1>
+<div class="container mx-auto p-2 sm:p-4">
+	<h1 class="mb-4 text-2xl font-bold text-gray-800 sm:mb-6 sm:text-3xl">密钥状态监控</h1>
 
-	<div class="flex justify-between items-center mb-4">
+	<div class="mb-4 flex items-center justify-between">
 		<button
 			on:click={fetchKeyStatuses}
-			class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+			class="focus:shadow-outline rounded bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none sm:text-base"
 			disabled={loading}
 		>
 			{loading ? '刷新中...' : '立即刷新'}
@@ -64,49 +62,52 @@
 	</div>
 
 	{#if errorMessage}
-		<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+		<div
+			class="relative rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700"
+			role="alert"
+		>
 			<strong class="font-bold">错误!</strong>
 			<span class="block sm:inline"> {errorMessage}</span>
 		</div>
 	{:else if keyStatuses.length === 0 && !loading}
 		<p class="text-gray-600">没有可用的密钥状态信息。</p>
 	{:else}
-		<div class="overflow-x-auto bg-white shadow-md rounded-lg">
+		<div class="overflow-x-auto rounded-lg bg-white shadow-md">
 			<table class="min-w-full leading-normal">
 				<thead>
 					<tr>
 						<th
-							class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
 						>
 							密钥标识
 						</th>
 						<th
-							class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
 						>
 							状态
 						</th>
 						<th
-							class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
 						>
 							剩余冷却时间 (秒)
 						</th>
 						<th
-							class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
 						>
 							今日用量
 						</th>
 						<th
-							class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
 						>
 							失败次数
 						</th>
 						<th
-							class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
 						>
 							进入冷却次数
 						</th>
 						<th
-							class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
 						>
 							当前冷却时长 (秒)
 						</th>
@@ -115,36 +116,56 @@
 				<tbody>
 					{#each keyStatuses as keyStatus}
 						<tr>
-							<td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-								<p class="text-gray-900 whitespace-no-wrap">{keyStatus.key_identifier}</p>
+							<td
+								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
+							>
+								<p class="whitespace-no-wrap text-gray-900">{keyStatus.key_identifier}</p>
 							</td>
-							<td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+							<td
+								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
+							>
 								<span
-									class="relative inline-block px-3 py-1 font-semibold leading-tight"
+									class="relative inline-block px-2 py-0.5 font-semibold leading-tight sm:px-3 sm:py-1"
 								>
 									<span
 										aria-hidden="true"
-										class="absolute inset-0 opacity-50 rounded-full {keyStatus.status === 'active' ? 'bg-green-200' : 'bg-yellow-200'}"
+										class="absolute inset-0 rounded-full opacity-50 {keyStatus.status === 'active'
+											? 'bg-green-200'
+											: 'bg-yellow-200'}"
 									></span>
-									<span class="relative text-gray-900">{keyStatus.status === 'active' ? '活跃' : '冷却中'}</span>
+									<span class="relative text-gray-900"
+										>{keyStatus.status === 'active' ? '活跃' : '冷却中'}</span
+									>
 								</span>
 							</td>
-							<td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-								<p class="text-gray-900 whitespace-no-wrap">
+							<td
+								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
+							>
+								<p class="whitespace-no-wrap text-gray-900">
 									{keyStatus.cool_down_seconds_remaining}
 								</p>
 							</td>
-							<td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+							<td
+								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
+							>
 								<div class="text-gray-900">{@html formatDailyUsage(keyStatus.daily_usage)}</div>
 							</td>
-							<td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-								<p class="text-gray-900 whitespace-no-wrap">{keyStatus.failure_count}</p>
+							<td
+								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
+							>
+								<p class="whitespace-no-wrap text-gray-900">{keyStatus.failure_count}</p>
 							</td>
-							<td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-								<p class="text-gray-900 whitespace-no-wrap">{keyStatus.cool_down_entry_count}</p>
+							<td
+								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
+							>
+								<p class="whitespace-no-wrap text-gray-900">{keyStatus.cool_down_entry_count}</p>
 							</td>
-							<td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-								<p class="text-gray-900 whitespace-no-wrap">{keyStatus.current_cool_down_seconds}</p>
+							<td
+								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
+							>
+								<p class="whitespace-no-wrap text-gray-900">
+									{keyStatus.current_cool_down_seconds}
+								</p>
 							</td>
 						</tr>
 					{/each}
