@@ -6,10 +6,18 @@
 	let errorMessage: string | null = null;
 	let logContainer: HTMLElement;
 	let autoScroll = true;
+	let showScrollToBottomButton = false;
 
 	function scrollToBottom() {
 		if (logContainer && autoScroll) {
 			logContainer.scrollTop = logContainer.scrollHeight;
+		}
+	}
+
+	function forceScrollToBottom() {
+		if (logContainer) {
+			logContainer.scrollTop = logContainer.scrollHeight;
+			autoScroll = true; // Re-enable auto-scroll after manual scroll
 		}
 	}
 
@@ -20,8 +28,10 @@
 			if (scrollHeight - scrollTop <= clientHeight + 50) {
 				// 50px buffer
 				autoScroll = true;
+				showScrollToBottomButton = false;
 			} else {
 				autoScroll = false;
+				showScrollToBottomButton = true;
 			}
 		}
 	}
@@ -122,4 +132,27 @@
 			<p class="text-gray-500">等待日志数据...</p>
 		{/if}
 	</div>
+
+	{#if showScrollToBottomButton}
+		<button
+			on:click={forceScrollToBottom}
+			class="fixed bottom-4 right-4 rounded-full bg-blue-600 p-3 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+			aria-label="Scroll to bottom"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-6 w-6"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M19 14l-7 7m0 0l-7-7m7 7V3"
+				/>
+			</svg>
+		</button>
+	{/if}
 </div>
