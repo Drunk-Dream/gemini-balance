@@ -50,6 +50,10 @@ def create_app() -> FastAPI:
             name="static_assets",
         )
 
+        @app.get("/favicon.svg", include_in_schema=False)
+        async def favicon():
+            return FileResponse(frontend_dir / "favicon.svg")
+
         @app.get("/{full_path:path}", include_in_schema=False)
         async def serve_frontend(request: Request):
             return FileResponse(frontend_dir / "index.html")
