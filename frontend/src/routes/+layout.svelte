@@ -76,13 +76,12 @@
 
 	<!-- Overlay for mobile sidebar -->
 	{#if sidebarOpen}
-		<div
+		<button
+			type="button"
 			class="fixed inset-0 z-20 bg-black opacity-50 md:hidden"
 			onclick={toggleSidebar}
-			role="button"
-			tabindex="0"
 			aria-label="Close sidebar"
-		></div>
+		></button>
 	{/if}
 
 	<!-- Desktop Sidebar -->
