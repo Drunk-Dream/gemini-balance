@@ -44,6 +44,7 @@
 		if (entries.length === 0) {
 			return '无';
 		}
+		entries.sort(([modelA], [modelB]) => modelA.localeCompare(modelB)); // 按模型名称排序
 		return entries.map(([model, count]) => `${model}: ${count}`).join('<br>');
 	}
 </script>
