@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fakeredis[hiredis]>=2.30.1",
     "fastapi>=0.116.0",
     "google-generativeai>=0.8.5",
     "httpx>=0.28.1",
@@ -13,6 +14,7 @@ dependencies = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
     "python-dotenv>=1.1.1",
+    "redis[hiredis]>=6.2.0",
     "uvicorn>=0.35.0",
 ]
 
