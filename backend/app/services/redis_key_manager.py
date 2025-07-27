@@ -120,6 +120,11 @@ class RedisKeyManager:
     async def initialize_keys(self):
         """初始化 Redis 中的密钥列表和状态，并与配置同步。"""
         async with self._lock:
+            if settings.FORCE_RESET_REDIS:
+                app_logger.warning("FORCE_RESET_REDIS is enabled. Flushing Redis DB...")
+                await self._redis.flushdb()  # type: ignore
+                app_logger.info("Redis DB flushed.")
+
             app_logger.info("Synchronizing API keys with Redis...")
 
             # 1. 获取配置中的密钥
