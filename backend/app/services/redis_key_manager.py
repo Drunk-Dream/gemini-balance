@@ -81,10 +81,11 @@ class RedisKeyManager:
         self.AVAILABLE_KEYS_KEY = "key_manager:available_keys"
         self.COOLED_DOWN_KEYS_KEY = "key_manager:cooled_down_keys"
         self.KEY_STATE_PREFIX = "key_manager:state:"
+        self.ALL_KEYS_SET_KEY = "key_manager:all_keys"  # 新增的 Redis 键
 
     async def _get_key_state(self, key: str) -> KeyState:
         """从 Redis 获取密钥状态，如果不存在则初始化。"""
-        state_data = await self._redis.hgetall(f"{self.KEY_STATE_PREFIX}{key}")  # type: ignore # noqa: E501
+        state_data = await self._redis.hgetall(f"{self.KEY_STATE_PREFIX}{key}")  # type: ignore   # noqa: E501
         if state_data:
             # 将 bytes 转换为 str
             decoded_data = {k.decode(): v.decode() for k, v in state_data.items()}
@@ -130,45 +131,38 @@ class RedisKeyManager:
             # 1. 获取配置中的密钥
             config_keys = set(self._api_keys)
 
-            # 2. 获取 Redis 中当前管理的密钥
-            redis_keys = set()
-            cursor = 0
-            while True:
-                # 使用 SCAN 命令迭代获取所有以 KEY_STATE_PREFIX 开头的键
-                # type: ignore 忽略类型检查，因为 redis.scan 返回的是 bytes
-                cursor, keys = await self._redis.scan(
-                    cursor, match=f"{self.KEY_STATE_PREFIX}*", count=100
-                )
-                for key_bytes in keys:
-                    # 提取原始密钥（去除前缀）
-                    original_key = key_bytes.decode().replace(self.KEY_STATE_PREFIX, "")
-                    redis_keys.add(original_key)
-                if cursor == 0:
-                    break
+            # 2. 获取 Redis 中当前管理的所有密钥 (从 ALL_KEYS_SET_KEY 获取)
+            redis_all_keys_bytes = await self._redis.smembers(self.ALL_KEYS_SET_KEY)  # type: ignore # noqa: E501
+            redis_all_keys = {key.decode() for key in redis_all_keys_bytes}
 
             # 3. 计算需要新增和删除的密钥
-            keys_to_add = config_keys - redis_keys
-            keys_to_remove = redis_keys - config_keys
+            keys_to_add = config_keys - redis_all_keys
+            keys_to_remove = redis_all_keys - config_keys
 
             # 4. 执行新增操作
             if keys_to_add:
                 app_logger.info(
                     f"Adding new API keys to Redis: {len(keys_to_add)} keys."
                 )
+                pipe = self._redis.pipeline()
                 for key in keys_to_add:
                     # _get_key_state 会自动初始化并保存新密钥的状态
                     await self._get_key_state(key)
                     # 将新密钥添加到可用队列，如果已存在则不重复添加
                     if not await self._redis.lpos(self.AVAILABLE_KEYS_KEY, key):  # type: ignore # noqa: E501
-                        await self._redis.rpush(self.AVAILABLE_KEYS_KEY, key)  # type: ignore # noqa: E501
+                        pipe.rpush(self.AVAILABLE_KEYS_KEY, key)  # type: ignore
+                    # 将新密钥添加到所有密钥集合
+                    pipe.sadd(self.ALL_KEYS_SET_KEY, key)  # type: ignore
                     app_logger.info(f"Added new API key '...{key[-4:]}'.")
+                await pipe.execute()
             else:
                 app_logger.info("No new API keys to add.")
 
             # 5. 执行删除操作
             if keys_to_remove:
                 app_logger.info(
-                    f"Removing obsolete API keys from Redis: {len(keys_to_remove)} keys."  # noqa: E501
+                    "Removing obsolete API keys from Redis: "
+                    f"{len(keys_to_remove)} keys."
                 )
                 pipe = self._redis.pipeline()
                 for key in keys_to_remove:
@@ -178,6 +172,8 @@ class RedisKeyManager:
                     pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key)
                     # 删除密钥状态哈希
                     pipe.delete(f"{self.KEY_STATE_PREFIX}{key}")
+                    # 从所有密钥集合中移除
+                    pipe.srem(self.ALL_KEYS_SET_KEY, key)  # type: ignore
                     app_logger.info("Removed obsolete API key '...%s'.", key[-4:])
                 await pipe.execute()
             else:
