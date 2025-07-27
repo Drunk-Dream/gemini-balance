@@ -65,17 +65,14 @@ class RedisKeyManager:
         self,
         redis_client: redis.Redis,
         api_keys: List[str],
-        cool_down_seconds: int,
-        api_key_failure_threshold: int,
-        max_cool_down_seconds: int,
     ):
         if not api_keys:
             raise ValueError("API key list cannot be empty.")
         self._redis = redis_client
         self._api_keys = api_keys
-        self._initial_cool_down_seconds = cool_down_seconds
-        self._api_key_failure_threshold = api_key_failure_threshold
-        self._max_cool_down_seconds = max_cool_down_seconds
+        self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
+        self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
+        self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
         self._lock = asyncio.Lock()  # 用于保护 Redis 操作的本地锁
         self._condition = asyncio.Condition(self._lock)
         self._background_task: Optional[asyncio.Task] = None
@@ -330,12 +327,10 @@ class RedisKeyManager:
 
 
 # 假设 redis_client 实例在外部创建并传入
-# 例如:
-# redis_client = redis.Redis(host='localhost', port=6379, db=0)
-# key_manager = RedisKeyManager(
-#     redis_client,
-#     settings.GOOGLE_API_KEYS if settings.GOOGLE_API_KEYS is not None else [],
-#     settings.API_KEY_COOL_DOWN_SECONDS,
-#     settings.API_KEY_FAILURE_THRESHOLD,
-#     settings.MAX_COOL_DOWN_SECONDS,
-# )
+redis_client = redis.Redis(
+    host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB
+)
+redis_key_manager = RedisKeyManager(
+    redis_client,
+    settings.GOOGLE_API_KEYS if settings.GOOGLE_API_KEYS is not None else [],
+)

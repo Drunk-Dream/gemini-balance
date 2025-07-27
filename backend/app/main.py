@@ -6,7 +6,7 @@ from app.api.openai.endpoints.chat import router as openai_chat_router
 from app.api.v1beta.endpoints.gemini import router as gemini_router
 from app.api.v1beta.endpoints.status import router as status_router
 from app.core.logging import setup_app_logger, setup_transaction_logger
-from app.services.key_manager import key_manager
+from app.services.redis_key_manager import redis_key_manager
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting background task for KeyManager...")
-    key_manager.start_background_task()
+    logger.info("Starting background task for RedisKeyManager...")
+    await redis_key_manager.start_background_task()
     yield
-    logger.info("Stopping background task for KeyManager...")
-    key_manager.stop_background_task()
+    logger.info("Stopping background task for RedisKeyManager...")
+    redis_key_manager.stop_background_task()
 
 
 def create_app() -> FastAPI:

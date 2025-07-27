@@ -17,6 +17,7 @@ services:
       - HTTPS_PROXY=http://v2raya:20170
     depends_on:
       - v2raya
+      - redis
 
   v2raya:
     image: mzz2017/v2raya
@@ -34,8 +35,20 @@ services:
     volumes:
       - v2raya_config:/etc/v2raya
 
+  redis:
+    image: redis:7-alpine
+    container_name: gemini-balance-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - shared_net
+    restart: always
+
 volumes:
   v2raya_config:
+  redis_data:
 
 # 与Open Webui 共享网络，如果不需要，可删除shared_net
 networks:

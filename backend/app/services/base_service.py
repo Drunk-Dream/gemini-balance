@@ -6,7 +6,7 @@ from typing import Any, AsyncGenerator, Dict, Optional, Union
 import httpx
 from app.core.config import settings
 from app.core.logging import app_logger, setup_debug_logger
-from app.services.key_manager import key_manager
+from app.services.redis_key_manager import redis_key_manager as key_manager
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
