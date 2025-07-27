@@ -190,11 +190,11 @@ class RedisKeyManager:
                 )
                 if added_in_config:
                     app_logger.warning(
-                        f"Keys to add from config: {[k[-4:] for k in added_in_config]}"
+                        f"Keys to add from config: {[self.format_key(k) for k in added_in_config]}"
                     )
                 if missing_in_config:
                     app_logger.warning(
-                        f"Keys to remove from Redis: {[k[-4:] for k in missing_in_config]}"
+                        f"Keys to remove from Redis: {[self.format_key(k) for k in missing_in_config]}"
                     )
                 return RedisHealthCheckResult(
                     is_healthy=False,
@@ -232,11 +232,11 @@ class RedisKeyManager:
                 if missing_from_combined:
                     app_logger.warning(
                         "Keys missing from available/cooled queues: "
-                        f"{[k[-4:] for k in missing_from_combined]}"
+                        f"{[self.format_key(k) for k in missing_from_combined]}"
                     )
                 if extra_in_combined:
                     app_logger.warning(
-                        f"Extra keys in available/cooled queues: {[k[-4:] for k in extra_in_combined]}"
+                        f"Extra keys in available/cooled queues: {[self.format_key(k) for k in extra_in_combined]}"
                     )
                 return RedisHealthCheckResult(
                     is_healthy=False,
@@ -274,11 +274,11 @@ class RedisKeyManager:
                 )
                 if missing_states:
                     app_logger.warning(
-                        f"Keys with missing states: {[k[-4:] for k in missing_states]}"
+                        f"Keys with missing states: {[self.format_key(k) for k in missing_states]}"
                     )
                 if extra_states_in_redis:
                     app_logger.warning(
-                        f"Extra states in Redis: {[k[-4:] for k in extra_states_in_redis]}"
+                        f"Extra states in Redis: {[self.format_key(k) for k in extra_states_in_redis]}"
                     )
                 return RedisHealthCheckResult(
                     is_healthy=False,
@@ -329,7 +329,7 @@ class RedisKeyManager:
                 # 添加配置中新增的密钥
                 for key in result.added_keys:
                     app_logger.info(
-                        f"Repairing: Adding new API key '...{key[-4:]}' from config."
+                        f"Repairing: Adding new API key '{self.format_key(key)}' from config."
                     )
                     await self._get_key_state(key)  # 确保状态被初始化
                     if not await self._redis.lpos(self.AVAILABLE_KEYS_KEY, key):  # type: ignore
@@ -338,7 +338,7 @@ class RedisKeyManager:
                 # 移除 Redis 中多余的密钥
                 for key in result.missing_keys:
                     app_logger.info(
-                        f"Repairing: Removing obsolete API key '...{key[-4:]}' from Redis."
+                        f"Repairing: Removing obsolete API key '{self.format_key(key)}' from Redis."
                     )
                     pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key)
                     pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key)
@@ -353,7 +353,7 @@ class RedisKeyManager:
                 # 将 ALL_KEYS_SET_KEY 中缺失的 key 添加到可用队列
                 for key in result.missing_keys:
                     app_logger.info(
-                        f"Repairing: Adding missing key '...{key[-4:]}' "
+                        f"Repairing: Adding missing key '{self.format_key(key)}' "
                         "to available queue and "
                         "resetting its state."
                     )
@@ -364,7 +364,7 @@ class RedisKeyManager:
                 # 移除可用/冷却队列中多余的 key
                 for key in result.extra_keys_in_redis:
                     app_logger.info(
-                        f"Repairing: Removing extra key '...{key[-4:]}' "
+                        f"Repairing: Removing extra key '{self.format_key(key)}' "
                         "from available/cooled queues."
                     )
                     pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key)
@@ -375,13 +375,13 @@ class RedisKeyManager:
                 # 为缺失 KeyState 的 key 初始化状态
                 for key in result.missing_states:
                     app_logger.info(
-                        f"Repairing: Initializing missing KeyState for '...{key[-4:]}'."
+                        f"Repairing: Initializing missing KeyState for '{self.format_key(key)}'."
                     )
                     await self._get_key_state(key)  # _get_key_state 会自动初始化并保存
                 # 删除 Redis 中多余的 KeyState
                 for key in result.extra_states_in_redis:
                     app_logger.info(
-                        f"Repairing: Deleting extra KeyState for '...{key[-4:]}'."
+                        f"Repairing: Deleting extra KeyState for '{self.format_key(key)}'."
                     )
                     pipe.delete(f"{self.KEY_STATE_PREFIX}{key}")
 
@@ -416,7 +416,9 @@ class RedisKeyManager:
                                     f"{self.KEY_STATE_PREFIX}{key}",
                                     mapping=key_state.to_redis_hash(),
                                 )
-                                app_logger.info(f"API key '...{key[-4:]}' reactivated.")
+                                app_logger.info(
+                                    f"API key '{self.format_key(key)}' reactivated."
+                                )
                             # 无论如何都从冷却集合中移除
                             pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key)
                         await pipe.execute()
@@ -519,7 +521,7 @@ class RedisKeyManager:
 
                 self._wakeup_event.set()
                 app_logger.warning(
-                    f"Key '...{key[-4:]}' cooled down for "
+                    f"Key '{self.format_key(key)}' cooled down for "
                     f"{key_state.current_cool_down_seconds:.2f}s "
                     "due to {error_type}."
                 )
@@ -546,7 +548,7 @@ class RedisKeyManager:
             key_state.usage_today[model] = key_state.usage_today.get(model, 0) + 1
             await self._save_key_state(key, key_state)
             app_logger.debug(
-                f"Key '...{key[-4:]}' usage for model '{model}': "
+                f"Key '{self.format_key(key)}' usage for model '{model}': "
                 f"{key_state.usage_today[model]}"
             )
 
@@ -569,7 +571,7 @@ class RedisKeyManager:
 
                 states.append(
                     KeyStatusResponse(
-                        key_identifier=f"...{key[-4:]}",
+                        key_identifier=f"{self.format_key(key)}",
                         status=status,
                         cool_down_seconds_remaining=round(cool_down_remaining, 2),
                         daily_usage=key_state.usage_today,
@@ -579,6 +581,9 @@ class RedisKeyManager:
                     )
                 )
             return states
+
+    def format_key(self, key: str) -> str:
+        return f"...{key[-4:]}"
 
 
 # 假设 redis_client 实例在外部创建并传入
