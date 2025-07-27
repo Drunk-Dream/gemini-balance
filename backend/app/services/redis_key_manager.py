@@ -105,31 +105,80 @@ class RedisKeyManager:
             f"{self.KEY_STATE_PREFIX}{key}", mapping=state.to_redis_hash()
         )
 
+    async def _reset_daily_usage_if_needed(self, key_state: KeyState) -> bool:
+        """
+        如果密钥的最后使用日期不是今天，则重置每日用量。
+        返回 True 如果用量被重置，否则返回 False。
+        """
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        if key_state.last_usage_date != today_str:
+            key_state.usage_today = {}
+            key_state.last_usage_date = today_str
+            return True
+        return False
+
     async def initialize_keys(self):
-        """初始化 Redis 中的密钥列表和状态。"""
+        """初始化 Redis 中的密钥列表和状态，并与配置同步。"""
         async with self._lock:
-            # 检查可用密钥列表是否已初始化
-            if await self._redis.exists(self.AVAILABLE_KEYS_KEY):  # type: ignore
-                app_logger.info("Redis key manager already initialized.")
-                # 确保所有初始API Key都在Redis中被记录状态
-                for key in self._api_keys:
-                    await self._get_key_state(key)
-                return
+            app_logger.info("Synchronizing API keys with Redis...")
 
-            app_logger.info("Initializing Redis key manager...")
-            # 清空旧数据（如果存在）
-            await self._redis.delete(self.AVAILABLE_KEYS_KEY, self.COOLED_DOWN_KEYS_KEY)  # type: ignore # noqa: E501
-            for key in self._api_keys:
-                await self._redis.delete(f"{self.KEY_STATE_PREFIX}{key}")  # type: ignore # noqa: E501
+            # 1. 获取配置中的密钥
+            config_keys = set(self._api_keys)
 
-            # 将所有密钥添加到可列表并初始化状态
-            for key in self._api_keys:
-                await self._redis.rpush(self.AVAILABLE_KEYS_KEY, key)  # type: ignore
-                initial_state = KeyState(
-                    current_cool_down_seconds=self._initial_cool_down_seconds
+            # 2. 获取 Redis 中当前管理的密钥
+            redis_keys = set()
+            cursor = 0
+            while True:
+                # 使用 SCAN 命令迭代获取所有以 KEY_STATE_PREFIX 开头的键
+                # type: ignore 忽略类型检查，因为 redis.scan 返回的是 bytes
+                cursor, keys = await self._redis.scan(
+                    cursor, match=f"{self.KEY_STATE_PREFIX}*", count=100
                 )
-                await self._save_key_state(key, initial_state)
-            app_logger.info("Redis key manager initialized successfully.")
+                for key_bytes in keys:
+                    # 提取原始密钥（去除前缀）
+                    original_key = key_bytes.decode().replace(self.KEY_STATE_PREFIX, "")
+                    redis_keys.add(original_key)
+                if cursor == 0:
+                    break
+
+            # 3. 计算需要新增和删除的密钥
+            keys_to_add = config_keys - redis_keys
+            keys_to_remove = redis_keys - config_keys
+
+            # 4. 执行新增操作
+            if keys_to_add:
+                app_logger.info(
+                    f"Adding new API keys to Redis: {len(keys_to_add)} keys."
+                )
+                for key in keys_to_add:
+                    # _get_key_state 会自动初始化并保存新密钥的状态
+                    await self._get_key_state(key)
+                    # 将新密钥添加到可用队列，如果已存在则不重复添加
+                    if not await self._redis.lpos(self.AVAILABLE_KEYS_KEY, key):  # type: ignore # noqa: E501
+                        await self._redis.rpush(self.AVAILABLE_KEYS_KEY, key)  # type: ignore # noqa: E501
+                    app_logger.info(f"Added new API key '...{key[-4:]}'.")
+            else:
+                app_logger.info("No new API keys to add.")
+
+            # 5. 执行删除操作
+            if keys_to_remove:
+                app_logger.info(
+                    f"Removing obsolete API keys from Redis: {len(keys_to_remove)} keys."  # noqa: E501
+                )
+                pipe = self._redis.pipeline()
+                for key in keys_to_remove:
+                    # 从可用队列中移除
+                    pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key)
+                    # 从冷却队列中移除
+                    pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key)
+                    # 删除密钥状态哈希
+                    pipe.delete(f"{self.KEY_STATE_PREFIX}{key}")
+                    app_logger.info("Removed obsolete API key '...%s'.", key[-4:])
+                await pipe.execute()
+            else:
+                app_logger.info("No obsolete API keys to remove.")
+
+            app_logger.info("API key synchronization complete.")
 
     async def _release_cooled_down_keys(self):
         while True:
@@ -286,12 +335,7 @@ class RedisKeyManager:
             if not key_state:
                 return
 
-            today_str = datetime.now().strftime("%Y-%m-%d")
-
-            if key_state.last_usage_date != today_str:
-                key_state.usage_today = {}
-                key_state.last_usage_date = today_str
-
+            await self._reset_daily_usage_if_needed(key_state)
             key_state.usage_today[model] = key_state.usage_today.get(model, 0) + 1
             await self._save_key_state(key, key_state)
             app_logger.debug(
@@ -308,6 +352,10 @@ class RedisKeyManager:
                 key_state = await self._get_key_state(key)
                 if not key_state:
                     continue
+
+                was_reset = await self._reset_daily_usage_if_needed(key_state)
+                if was_reset:
+                    await self._save_key_state(key, key_state)
 
                 cool_down_remaining = max(0, key_state.cool_down_until - now)
                 status = "cooling_down" if cool_down_remaining > 0 else "active"
