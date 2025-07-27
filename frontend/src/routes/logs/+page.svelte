@@ -8,6 +8,11 @@
 	let autoScroll = true;
 	let showScrollToBottomButton = false;
 
+	// 指数退避重连相关变量
+	const BASE_RECONNECT_DELAY = 1000; // 初始重连延迟（毫秒）
+	const MAX_RECONNECT_DELAY = 30000; // 最大重连延迟（毫秒）
+	let reconnectAttempts = 0; // 重连尝试次数
+
 	function scrollToBottom() {
 		if (logContainer && autoScroll) {
 			logContainer.scrollTop = logContainer.scrollHeight;
@@ -44,6 +49,7 @@
 			eventSource.onopen = () => {
 				console.log('SSE connection opened for logs.');
 				logs = []; // Clear logs on new connection
+				reconnectAttempts = 0; // 连接成功时重置重连尝试次数
 			};
 
 			eventSource.onmessage = (event) => {
@@ -64,7 +70,16 @@
 				console.error('SSE error:', error);
 				errorMessage = 'SSE error. Check console for details. Attempting to reconnect...';
 				if (eventSource) eventSource.close(); // Close to trigger reconnect
-				setTimeout(connectSSE, 3000); // Attempt to reconnect after a delay
+
+				// 计算指数退避延迟
+				const delay = Math.min(
+					MAX_RECONNECT_DELAY,
+					BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempts)
+				);
+				reconnectAttempts++; // 增加重连尝试次数
+
+				console.log(`Attempting to reconnect in ${delay / 1000} seconds...`);
+				setTimeout(connectSSE, delay); // 尝试在计算出的延迟后重连
 			};
 		};
 
