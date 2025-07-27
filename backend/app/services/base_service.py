@@ -83,7 +83,7 @@ class ApiService(ABC):
                 last_exception = HTTPException(
                     status_code=503, detail="No available API keys."
                 )
-                break
+                continue
 
             key_identifier = f"...{api_key[-4:]}"
             logger.info(
