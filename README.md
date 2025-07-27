@@ -6,7 +6,7 @@
 
 - **请求转发**: 将客户端请求转发至 Google Gemini API。
 - **响应返回**: 将 Gemini API 的响应原样返回给客户端，支持普通响应和流式响应。
-- **API 密钥管理**: 引入 `KeyManager`，支持 API 密钥的轮询、冷却和指数退避，提高服务可靠性。
+- **API 密钥管理**: 引入 `RedisKeyManager`，利用 Redis 实现持久化和可扩展的密钥状态管理，支持 API 密钥的轮询、冷却和指数退避，提高服务可靠性。
 - **服务抽象**: 引入 `ApiService` 基类，抽象通用 API 交互逻辑，减少代码重复。
 - **配置管理**: 通过环境变量灵活配置 API Key 和其他设置，包括 API 密钥冷却时间。
 - **日志记录**: 详细的结构化日志输出，支持主应用日志、事务日志和可选的调试日志（通过 `RotatingFileHandler` 管理），便于监控和问题排查。
@@ -23,6 +23,7 @@
 - **Google Gemini SDK**: google-generativeai
 - **异步**: Python `asyncio`
 - **容器化**: Docker, Docker Compose
+- **数据持久化**: Redis
 - **测试**: pytest, pytest-asyncio
 
 ## 项目结构
@@ -57,7 +58,7 @@ gemini-balance/
 │   │   ├── services/
 │   │   │   ├── base_service.py
 │   │   │   ├── gemini_service.py
-│   │   │   ├── key_manager.py
+│   │   │   ├── redis_key_manager.py
 │   │   │   └── openai_service.py
 │   │   └── main.py
 │   ├── pyproject.toml
@@ -65,6 +66,7 @@ gemini-balance/
 │   └── tests/
 │       ├── test_gemini.py
 │       └── test_key_manager.py
+│       └── test_redis_key_manager.py
 ├── frontend/
 │   ├── package.json
 │   ├── package-lock.json
@@ -98,7 +100,7 @@ cd gemini-balance
 
 ### 2. 配置环境变量
 
-创建 `.env` 文件，并根据 `.env.example` 填写您的 Google Gemini API Key。
+创建 `.env` 文件，并根据 `.env.example` 填写您的 Google Gemini API Key 和 Redis 配置。
 
 ```bash
 cp .env.example .env
@@ -107,12 +109,15 @@ cp .env.example .env
 编辑 `.env` 文件：
 
 ```
-GOOGLE_API_KEY="YOUR_GEMINI_API_KEY"
+GOOGLE_API_KEYS="YOUR_GEMINI_API_KEY"
+REDIS_HOST="localhost"
+REDIS_PORT=6379
+REDIS_PASSWORD=""
 ```
 
 ### 3. 使用 Docker Compose 启动服务
 
-本项目推荐使用 Docker Compose 进行部署，它会同时构建和启动前端与后端服务。
+本项目推荐使用 Docker Compose 进行部署，它会同时构建和启动后端、前端及 Redis 服务。
 
 ```bash
 docker-compose up -d --build
@@ -190,7 +195,7 @@ npm run dev
 
 ## 测试
 
-本项目包含针对 `KeyManager`、`Gemini` 和新增 `Status` 服务的单元测试。
+本项目包含针对 `RedisKeyManager`、`Gemini` 和新增 `Status` 服务的单元测试。
 - 所有自动化测试代码应统一放置于 `tests/` 目录，使用 `test_` 前缀命名，例如 `test_xxx.py`。
 - 推荐使用 `pytest` 工具进行测试组织与断言，测试代码同样需加类型提示。
 - 测试用例应避免对覆盖率、持续集成（CI）和测试数据纳入版本控制的硬性要求。
