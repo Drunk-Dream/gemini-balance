@@ -1,7 +1,7 @@
 import asyncio
 import random
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Dict, Optional, Union
+from typing import Any, AsyncGenerator, Dict, Optional, Union, cast
 
 import httpx
 from app.core.config import settings
@@ -46,17 +46,18 @@ class ApiService(ABC):
         """
         pass
 
-    async def _streaming_request_generator(
+    async def _request_generator(
         self,
         method: str,
         url: str,
         request_data: Any,
+        stream: bool,
         params: Dict[str, str],
         model_id: Optional[str] = None,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """
-        Handles sending the streaming HTTP request, including API key management and retries.
-        Yields decoded chunks directly from the stream.
+        A unified generator to handle both streaming and non-streaming requests.
+        It manages API key rotation, retries, and error handling.
         """
         last_exception = None
         for attempt in range(self.max_retries):
@@ -64,7 +65,7 @@ class ApiService(ABC):
             self._current_api_key = api_key
             if not api_key:
                 logger.error(
-                    f"Attempt {attempt + 1}/{self.max_retries}: No available API keys in the pool."
+                    f"Attempt {attempt + 1}/{self.max_retries}: No available API keys."
                 )
                 await key_manager.repair_redis_database()
                 last_exception = HTTPException(
@@ -74,55 +75,76 @@ class ApiService(ABC):
 
             key_identifier = key_manager._get_key_identifier(api_key)
             logger.info(
-                f"Attempt {attempt + 1}/{self.max_retries}: "
-                f"Using API key {key_identifier} for {self.service_name}, stream=True"
+                f"Attempt {attempt + 1}/{self.max_retries}: Using API key "
+                f"{key_identifier} for {self.service_name}, stream={stream}"
             )
-
             headers = self._prepare_headers(api_key)
 
             try:
                 if settings.DEBUG_LOG_ENABLED:
                     self.debug_logger.debug(
-                        "Streaming Request to %s API with key %s: %s",
+                        "Request to %s API with key %s: %s",
                         self.service_name,
                         key_identifier,
                         request_data.model_dump_json(by_alias=True, exclude_unset=True),
                     )
 
-                async with self.client.stream(
-                    method,
-                    url,
-                    json=request_data.model_dump(by_alias=True, exclude_unset=True),
-                    headers=headers,
-                    params=params,
-                    timeout=120.0,
-                ) as response:
+                if stream:
+                    async with self.client.stream(
+                        method,
+                        url,
+                        json=request_data.model_dump(by_alias=True, exclude_unset=True),
+                        headers=headers,
+                        params=params,
+                        timeout=120.0,
+                    ) as response:
+                        response.raise_for_status()
+                        await key_manager.mark_key_success(key_identifier)
+                        if model_id:
+                            await key_manager.record_usage(key_identifier, model_id)
+                        logger.info(
+                            f"Streaming request with key {key_identifier} succeeded."
+                        )
+                        async for chunk in response.aiter_bytes():
+                            decoded_chunk = chunk.decode("utf-8")
+                            if settings.DEBUG_LOG_ENABLED:
+                                self.debug_logger.debug(
+                                    f"Stream chunk: {decoded_chunk}"
+                                )
+                            yield decoded_chunk
+                        return
+                else:
+                    response = await self.client.request(
+                        method,
+                        url,
+                        json=request_data.model_dump(by_alias=True, exclude_unset=True),
+                        headers=headers,
+                        params=params,
+                        timeout=120.0,
+                    )
                     response.raise_for_status()
-
-                    # 请求成功，标记 key 成功
                     await key_manager.mark_key_success(key_identifier)
-                    # 记录成功调用的 key 和 model 用量
                     if model_id:
                         await key_manager.record_usage(key_identifier, model_id)
-
-                    logger.info(
-                        f"Streaming request with key {key_identifier} succeeded."
-                    )
-                    async for chunk in response.aiter_bytes():
-                        decoded_chunk = chunk.decode("utf-8")
-                        if settings.DEBUG_LOG_ENABLED:
-                            self.debug_logger.debug(f"Stream chunk: {decoded_chunk}")
-                        yield decoded_chunk
-                return  # Stream completed successfully
+                    response_json = response.json()
+                    if settings.DEBUG_LOG_ENABLED:
+                        self.debug_logger.debug(
+                            "Response from %s API with key %s: %s",
+                            self.service_name,
+                            key_identifier,
+                            response_json,
+                        )
+                    logger.info(f"Request with key {key_identifier} succeeded.")
+                    yield response_json
+                    return
 
             except httpx.HTTPStatusError as e:
                 last_exception = e
+                error_type = "other_http_error"
                 if e.response.status_code in [401, 403]:
                     error_type = "auth_error"
                 elif e.response.status_code == 429:
                     error_type = "rate_limit_error"
-                else:
-                    error_type = "other_http_error"
 
                 logger.warning(
                     f"API Key {key_identifier} failed with status {e.response.status_code}. "
@@ -132,39 +154,22 @@ class ApiService(ABC):
 
                 if e.response.status_code == 429:
                     retry_after = e.response.headers.get("Retry-After")
+                    wait_time = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
                     if retry_after:
                         try:
-                            wait_time = int(retry_after) + random.randint(1, 9)
-                            logger.warning(
-                                f"Rate limit hit for API Key {key_identifier}. "
-                                f"Retrying after Retry-After header: {wait_time} seconds."
-                            )
+                            wait_time = int(retry_after)
                         except ValueError:
-                            wait_time = (
-                                settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
-                                + random.randint(1, 9)
-                            )
-                            logger.warning(
-                                f"Rate limit hit for API Key {key_identifier}. "
-                                f"Invalid Retry-After header. Waiting {wait_time} seconds before retrying."
-                            )
-                    else:
-                        wait_time = (
-                            settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
-                            + random.randint(1, 9)
-                        )
-                        logger.warning(
-                            f"Rate limit hit for API Key {key_identifier}. "
-                            f"No Retry-After header. Waiting {wait_time} seconds before retrying."
-                        )
+                            logger.warning("Invalid Retry-After header.")
+                    wait_time += random.randint(1, 9)
+                    logger.warning(
+                        f"Rate limit hit. Retrying after {wait_time} seconds."
+                    )
                     await asyncio.sleep(wait_time)
-
                 continue
             except httpx.RequestError as e:
                 last_exception = e
                 logger.error(
-                    f"Request error with key {key_identifier}: {e}. "
-                    f"Attempt {attempt + 1}/{self.max_retries}. Deactivating and retrying..."
+                    f"Request error with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
                 await key_manager.deactivate_key(key_identifier, "request_error")
                 continue
@@ -179,20 +184,17 @@ class ApiService(ABC):
 
         if last_exception:
             logger.critical(
-                f"All {self.max_retries} API key attempts failed. "
-                f"Last error: {last_exception}"
+                f"All {self.max_retries} API key attempts failed. Last error: {last_exception}"
             )
             if isinstance(last_exception, HTTPException):
                 raise last_exception
-            else:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"All API key attempts failed. Last error: {str(last_exception)}",
-                )
-        else:
             raise HTTPException(
-                status_code=500, detail="No API keys were available or processed."
+                status_code=500,
+                detail=f"All API key attempts failed. Last error: {str(last_exception)}",
             )
+        raise HTTPException(
+            status_code=500, detail="No API keys were available or processed."
+        )
 
     async def _send_request(
         self,
@@ -201,159 +203,26 @@ class ApiService(ABC):
         request_data: Any,
         stream: bool,
         params: Dict[str, str],
-        model_id: Optional[str] = None,  # 新增 model_id 参数
+        model_id: Optional[str] = None,
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
-        Handles sending the HTTP request, including API key management and retries.
+        Handles sending the HTTP request by dispatching to the appropriate generator.
         """
-        last_exception = None
-        for attempt in range(self.max_retries):
-            api_key = await key_manager.get_next_key()
-            self._current_api_key = api_key  # 存储当前使用的 key
-            if not api_key:
-                logger.error(
-                    f"Attempt {attempt + 1}/{self.max_retries}: No available API keys in the pool."
-                )
-                await key_manager.repair_redis_database()
-                last_exception = HTTPException(
-                    status_code=503, detail="No available API keys."
-                )
-                continue
+        generator = self._request_generator(
+            method=method,
+            url=url,
+            request_data=request_data,
+            stream=stream,
+            params=params,
+            model_id=model_id,
+        )
 
-            key_identifier = key_manager._get_key_identifier(api_key)
-            logger.info(
-                f"Attempt {attempt + 1}/{self.max_retries}: "
-                f"Using API key {key_identifier} for {self.service_name}, stream={stream}"
+        if stream:
+            return StreamingResponse(
+                cast(AsyncGenerator[str, None], generator),
+                media_type="text/event-stream",
             )
-
-            headers = self._prepare_headers(api_key)
-
-            try:
-                if settings.DEBUG_LOG_ENABLED:
-                    self.debug_logger.debug(
-                        "Request to %s API with key %s: %s",
-                        self.service_name,
-                        key_identifier,
-                        request_data.model_dump_json(by_alias=True, exclude_unset=True),
-                    )
-
-                response = await self.client.request(
-                    method,
-                    url,
-                    json=request_data.model_dump(by_alias=True, exclude_unset=True),
-                    headers=headers,
-                    params=params,
-                    timeout=120.0,
-                )
-                response.raise_for_status()
-
-                # 请求成功，标记 key 成功
-                await key_manager.mark_key_success(key_identifier)
-                # 记录成功调用的 key 和 model 用量
-                if model_id:
-                    await key_manager.record_usage(key_identifier, model_id)
-
-                if stream:
-                    logger.info(
-                        f"Request with key {key_identifier} succeeded (streaming)."
-                    )
-                    return StreamingResponse(
-                        self._streaming_request_generator(
-                            method=method,
-                            url=url,
-                            request_data=request_data,
-                            params=params,
-                            model_id=model_id,
-                        ),
-                        media_type="text/event-stream",
-                    )
-                else:
-                    response_json = response.json()
-                    if settings.DEBUG_LOG_ENABLED:
-                        self.debug_logger.debug(
-                            "Response from %s API with key %s: %s",
-                            self.service_name,
-                            key_identifier,
-                            response_json,
-                        )
-                    logger.info(f"Request with key {key_identifier} succeeded.")
-                    return response_json
-
-            except httpx.HTTPStatusError as e:
-                last_exception = e
-                if e.response.status_code in [401, 403]:
-                    error_type = "auth_error"
-                elif e.response.status_code == 429:
-                    error_type = "rate_limit_error"
-                else:
-                    error_type = "other_http_error"
-
-                logger.warning(
-                    f"API Key {key_identifier} failed with status {e.response.status_code}. "
-                    f"Deactivating it. Attempt {attempt + 1}/{self.max_retries}."
-                )
-                await key_manager.deactivate_key(key_identifier, error_type)
-
-                if e.response.status_code == 429:
-                    retry_after = e.response.headers.get("Retry-After")
-                    if retry_after:
-                        try:
-                            wait_time = int(retry_after) + random.randint(1, 9)
-                            logger.warning(
-                                f"Rate limit hit for API Key {key_identifier}. "
-                                f"Retrying after Retry-After header: {wait_time} seconds."  # noqa:E501
-                            )
-                        except ValueError:
-                            wait_time = (
-                                settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
-                                + random.randint(1, 9)
-                            )
-                            logger.warning(
-                                f"Rate limit hit for API Key {key_identifier}. "
-                                f"Invalid Retry-After header. Waiting {wait_time} seconds before retrying."  # noqa:E501
-                            )
-                    else:
-                        wait_time = (
-                            settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
-                            + random.randint(1, 9)
-                        )
-                        logger.warning(
-                            f"Rate limit hit for API Key {key_identifier}. "
-                            f"No Retry-After header. Waiting {wait_time} seconds before retrying."  # noqa:E501
-                        )
-                    await asyncio.sleep(wait_time)
-
-                continue
-            except httpx.RequestError as e:
-                last_exception = e
-                logger.error(
-                    f"Request error with key {key_identifier}: {e}. "
-                    f"Attempt {attempt + 1}/{self.max_retries}. Deactivating and retrying..."
-                )
-                await key_manager.deactivate_key(key_identifier, "request_error")
-                continue
-            except Exception as e:
-                last_exception = e
-                logger.critical(
-                    f"An unexpected error occurred with key {key_identifier}: {e}. No retry."  # noqa:E501
-                )
-                raise HTTPException(
-                    status_code=500, detail=f"An unexpected error occurred: {e}"
-                )
-
-        if last_exception:
-            logger.critical(
-                f"All {self.max_retries} API key attempts failed. "
-                f"Last error: {last_exception}"
-            )
-            if isinstance(last_exception, HTTPException):
-                raise last_exception
-            else:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"All API key attempts failed. Last error: {str(last_exception)}",  # noqa:E501
-                )
         else:
-            raise HTTPException(
-                status_code=500, detail="No API keys were available or processed."
-            )
+            # For non-streaming, get the first (and only) item from the generator
+            response_data = await generator.__anext__()
+            return cast(Dict[str, Any], response_data)
