@@ -80,6 +80,7 @@ class ApiService(ABC):
                     f"Attempt {attempt + 1}/{self.max_retries}: "
                     "No available API keys in the pool."
                 )
+                await key_manager.repair_redis_database()
                 last_exception = HTTPException(
                     status_code=503, detail="No available API keys."
                 )

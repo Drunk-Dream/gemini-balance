@@ -477,7 +477,6 @@ class RedisKeyManager:
                 return key
             else:
                 app_logger.warning("Timeout waiting for an available key.")
-                await self.repair_redis_database()
                 return None
 
     async def deactivate_key(self, key: str, error_type: str):
