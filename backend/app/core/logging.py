@@ -46,7 +46,7 @@ def setup_app_logger() -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
     # File handler
-    file_handler = logging.FileHandler(APP_LOG_FILE)
+    file_handler = RotatingFileHandler(APP_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5)
     file_handler.setFormatter(APP_FORMATTER)
     app_logger.addHandler(file_handler)
 
@@ -83,7 +83,7 @@ def setup_transaction_logger() -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
     # File handler
-    transaction_file_handler = logging.FileHandler(TRANSACTION_LOG_FILE)
+    transaction_file_handler = RotatingFileHandler(TRANSACTION_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5)
     transaction_file_handler.setFormatter(TRANSACTION_FORMATTER)
     transaction_logger.addHandler(transaction_file_handler)
 
