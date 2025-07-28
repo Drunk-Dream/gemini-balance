@@ -92,7 +92,6 @@ class RedisKeyManager:
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
         self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
         self._lock = asyncio.Lock()  # 用于保护 Redis 操作的本地锁
-        # self._condition = asyncio.Condition(self._lock) # 移除冗余代码
         self._background_task: Optional[asyncio.Task] = None
         self._wakeup_event = asyncio.Event()
 
@@ -297,13 +296,12 @@ class RedisKeyManager:
     async def repair_redis_database(self):
         """
         修复 Redis 数据库中的 API 密钥相关数据，直到健康检查通过。
-        此方法替代 initialize_keys 的功能。
+        此方法替代 initialize_keys 的功能，并修正了原有实现中的竞争条件和逻辑错误。
         """
-        # 获取分布式锁，锁的 key 是固定的，比如 "key_manager:repair_lock"
-        # SET NX EX 30 -- 尝试设置一个带30秒过期的锁，如果key已存在则失败
+        # 获取分布式锁，防止多个实例同时执行修复
         is_lock_acquired = await self._redis.set("key_manager:repair_lock", "1", nx=True, ex=30)  # type: ignore
-
         if not is_lock_acquired:
+            key_manager_logger.info("Repair lock already held. Skipping repair.")
             return
 
         try:
@@ -313,42 +311,72 @@ class RedisKeyManager:
                 )
                 await self._redis.flushdb()  # type: ignore
 
-            while True:
+            # 增加循环次数限制，防止无限循环
+            for i in range(5):
                 result = await self.check_redis_health()
                 if result.is_healthy:
+                    key_manager_logger.info(f"Redis database is healthy on attempt {i + 1}.")
                     break
 
+                key_manager_logger.warning(
+                    f"Redis health check failed (code: {result.error_code}) on attempt {i + 1}. "
+                    "Attempting repair..."
+                )
                 pipe = self._redis.pipeline()
 
                 if result.error_code == 1:
+                    # 修复：配置与 ALL_KEYS_SET 不一致
                     for key_identifier in result.added_keys:
-                        await self._get_key_state(key_identifier)  # 确保状态被初始化
-                        if not await self._redis.lpos(self.AVAILABLE_KEYS_KEY, key_identifier):  # type: ignore
-                            pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
+                        # 密钥在配置中但不在 Redis 中，添加它
+                        initial_state = KeyState(
+                            current_cool_down_seconds=self._initial_cool_down_seconds
+                        )
+                        pipe.hset(
+                            f"{self.KEY_STATE_PREFIX}{key_identifier}",
+                            mapping=initial_state.to_redis_hash(),
+                        )
+                        pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
                         pipe.sadd(self.ALL_KEYS_SET_KEY, key_identifier)
                     for key_identifier in result.missing_keys:
+                        # 密钥在 Redis 中但不在配置中，移除它
                         pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
                         pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
                         pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
                         pipe.srem(self.ALL_KEYS_SET_KEY, key_identifier)
+
                 elif result.error_code == 2:
+                    # 修复：ALL_KEYS_SET 与队列不一致
                     for key_identifier in result.missing_keys:
-                        pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
-                        await self._get_key_state(key_identifier)
-                        if not await self._redis.lpos(self.AVAILABLE_KEYS_KEY, key_identifier):  # type: ignore
-                            pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
+                        # 密钥在 ALL_KEYS_SET 中但不在队列中，添加回可用队列
+                        # 无需删除状态，因为状态是有效的
+                        pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
                     for key_identifier in result.extra_keys_in_redis:
+                        # 密钥在队列中但不在 ALL_KEYS_SET 中，从队列中移除
                         pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
                         pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
+
                 elif result.error_code == 3:
+                    # 修复：ALL_KEYS_SET 与 KeyState 不一致
                     for key_identifier in result.missing_states:
-                        await self._get_key_state(
-                            key_identifier
-                        )  # _get_key_state 会自动初始化并保存
+                        # 密钥状态丢失，创建默认状态
+                        initial_state = KeyState(
+                            current_cool_down_seconds=self._initial_cool_down_seconds
+                        )
+                        pipe.hset(
+                            f"{self.KEY_STATE_PREFIX}{key_identifier}",
+                            mapping=initial_state.to_redis_hash(),
+                        )
                     for key_identifier in result.extra_states_in_redis:
+                        # 存在多余的密钥状态，删除它
                         pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
 
                 await pipe.execute()
+                key_manager_logger.info(f"Repair attempt {i + 1} finished.")
+            else:
+                key_manager_logger.error(
+                    "Failed to repair Redis database after multiple attempts."
+                )
+
         finally:
             # 释放锁
             await self._redis.delete("key_manager:repair_lock")  # type: ignore
@@ -432,6 +460,7 @@ class RedisKeyManager:
             key_identifier = key_bytes.decode()
             return self._key_map.get(key_identifier)
         else:
+            await self.repair_redis_database()
             return None
 
     @log_function_calls(key_manager_logger)
