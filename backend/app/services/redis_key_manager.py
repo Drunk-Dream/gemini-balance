@@ -6,8 +6,12 @@ from typing import Dict, List, Optional
 
 import redis.asyncio as redis
 from app.core.config import settings
-from app.core.logging import app_logger
+from app.core.decorators import log_function_calls
+from app.core.logging import setup_debug_logger
 from pydantic import BaseModel, Field
+
+# 为 RedisKeyManager 创建一个专用的日志记录器
+key_manager_logger = setup_debug_logger("key_manager")
 
 
 class RedisHealthCheckResult(BaseModel):
@@ -165,6 +169,7 @@ class RedisKeyManager:
             return True
         return False
 
+    @log_function_calls(key_manager_logger)
     async def check_redis_health(self) -> RedisHealthCheckResult:
         """
         执行 Redis 数据库的健康检查。
@@ -173,12 +178,11 @@ class RedisKeyManager:
         2. ALL_KEYS_SET_KEY 中的密钥与 AVAILABLE_KEYS_KEY + COOLED_DOWN_KEYS_KEY 的一致性。
         3. ALL_KEYS_SET_KEY 中的每个密钥是否都有对应的 KeyState。
         """
-        app_logger.info("Starting Redis health check...")
         async with self._lock:
             config_key_identifiers = set(self._api_keys)  # 使用哈希标识符
 
             # 检查 1: 配置中的 API 密钥与 ALL_KEYS_SET_KEY 的一致性
-            app_logger.info(
+            key_manager_logger.info(
                 "Health Check 1: Comparing config key identifiers "
                 "with ALL_KEYS_SET_KEY."
             )
@@ -191,16 +195,16 @@ class RedisKeyManager:
             missing_in_config = list(redis_all_key_identifiers - config_key_identifiers)
 
             if added_in_config or missing_in_config:
-                app_logger.warning(
+                key_manager_logger.warning(
                     "Health Check 1 Failed:"
                     " Mismatch between config key identifiers and ALL_KEYS_SET_KEY."
                 )
                 if added_in_config:
-                    app_logger.warning(
+                    key_manager_logger.warning(
                         f"Key identifiers to add from config: {added_in_config}"
                     )
                 if missing_in_config:
-                    app_logger.warning(
+                    key_manager_logger.warning(
                         f"Key identifiers to remove from Redis: {missing_in_config}"
                     )
                 return RedisHealthCheckResult(
@@ -210,13 +214,13 @@ class RedisKeyManager:
                     added_keys=added_in_config,
                     missing_keys=missing_in_config,
                 )
-            app_logger.info(
+            key_manager_logger.info(
                 "Health Check 1 Passed:"
                 " Config key identifiers and ALL_KEYS_SET_KEY are consistent."
             )
 
             # 检查 2: ALL_KEYS_SET_KEY 中的密钥与 AVAILABLE_KEYS_KEY + COOLED_DOWN_KEYS_KEY 的一致性
-            app_logger.info(
+            key_manager_logger.info(
                 "Health Check 2: Comparing ALL_KEYS_SET_KEY "
                 "with AVAILABLE_KEYS_KEY + COOLED_DOWN_KEYS_KEY."
             )
@@ -242,17 +246,17 @@ class RedisKeyManager:
             )
 
             if missing_from_combined or extra_in_combined:
-                app_logger.warning(
+                key_manager_logger.warning(
                     "Health Check 2 Failed: Mismatch between "
                     "ALL_KEYS_SET_KEY and combined available/cooled key identifiers."
                 )
                 if missing_from_combined:
-                    app_logger.warning(
+                    key_manager_logger.warning(
                         "Key identifiers missing from available/cooled queues: "
                         f"{missing_from_combined}"
                     )
                 if extra_in_combined:
-                    app_logger.warning(
+                    key_manager_logger.warning(
                         f"Extra key identifiers in available/cooled queues: {extra_in_combined}"
                     )
                 return RedisHealthCheckResult(
@@ -262,12 +266,12 @@ class RedisKeyManager:
                     missing_keys=missing_from_combined,
                     extra_keys_in_redis=extra_in_combined,
                 )
-            app_logger.info(
+            key_manager_logger.info(
                 "Health Check 2 Passed: ALL_KEYS_SET_KEY and combined queues are consistent."
             )
 
             # 检查 3: ALL_KEYS_SET_KEY 中的每个密钥是否都有对应的 KeyState
-            app_logger.info(
+            key_manager_logger.info(
                 "Health Check 3: Verifying KeyState for each key identifier "
                 "in ALL_KEYS_SET_KEY."
             )
@@ -292,15 +296,15 @@ class RedisKeyManager:
             )
 
             if missing_states or extra_states_in_redis:
-                app_logger.warning(
+                key_manager_logger.warning(
                     "Health Check 3 Failed: Mismatch in KeyState entries."
                 )
                 if missing_states:
-                    app_logger.warning(
+                    key_manager_logger.warning(
                         f"Key identifiers with missing states: {missing_states}"
                     )
                 if extra_states_in_redis:
-                    app_logger.warning(
+                    key_manager_logger.warning(
                         f"Extra states in Redis: {extra_states_in_redis}"
                     )
                 return RedisHealthCheckResult(
@@ -310,131 +314,84 @@ class RedisKeyManager:
                     missing_states=missing_states,
                     extra_states_in_redis=extra_states_in_redis,
                 )
-            app_logger.info(
+            key_manager_logger.info(
                 "Health Check 3 Passed: All KeyState entries are consistent."
             )
 
-            app_logger.info("Redis health check completed successfully.")
+            key_manager_logger.info("Redis health check completed successfully.")
             return RedisHealthCheckResult(
                 is_healthy=True,
                 error_code=0,
                 message="Redis database is healthy.",
             )
 
+    @log_function_calls(key_manager_logger)
     async def repair_redis_database(self):
         """
         修复 Redis 数据库中的 API 密钥相关数据，直到健康检查通过。
         此方法替代 initialize_keys 的功能。
         """
-        app_logger.info("Starting Redis database repair process...")
         # 获取分布式锁，锁的 key 是固定的，比如 "key_manager:repair_lock"
         # SET NX EX 30 -- 尝试设置一个带30秒过期的锁，如果key已存在则失败
         is_lock_acquired = await self._redis.set("key_manager:repair_lock", "1", nx=True, ex=30)  # type: ignore
 
         if not is_lock_acquired:
-            app_logger.info(
-                "Another instance is already running the repair process. Skipping."
-            )
             return
 
         try:
             if settings.FORCE_RESET_REDIS:
-                app_logger.warning("FORCE_RESET_REDIS is enabled. Flushing Redis DB...")
+                key_manager_logger.warning(
+                    "FORCE_RESET_REDIS is enabled. Flushing Redis DB..."
+                )
                 await self._redis.flushdb()  # type: ignore
-                app_logger.info("Redis DB flushed.")
 
             while True:
                 result = await self.check_redis_health()
                 if result.is_healthy:
-                    app_logger.info("Redis database is now healthy. Repair complete.")
                     break
 
-                app_logger.info(
-                    f"Repair needed. Error code: {result.error_code}, "
-                    f"Message: {result.message}"
-                )
                 pipe = self._redis.pipeline()
 
                 if result.error_code == 1:
-                    # 修复 1: 配置与 ALL_KEYS_SET_KEY 不一致
-                    app_logger.info(
-                        "Repairing: Mismatch between config key identifiers "
-                        "and ALL_KEYS_SET_KEY."
-                    )
-                    # 添加配置中新增的密钥
                     for key_identifier in result.added_keys:
-                        app_logger.info(
-                            f"Repairing: Adding new API key identifier '{key_identifier}' from config."
-                        )
                         await self._get_key_state(key_identifier)  # 确保状态被初始化
                         if not await self._redis.lpos(self.AVAILABLE_KEYS_KEY, key_identifier):  # type: ignore
                             pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
                         pipe.sadd(self.ALL_KEYS_SET_KEY, key_identifier)
-                    # 移除 Redis 中多余的密钥
                     for key_identifier in result.missing_keys:
-                        app_logger.info(
-                            f"Repairing: Removing obsolete API key identifier '{key_identifier}' from Redis."
-                        )
                         pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
                         pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
                         pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
                         pipe.srem(self.ALL_KEYS_SET_KEY, key_identifier)
                 elif result.error_code == 2:
-                    # 修复 2: ALL_KEYS_SET_KEY 与可用/冷却队列不一致
-                    app_logger.info(
-                        "Repairing: Mismatch between ALL_KEYS_SET_KEY "
-                        "and available/cooled queues."
-                    )
-                    # 将 ALL_KEYS_SET_KEY 中缺失的 key 添加到可用队列
                     for key_identifier in result.missing_keys:
-                        app_logger.info(
-                            f"Repairing: Adding missing key identifier '{key_identifier}' "
-                            "to available queue and "
-                            "resetting its state."
-                        )
                         pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
                         await self._get_key_state(key_identifier)
                         if not await self._redis.lpos(self.AVAILABLE_KEYS_KEY, key_identifier):  # type: ignore
                             pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
-                    # 移除可用/冷却队列中多余的 key
                     for key_identifier in result.extra_keys_in_redis:
-                        app_logger.info(
-                            f"Repairing: Removing extra key identifier '{key_identifier}' "
-                            "from available/cooled queues."
-                        )
                         pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
                         pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
                 elif result.error_code == 3:
-                    # 修复 3: KeyState 不一致
-                    app_logger.info("Repairing: Mismatch in KeyState entries.")
-                    # 为缺失 KeyState 的 key 初始化状态
                     for key_identifier in result.missing_states:
-                        app_logger.info(
-                            f"Repairing: Initializing missing KeyState for '{key_identifier}'."
-                        )
                         await self._get_key_state(
                             key_identifier
                         )  # _get_key_state 会自动初始化并保存
-                    # 删除 Redis 中多余的 KeyState
                     for key_identifier in result.extra_states_in_redis:
-                        app_logger.info(
-                            f"Repairing: Deleting extra KeyState for '{key_identifier}'."
-                        )
                         pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
 
                 await pipe.execute()
-                app_logger.info("Repair step executed. Re-checking health...")
         finally:
             # 释放锁
             await self._redis.delete("key_manager:repair_lock")  # type: ignore
 
+    @log_function_calls(key_manager_logger)
     async def _release_cooled_down_keys(self):
         while True:
             sleep_duration = 3600  # 默认休眠时间
             try:
                 async with self._lock:
                     now = time.time()
-                    app_logger.debug(f"Background task: Current time is {now}")
                     # 从有序集合中获取所有已冷却完毕的密钥
                     ready_to_release = await self._redis.zrangebyscore(  # type: ignore
                         self.COOLED_DOWN_KEYS_KEY, min=0, max=now, withscores=True
@@ -456,14 +413,13 @@ class RedisKeyManager:
                                     f"{self.KEY_STATE_PREFIX}{key_identifier}",
                                     mapping=key_state.to_redis_hash(),
                                 )
-                                app_logger.info(
+                                key_manager_logger.info(
                                     f"API key identifier '{key_identifier}' reactivated."
                                 )
                                 pipe.zrem(
                                     self.COOLED_DOWN_KEYS_KEY, key_identifier
                                 )  # 只有成功重新激活才移除
                         await pipe.execute()
-                        app_logger.debug("Background task: Pipeline executed.")
 
                     self._wakeup_event.clear()
 
@@ -474,25 +430,15 @@ class RedisKeyManager:
                     if next_cooled_key:
                         next_release_time = next_cooled_key[0][1]
                         sleep_duration = max(0.1, next_release_time - time.time())
-                        app_logger.debug(f"Next key release in {sleep_duration:.2f}s.")
                         # self._condition.notify_all() # 移除冗余代码
-                    else:
-                        sleep_duration = 3600  # 如果没有key，则长时间休眠
-                        app_logger.debug("No cooled down keys, sleeping for 3600s.")
 
                 # 在锁之外等待
-                app_logger.debug(f"Waiting for {sleep_duration:.2f}s or wakeup event.")
                 await asyncio.wait_for(
                     self._wakeup_event.wait(), timeout=sleep_duration
                 )
-                app_logger.debug("Woke up by event.")
             except asyncio.TimeoutError:
-                app_logger.debug("Woke up by timeout.")
                 pass  # 超时是正常的，继续下一次循环
             except asyncio.CancelledError:
-                app_logger.info(
-                    "Background task `_release_cooled_down_keys` cancelled."
-                )
                 raise  # 重新引发异常以允许任务正常取消
 
     async def start_background_task(self):
@@ -507,6 +453,7 @@ class RedisKeyManager:
             self._background_task.cancel()
             self._background_task = None
 
+    @log_function_calls(key_manager_logger)
     async def get_next_key(self) -> Optional[str]:
         # 尝试从可用队列中获取密钥，并将其原子性地移动到队列尾部，实现轮询
         # 如果队列为空，则阻塞最多5秒
@@ -517,9 +464,9 @@ class RedisKeyManager:
             key_identifier = key_bytes.decode()
             return self._key_map.get(key_identifier)
         else:
-            app_logger.warning("Timeout waiting for an available key.")
             return None
 
+    @log_function_calls(key_manager_logger)
     async def deactivate_key(self, key_identifier: str, error_type: str):
         async with self._lock:
             key_state = await self._get_key_state(key_identifier)
@@ -542,7 +489,7 @@ class RedisKeyManager:
                 pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
 
                 key_state.cool_down_entry_count += 1
-                # 计算新的冷却时间（指数退避）
+                # 算新的冷却时间（指数退避）
                 backoff_factor = 2 ** (key_state.cool_down_entry_count - 1)
                 new_cool_down = self._initial_cool_down_seconds * backoff_factor
                 key_state.current_cool_down_seconds = min(
@@ -564,7 +511,7 @@ class RedisKeyManager:
                 await pipe.execute()
 
                 self._wakeup_event.set()
-                app_logger.warning(
+                key_manager_logger.warning(
                     f"Key identifier '{key_identifier}' cooled down for "
                     f"{key_state.current_cool_down_seconds:.2f}s "
                     "due to {error_type}."
@@ -573,6 +520,7 @@ class RedisKeyManager:
                 # 如果不需要冷却，仅更新失败计数
                 await self._save_key_state(key_identifier, key_state)
 
+    @log_function_calls(key_manager_logger)
     async def mark_key_success(self, key_identifier: str):
         async with self._lock:
             key_state = await self._get_key_state(key_identifier)
@@ -581,6 +529,7 @@ class RedisKeyManager:
                 key_state.current_cool_down_seconds = self._initial_cool_down_seconds
                 await self._save_key_state(key_identifier, key_state)
 
+    @log_function_calls(key_manager_logger)
     async def record_usage(self, key_identifier: str, model: str):
         """记录指定 key 和模型的用量。"""
         async with self._lock:
@@ -591,11 +540,8 @@ class RedisKeyManager:
             await self._reset_daily_usage_if_needed(key_state)
             key_state.usage_today[model] = key_state.usage_today.get(model, 0) + 1
             await self._save_key_state(key_identifier, key_state)
-            app_logger.debug(
-                f"Key identifier '{key_identifier}' usage for model '{model}': "
-                f"{key_state.usage_today[model]}"
-            )
 
+    @log_function_calls(key_manager_logger)
     async def get_key_states(self) -> List[KeyStatusResponse]:
         """返回所有 API key 的详细状态列表。"""
         async with self._lock:

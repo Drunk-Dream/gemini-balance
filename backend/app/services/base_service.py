@@ -77,8 +77,7 @@ class ApiService(ABC):
             self._current_api_key = api_key  # 存储当前使用的 key
             if not api_key:
                 logger.error(
-                    f"Attempt {attempt + 1}/{self.max_retries}: "
-                    "No available API keys in the pool."
+                    f"Attempt {attempt + 1}/{self.max_retries}: No available API keys in the pool."
                 )
                 await key_manager.repair_redis_database()
                 last_exception = HTTPException(
