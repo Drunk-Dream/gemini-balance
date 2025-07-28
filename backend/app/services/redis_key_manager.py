@@ -15,38 +15,6 @@ key_manager_logger = setup_debug_logger("key_manager")
 
 
 class RedisHealthCheckResult(BaseModel):
-    """
-    Redis健康检查结果类。
-
-    该类用于表示Redis健康检查的结果，包含健康状态、错误代码、错误信息以及相关的键状态信息。
-
-    核心功能:
-    - `is_healthy`: 表示Redis是否健康。
-    - `error_code`: 错误代码，0表示健康，其他值表示不同的错误类型。
-    - `message`: 错误信息，描述具体的错误原因。
-    - `added_keys`: 检查过程中新增的键列表。
-    - `missing_keys`: 检查过程中缺失的键列表。
-    - `extra_keys_in_redis`: Redis中多余的键列表。
-    - `missing_states`: 缺失的状态列表。
-    - `extra_states_in_redis`: Redis中多余的状态列表。
-
-    使用示例:
-
-    构造函数参数:
-    - `is_healthy` (bool): 表示Redis是否健康。
-    - `error_code` (int, 可选): 错误代码，默认为0。0表示健康，1表示配置与ALL_KEYS_SET_KEY不匹配，
-      2表示ALL_KEYS_SET_KEY与可用/冷却状态不匹配，3表示键状态不匹配。
-    - `message` (str, 可选): 错误信息，默认为空字符串。
-    - `added_keys` (List[str], 可选): 新增的键列表，默认为空列表。
-    - `missing_keys` (List[str], 可选): 缺失的键列表，默认为空列表。
-    - `extra_keys_in_redis` (List[str], 可选): Redis中多余的键列表，默认为空列表。
-    - `missing_states` (List[str], 可选): 缺失的状态列表，默认为空列表。
-    - `extra_states_in_redis` (List[str], 可选): Redis中多余的状态列表，默认为空列表。
-
-    特殊使用限制或潜在的副作用:
-    - 无特殊使用限制或潜在的副作用。
-    """
-
     is_healthy: bool
     error_code: int = 0
     message: str = ""
