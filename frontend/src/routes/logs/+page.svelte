@@ -107,7 +107,7 @@
 			{ regex: /\b(DEBUG)\b/, class: 'font-bold text-blue-400' }, // Log Level DEBUG
 			{ regex: /\b(true)\b/gi, class: 'text-green-400' }, // Boolean true
 			{ regex: /\b(false)\b/gi, class: 'text-red-400' }, // Boolean false
-			{ regex: /(\.\.\.[a-zA-Z0-9]{4})\b/g, class: 'text-violet-400' }, // Key suffix
+			{ regex: /(key_sha256_[a-zA-Z0-9]{8})\b/g, class: 'text-violet-400' }, // Key suffix
 			{ regex: /\b(gemini-[\w.-]+|gpt-[\w.-]+)\b/g, class: 'text-pink-400' } // Model name
 		];
 
