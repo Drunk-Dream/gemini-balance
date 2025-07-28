@@ -112,8 +112,10 @@ class RedisKeyManager:
         if not api_keys:
             raise ValueError("API key list cannot be empty.")
         self._redis = redis_client
+        # 创建从密钥标识符到原始密钥的映射
+        self._key_map = {self._get_key_identifier(key): key for key in api_keys}
         # 将原始 API 密钥转换为哈希标识符
-        self._api_keys = [self._get_key_identifier(key) for key in api_keys]
+        self._api_keys = list(self._key_map.keys())
         self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
         self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
@@ -512,8 +514,8 @@ class RedisKeyManager:
             self.AVAILABLE_KEYS_KEY, self.AVAILABLE_KEYS_KEY, 5, "LEFT", "RIGHT"
         )
         if key_bytes:
-            key_identifier = key_bytes.decode()  # <--- 关键修复：解码 bytes
-            return key_identifier
+            key_identifier = key_bytes.decode()
+            return self._key_map.get(key_identifier)
         else:
             app_logger.warning("Timeout waiting for an available key.")
             return None

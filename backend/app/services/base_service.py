@@ -86,10 +86,10 @@ class ApiService(ABC):
                 )
                 continue
 
-            key_identifier = f"...{api_key[-4:]}"
+            key_identifier = key_manager._get_key_identifier(api_key)
             logger.info(
                 f"Attempt {attempt + 1}/{self.max_retries}: "
-                f"Using API key {key_identifier} for {self.service_name}, stream={stream}"  # noqa:E501
+                f"Using API key {key_identifier} for {self.service_name}, stream={stream}"
             )
 
             headers = self._prepare_headers(api_key)
@@ -114,10 +114,10 @@ class ApiService(ABC):
                 response.raise_for_status()
 
                 # 请求成功，标记 key 成功
-                await key_manager.mark_key_success(api_key)
+                await key_manager.mark_key_success(key_identifier)
                 # 记录成功调用的 key 和 model 用量
                 if model_id:
-                    await key_manager.record_usage(api_key, model_id)
+                    await key_manager.record_usage(key_identifier, model_id)
 
                 if stream:
                     logger.info(
@@ -148,10 +148,10 @@ class ApiService(ABC):
                     error_type = "other_http_error"
 
                 logger.warning(
-                    f"API Key {key_identifier} failed with status {e.response.status_code}. "  # noqa:E501
+                    f"API Key {key_identifier} failed with status {e.response.status_code}. "
                     f"Deactivating it. Attempt {attempt + 1}/{self.max_retries}."
                 )
-                await key_manager.deactivate_key(api_key, error_type)
+                await key_manager.deactivate_key(key_identifier, error_type)
 
                 if e.response.status_code == 429:
                     retry_after = e.response.headers.get("Retry-After")
@@ -187,9 +187,9 @@ class ApiService(ABC):
                 last_exception = e
                 logger.error(
                     f"Request error with key {key_identifier}: {e}. "
-                    f"Attempt {attempt + 1}/{self.max_retries}. Deactivating and retrying..."  # noqa:E501
+                    f"Attempt {attempt + 1}/{self.max_retries}. Deactivating and retrying..."
                 )
-                await key_manager.deactivate_key(api_key, "request_error")
+                await key_manager.deactivate_key(key_identifier, "request_error")
                 continue
             except Exception as e:
                 last_exception = e
