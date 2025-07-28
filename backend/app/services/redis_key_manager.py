@@ -469,7 +469,7 @@ class RedisKeyManager:
     async def get_next_key(self) -> Optional[str]:
         async with self._lock:
             # 尝试从可用队列中获取密钥，如果队列为空则阻塞
-            key_bytes = await self._redis.blpop([self.AVAILABLE_KEYS_KEY], timeout=10)  # type: ignore
+            key_bytes = await self._redis.blpop([self.AVAILABLE_KEYS_KEY], timeout=5)  # type: ignore # noqa: E501
             if key_bytes:
                 key = key_bytes[1].decode()  # blpop 返回 (list_name, key_value)
                 # 将密钥重新放回队列尾部，实现轮询
