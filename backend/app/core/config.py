@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     FORCE_RESET_REDIS: bool = (
         os.getenv("FORCE_RESET_REDIS", "False").lower() == "true"
     )
+    MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
 
     @field_validator("GOOGLE_API_KEYS", mode="before")
     @classmethod

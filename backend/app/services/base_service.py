@@ -23,8 +23,8 @@ class ApiService(ABC):
         self.base_url = base_url
         self.service_name = service_name
         self.client = httpx.AsyncClient(base_url=self.base_url)
-        self.max_retries = len(settings.GOOGLE_API_KEYS or []) or 1
-        if self.max_retries == 0:
+        self.max_retries = settings.MAX_RETRIES
+        if not settings.GOOGLE_API_KEYS:
             raise ValueError("No Google API keys configured.")
         self._current_api_key: Optional[str] = None  # 初始化 _current_api_key
 
