@@ -104,10 +104,9 @@ class ApiService(ABC):
                         logger.info(
                             f"Streaming request with key {key_identifier} succeeded."
                         )
-                        async for chunk in response.aiter_bytes():
-                            decoded_chunk = chunk.decode("utf-8")
-                            transaction_logger.info(f"Stream chunk: {decoded_chunk}")
-                            yield decoded_chunk
+                        async for text_chunk in response.aiter_text():
+                            transaction_logger.info(f"Stream chunk: {text_chunk}")
+                            yield text_chunk
                         return
                 else:
                     response = await self.client.request(
