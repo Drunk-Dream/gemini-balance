@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 import redis.asyncio as redis
-from app.core.config import settings
+from app.core.config import Settings, settings
 from app.core.decorators import log_function_calls
 from app.core.logging import setup_debug_logger
 from pydantic import BaseModel, Field
@@ -76,16 +76,12 @@ class KeyStatusResponse(BaseModel):
 
 
 class RedisKeyManager:
-    def __init__(
-        self,
-        redis_client: redis.Redis,
-        api_keys: List[str],
-    ):
-        if not api_keys:
+    def __init__(self, redis_client: redis.Redis, settings: Settings):
+        if not settings.GOOGLE_API_KEYS:
             raise ValueError("API key list cannot be empty.")
         self._redis = redis_client
         # 创建从密钥标识符到原始密钥的映射
-        self._key_map = {self._get_key_identifier(key): key for key in api_keys}
+        self._key_map = {self._get_key_identifier(key): key for key in settings.GOOGLE_API_KEYS}
         # 将原始 API 密钥转换为哈希标识符
         self._api_keys = list(self._key_map.keys())
         self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
@@ -612,5 +608,5 @@ redis_client = redis.Redis(
 )
 redis_key_manager = RedisKeyManager(
     redis_client,
-    (settings.GOOGLE_API_KEYS if settings.GOOGLE_API_KEYS is not None else []),
+    settings
 )
