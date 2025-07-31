@@ -26,8 +26,6 @@ services:
     networks:
       - shared_net
     restart: always
-    sysctls:
-      - vm.overcommit_memory=1
     ports:
       - "2017:2017"
       - "20170-20172:20170-20172"
