@@ -11,8 +11,6 @@ dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",
-    "pytest>=8.4.1",
-    "pytest-asyncio>=1.0.0",
     "python-dotenv>=1.1.1",
     "redis[hiredis]>=6.2.0",
     "uvicorn>=0.35.0",
@@ -21,3 +19,9 @@ dependencies = [
 [[tool.uv.index]]
 url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
 default = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+]
