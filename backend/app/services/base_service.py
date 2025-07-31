@@ -5,7 +5,7 @@ from typing import Any, AsyncGenerator, Dict, Optional, Union, cast
 
 import httpx
 from app.core.config import settings
-from app.core.logging import app_logger, setup_debug_logger
+from app.core.logging import app_logger, setup_debug_logger, transaction_logger
 from app.services.redis_key_manager import redis_key_manager as key_manager
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
@@ -106,10 +106,7 @@ class ApiService(ABC):
                         )
                         async for chunk in response.aiter_bytes():
                             decoded_chunk = chunk.decode("utf-8")
-                            if settings.DEBUG_LOG_ENABLED:
-                                self.debug_logger.debug(
-                                    f"Stream chunk: {decoded_chunk}"
-                                )
+                            transaction_logger.info(f"Stream chunk: {decoded_chunk}")
                             yield decoded_chunk
                         return
                 else:
@@ -126,13 +123,12 @@ class ApiService(ABC):
                     if model_id:
                         await key_manager.record_usage(key_identifier, model_id)
                     response_json = response.json()
-                    if settings.DEBUG_LOG_ENABLED:
-                        self.debug_logger.debug(
-                            "Response from %s API with key %s: %s",
-                            self.service_name,
-                            key_identifier,
-                            response_json,
-                        )
+                    transaction_logger.info(
+                        "Response from %s API with key %s: %s",
+                        self.service_name,
+                        key_identifier,
+                        response_json,
+                    )
                     logger.info(f"Request with key {key_identifier} succeeded.")
                     yield response_json
                     return
