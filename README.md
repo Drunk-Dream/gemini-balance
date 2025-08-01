@@ -6,7 +6,7 @@
 
 - **请求转发**: 将客户端请求转发至 Google Gemini API。
 - **响应返回**: 将 Gemini API 的响应原样返回给客户端，支持普通响应和流式响应。
-- **API 密钥管理**: 引入 `RedisKeyManager`，利用 Redis 实现持久化和可扩展的密钥状态管理，支持 API 密钥的轮询、冷却和指数退避，提高服务可靠性。
+- **可插拔的持久化密钥管理**: 引入高度模块化的密钥管理系统，支持通过配置动态选择 Redis 或 SQLite 作为持久化后端，实现 API 密钥的轮询、冷却、指数退避和状态持久化，极大提高服务可靠性和灵活性。
 - **服务抽象**: 引入 `ApiService` 基类，抽象通用 API 交互逻辑，减少代码重复。
 - **配置管理**: 通过环境变量灵活配置 API Key 和其他设置，包括 API 密钥冷却时间。
 - **日志记录**: 详细的结构化日志输出，支持主应用日志、事务日志和可选的调试日志（通过 `RotatingFileHandler` 管理），便于监控和问题排查。
@@ -23,7 +23,7 @@
 - **Google Gemini SDK**: google-generativeai
 - **异步**: Python `asyncio`
 - **容器化**: Docker, Docker Compose
-- **数据持久化**: Redis
+- **数据持久化**: Redis, SQLite
 - **测试**: pytest, pytest-asyncio
 
 ## 项目结构
@@ -54,18 +54,25 @@ gemini-balance/
 │   │   │           └── gemini.py
 │   │   ├── core/
 │   │   │   ├── config.py
+│   │   │   ├── decorators.py
 │   │   │   └── logging.py
 │   │   ├── services/
 │   │   │   ├── base_service.py
 │   │   │   ├── gemini_service.py
-│   │   │   ├── redis_key_manager.py
-│   │   │   └── openai_service.py
+│   │   │   ├── openai_service.py
+│   │   │   └── key_managers/
+│   │   │       ├── __init__.py
+│   │   │       ├── db_manager.py
+│   │   │       ├── key_state_manager.py
+│   │   │       ├── redis_manager.py
+│   │   │       └── sqlite_manager.py
 │   │   └── main.py
 │   ├── pyproject.toml
 │   ├── uv.lock
 │   └── tests/
+│       ├── __init__.py
 │       ├── test_gemini.py
-│       └── test_key_manager.py
+│       ├── test_key_manager.py
 │       └── test_redis_key_manager.py
 ├── frontend/
 │   ├── package.json
@@ -86,6 +93,7 @@ gemini-balance/
 ├── logs/
 ├── docker-compose.yml
 ├── README.md
+├── redis.conf
 └── todo_list.md
 ```
 
@@ -100,7 +108,7 @@ cd gemini-balance
 
 ### 2. 配置环境变量
 
-创建 `.env` 文件，并根据 `.env.example` 填写您的 Google Gemini API Key 和 Redis 配置。
+创建 `.env` 文件，并根据 `.env.example` 填写您的 Google Gemini API Key 和数据库配置。
 
 ```bash
 cp .env.example .env
@@ -110,14 +118,16 @@ cp .env.example .env
 
 ```
 GOOGLE_API_KEYS="YOUR_GEMINI_API_KEY"
+DATABASE_TYPE="redis" # 或 "sqlite"
 REDIS_HOST="localhost"
 REDIS_PORT=6379
 REDIS_PASSWORD=""
 ```
+- `DATABASE_TYPE`: 设置为 `redis` 使用 Redis 作为密钥存储，或设置为 `sqlite` 使用 SQLite。
 
 ### 3. 使用 Docker Compose 启动服务
 
-本项目推荐使用 Docker Compose 进行部署，它会同时构建和启动后端、前端及 Redis 服务。
+本项目推荐使用 Docker Compose 进行部署，它会同时构建和启动后端、前端及 Redis 服务（如果 `DATABASE_TYPE` 设置为 `redis`）。
 
 ```bash
 docker-compose up -d --build
@@ -127,7 +137,7 @@ docker-compose up -d --build
 
 **关于代理服务 (v2raya) 和网络配置：**
 
-`docker-compose.yml` 中包含了 `v2raya` 代理服务，用于处理后端服务的网络请求。如果您不需要理，可以从 `docker-compose.yml` 中删除 `v2raya` 服务及其相关的 `depends_on`、`networks` 和 `environment` 配置。
+`docker-compose.yml` 中包含了 `v2raya` 代理服务，用于处理后端服务的网络请求。如果您不需要代理，可以从 `docker-compose.yml` 中删除 `v2raya` 服务及其相关的 `depends_on`、`networks` 和 `environment` 配置。
 
 此外，`docker-compose.yml` 配置了一个名为 `gemini-balance-open-webui` 的外部网络 `shared_net`，旨在与 Open WebUI 等其他服务共享网络。如果您不使用此功能，可以删除 `gemini-balance` 和 `v2raya` 服务下的 `networks` 配置。
 
@@ -195,7 +205,7 @@ npm run dev
 
 ## 测试
 
-本项目包含针对 `RedisKeyManager`、`Gemini` 和新增 `Status` 服务的单元测试。
+本项目包含针对 `KeyStateManager`、`RedisDBManager`、`SQLiteDBManager`、`Gemini` 和新增 `Status` 服务的单元测试。
 - 所有自动化测试代码应统一放置于 `tests/` 目录，使用 `test_` 前缀命名，例如 `test_xxx.py`。
 - 推荐使用 `pytest` 工具进行测试组织与断言，测试代码同样需加类型提示。
 - 测试用例应避免对覆盖率、持续集成（CI）和测试数据纳入版本控制的硬性要求。
