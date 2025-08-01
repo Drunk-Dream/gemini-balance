@@ -62,6 +62,11 @@ class KeyManager(ABC):
         return self._key_map.get(key_identifier)
 
     @abstractmethod
+    async def initialize(self):
+        """初始化密钥管理器"""
+        pass
+
+    @abstractmethod
     async def get_next_key(self) -> Optional[str]:
         """获取下一个可用的 API 密钥"""
         pass

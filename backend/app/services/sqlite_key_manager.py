@@ -4,6 +4,7 @@ import json
 import sqlite3
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from app.core.config import Settings, settings
@@ -17,7 +18,9 @@ class SQLiteKeyManager(KeyManager):
         settings: Settings,
     ):
         super().__init__(settings)
-        self.sqlite_db = settings.SQLITE_DB
+        self.sqlite_db = Path(settings.SQLITE_DB)
+        if not self.sqlite_db.parent.exists():
+            self.sqlite_db.parent.mkdir(parents=True, exist_ok=True)
         self._available_keys: List[Tuple[float, str]] = (
             []
         )  # (last_usage_time, key) min-heap
@@ -28,7 +31,7 @@ class SQLiteKeyManager(KeyManager):
         self._key_states: Dict[str, KeyState] = {}  # 内存中的 KeyState 缓存
 
         # 初始化数据库和加载密钥状态
-        asyncio.run(self._initialize_database())
+        # asyncio.run(self._initialize_database()) # 移除此行
 
     async def _execute_query(self, query: str, params: tuple = ()):
         """在单独的线程中执行 SQLite 查询，避免阻塞事件循环。"""
@@ -45,7 +48,7 @@ class SQLiteKeyManager(KeyManager):
         finally:
             conn.close()
 
-    async def _initialize_database(self):
+    async def initialize(self):
         """初始化数据库，创建表并同步密钥。"""
         await self._execute_query(
             """
@@ -311,10 +314,10 @@ class SQLiteKeyManager(KeyManager):
             key_state.request_fail_count = 0  # 成功时重置失败计数
 
             # 将密钥放回可用队列
-            heapq.heappush(
-                self._available_keys, (time.time(), key_identifier)
+            heapq.heappush(self._available_keys, (time.time(), key_identifier))
+            app_logger.info(
+                f"API key '{key_identifier}' marked as success and returned to available pool."
             )
-            app_logger.info(f"API key '{key_identifier}' marked as success and returned to available pool.")
 
             await self._update_key_state_in_db(key_identifier, key_state)
 

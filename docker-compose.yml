@@ -7,6 +7,7 @@ services:
       - .env
     volumes:
       - ./logs:/app/backend/logs # 调整日志路径
+      - ./data:/app/backend/data # 调整数据路径
     # 与Open Webui 共享网络，如果不需要，可删除shared_net
     networks:
       - shared_net

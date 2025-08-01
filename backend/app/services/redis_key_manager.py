@@ -256,6 +256,12 @@ class RedisKeyManager(KeyManager):
             message="Redis database is healthy.",
         )
 
+    async def initialize(self):
+        """
+        初始化 Redis 数据库中的 API 密钥相关数据。
+        """
+        await self.repair_redis_database()
+
     @log_function_calls(key_manager_logger)
     async def check_redis_health(self) -> RedisHealthCheckResult:
         """
@@ -441,7 +447,6 @@ class RedisKeyManager(KeyManager):
             self._background_task = asyncio.create_task(
                 self._release_cooled_down_keys()
             )
-            await self.repair_redis_database()  # 确保后台任务启动时初始化密钥
 
     def stop_background_task(self):
         if self._background_task:

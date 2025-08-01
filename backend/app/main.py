@@ -16,10 +16,12 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting background task for RedisKeyManager...")
+    logger.info("Initializing KeyManager...")
+    await key_manager.initialize()
+    logger.info("Starting background task for KeyManager...")
     await key_manager.start_background_task()
     yield
-    logger.info("Stopping background task for RedisKeyManager...")
+    logger.info("Stopping background task for KeyManager...")
     key_manager.stop_background_task()
 
 
