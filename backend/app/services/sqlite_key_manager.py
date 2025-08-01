@@ -33,30 +33,17 @@ class SQLiteKeyManager(KeyManager):
         )  # 可用密钥的 key_identifier 集合，用于快速查找
         self._key_states: Dict[str, KeyState] = {}  # 内存中的 KeyState 缓存
 
-        # 初始化数据库和加载密钥状态
-        # asyncio.run(self._initialize_database()) # 移除此行
-        self._db_lock = asyncio.Lock()  # 用于保护数据库操作的锁
-
-    async def _execute_query(
-        self, query: str, params: tuple = (), conn: Optional[sqlite3.Connection] = None
-    ):
-        """在单独的线程中执行 SQLite 查询，避免阻塞事件循环。"""
-        return await asyncio.to_thread(self._sync_execute_query, query, params, conn)
-
-    def _sync_execute_query(
-        self, query: str, params: tuple = (), conn: Optional[sqlite3.Connection] = None
-    ):
+    def _sync_execute_query(self, query: str, params: tuple = ()):
         """同步执行 SQLite 查询。"""
-        _conn = conn if conn else sqlite3.connect(self.sqlite_db)
-        cursor = _conn.cursor()
-        try:
+        with sqlite3.connect(self.sqlite_db) as conn:
+            cursor = conn.cursor()
             cursor.execute(query, params)
-            if not conn:  # 如果是新连接，则提交并关闭
-                _conn.commit()
+            conn.commit()
             return cursor.fetchall()
-        finally:
-            if not conn:  # 如果是新连接，则关闭
-                _conn.close()
+
+    async def _execute_query(self, query: str, params: tuple = ()):
+        """在单独的线程中执行 SQLite 查询，避免阻塞事件循环。"""
+        return await asyncio.to_thread(self._sync_execute_query, query, params)
 
     async def initialize(self):
         """初始化数据库，创建表并同步密钥。"""
@@ -84,66 +71,57 @@ class SQLiteKeyManager(KeyManager):
         await self._sync_keys_with_db()
         await self._load_key_states_from_db()
 
+    def _sync_keys_with_db_sync(self):
+        """将配置中的密钥与数据库同步（同步版本）。"""
+        with sqlite3.connect(self.sqlite_db) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT key_identifier FROM api_keys")
+            db_keys = {row[0] for row in cursor.fetchall()}
+            config_keys = set(self._api_keys)
+
+            # 添加新密钥
+            for key_identifier in config_keys - db_keys:
+                cursor.execute(
+                    "INSERT INTO api_keys (key_identifier) VALUES (?)", (key_identifier,)
+                )
+                initial_state = KeyState(
+                    current_cool_down_seconds=self._initial_cool_down_seconds
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO key_states (
+                        key_identifier, cool_down_until, request_fail_count,
+                        cool_down_entry_count, current_cool_down_seconds,
+                        usage_today, last_usage_date, last_usage_time
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        key_identifier,
+                        initial_state.cool_down_until,
+                        initial_state.request_fail_count,
+                        initial_state.cool_down_entry_count,
+                        initial_state.current_cool_down_seconds,
+                        json.dumps(initial_state.usage_today),
+                        initial_state.last_usage_date,
+                        initial_state.last_usage_time,
+                    ),
+                )
+                app_logger.info(f"Added new API key '{key_identifier}' to DB.")
+
+            # 移除不再使用的密钥
+            for key_identifier in db_keys - config_keys:
+                cursor.execute(
+                    "DELETE FROM api_keys WHERE key_identifier = ?", (key_identifier,)
+                )
+                cursor.execute(
+                    "DELETE FROM key_states WHERE key_identifier = ?", (key_identifier,)
+                )
+                app_logger.info(f"Removed API key '{key_identifier}' from DB.")
+            conn.commit()
+
     async def _sync_keys_with_db(self):
         """将配置中的密钥与数据库同步。"""
-        async with self._db_lock:
-            conn = sqlite3.connect(self.sqlite_db)
-            try:
-                db_keys_raw = await self._execute_query(
-                    "SELECT key_identifier FROM api_keys", conn=conn
-                )
-                db_keys = {row[0] for row in db_keys_raw}
-                config_keys = set(self._api_keys)
-
-                # 添加新密钥
-                for key_identifier in config_keys - db_keys:
-                    await self._execute_query(
-                        "INSERT INTO api_keys (key_identifier) VALUES (?)",
-                        (key_identifier,),
-                        conn=conn,
-                    )
-                    # 初始化新密钥的状态
-                    initial_state = KeyState(
-                        current_cool_down_seconds=self._initial_cool_down_seconds
-                    )
-                    await self._execute_query(
-                        """
-                        INSERT INTO key_states (
-                            key_identifier, cool_down_until, request_fail_count,
-                            cool_down_entry_count, current_cool_down_seconds,
-                            usage_today, last_usage_date, last_usage_time
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            key_identifier,
-                            initial_state.cool_down_until,
-                            initial_state.request_fail_count,
-                            initial_state.cool_down_entry_count,
-                            initial_state.current_cool_down_seconds,
-                            json.dumps(initial_state.usage_today),
-                            initial_state.last_usage_date,
-                            initial_state.last_usage_time,
-                        ),
-                        conn=conn,
-                    )
-                    app_logger.info(f"Added new API key '{key_identifier}' to DB.")
-
-                # 移除不再使用的密钥
-                for key_identifier in db_keys - config_keys:
-                    await self._execute_query(
-                        "DELETE FROM api_keys WHERE key_identifier = ?",
-                        (key_identifier,),
-                        conn=conn,
-                    )
-                    await self._execute_query(
-                        "DELETE FROM key_states WHERE key_identifier = ?",
-                        (key_identifier,),
-                        conn=conn,
-                    )
-                    app_logger.info(f"Removed API key '{key_identifier}' from DB.")
-                conn.commit()  # 提交所有更改
-            finally:
-                conn.close()
+        await asyncio.to_thread(self._sync_keys_with_db_sync)
 
     async def _load_key_states_from_db(self):
         """从数据库加载密钥状态到内存。"""
@@ -210,10 +188,9 @@ class SQLiteKeyManager(KeyManager):
                             self._available_keys, (time.time(), key_identifier)
                         )  # 重新加入可用队列
                         self._available_keys_set.add(key_identifier)  # 添加到可用集合
-                        async with self._db_lock:  # 在这里添加数据库锁
-                            await self._update_key_state_in_db(
-                                key_identifier, self._key_states[key_identifier]
-                            )
+                        await self._update_key_state_in_db(
+                            key_identifier, self._key_states[key_identifier]
+                        )
                         app_logger.info(f"API key '{key_identifier}' reactivated.")
                     # 如果密钥状态已改变（例如，在冷却期间再次被停用），则忽略此旧条目
                     # 并继续检查下一个堆顶元素
@@ -261,10 +238,9 @@ class SQLiteKeyManager(KeyManager):
             self._key_states[key_identifier].last_usage_time = time.time()
 
             # 更新数据库
-            async with self._db_lock:  # 在这里添加数据库锁
-                await self._update_key_state_in_db(
-                    key_identifier, self._key_states[key_identifier]
-                )
+            await self._update_key_state_in_db(
+                key_identifier, self._key_states[key_identifier]
+            )
             return key_identifier
 
     async def mark_key_fail(self, key_identifier: str, error_type: str):
@@ -314,8 +290,7 @@ class SQLiteKeyManager(KeyManager):
                     f"API key '{key_identifier}' failed but not cooled down, returned to available pool."
                 )
 
-            async with self._db_lock:  # 在这里添加数据库锁
-                await self._update_key_state_in_db(key_identifier, key_state)
+            await self._update_key_state_in_db(key_identifier, key_state)
 
     async def mark_key_success(self, key_identifier: str):
         async with self._lock:
@@ -339,8 +314,7 @@ class SQLiteKeyManager(KeyManager):
                 f"API key '{key_identifier}' marked as success and returned to available pool."
             )
 
-            async with self._db_lock:  # 在这里添加数据库锁
-                await self._update_key_state_in_db(key_identifier, key_state)
+            await self._update_key_state_in_db(key_identifier, key_state)
 
     async def record_usage(self, key_identifier: str, model: str):
         """记录指定 key 和模型的用量。"""
@@ -357,8 +331,7 @@ class SQLiteKeyManager(KeyManager):
                 key_state.last_usage_date = today_str
 
             key_state.usage_today[model] = key_state.usage_today.get(model, 0) + 1
-            async with self._db_lock:  # 在这里添加数据库锁
-                await self._update_key_state_in_db(key_identifier, key_state)
+            await self._update_key_state_in_db(key_identifier, key_state)
             app_logger.debug(
                 f"Key '{key_identifier}' usage for model '{model}': "
                 f"{key_state.usage_today[model]}"
@@ -370,8 +343,7 @@ class SQLiteKeyManager(KeyManager):
             states = []
             now = time.time()
             # 从数据库获取最新状态
-            async with self._db_lock:  # 在这里添加数据库锁
-                rows = await self._execute_query("SELECT * FROM key_states")
+            rows = await self._execute_query("SELECT * FROM key_states")
             for row in rows:
                 (
                     key_identifier,

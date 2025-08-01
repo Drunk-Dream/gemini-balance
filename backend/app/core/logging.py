@@ -56,7 +56,7 @@ def setup_app_logger() -> None:
     app_logger.addHandler(console_handler)
 
     # SSE handler
-    app_logger.addHandler(SSELogHandler())
+    app_logger.addHandler(AsyncLogRecordHandler(log_broadcaster))
 
     # Suppress verbose logging from libraries
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
@@ -117,15 +117,46 @@ def setup_debug_logger(logger_name: str) -> logging.Logger:
 
 
 # --- SSE Log Broadcasting ---
+class AsyncLogRecordHandler(logging.Handler):
+    """
+    A logging handler that broadcasts log records to SSE clients asynchronously.
+    """
+
+    def __init__(self, broadcaster: "LogBroadcaster"):
+        """Initializes the handler with a broadcaster instance."""
+        super().__init__()
+        self.broadcaster = broadcaster
+        self.formatter = APP_FORMATTER
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """
+        Formats the log record and safely broadcasts it from any thread.
+        """
+        try:
+            msg = self.format(record)
+            # Use run_coroutine_threadsafe to safely schedule the broadcast
+            # from a different thread to the main event loop.
+            if self.broadcaster.loop:
+                asyncio.run_coroutine_threadsafe(
+                    self.broadcaster.broadcast(msg), self.broadcaster.loop
+                )
+        except Exception:
+            self.handleError(record)
+
+
 class LogBroadcaster:
     """
     Manages active SSE connections and broadcasts log messages to all clients.
     """
 
     def __init__(self) -> None:
-        """Initializes the broadcaster with a list of subscribers and history."""
+        """Initializes the broadcaster with subscribers, history, and the event loop."""
         self.subscribers: List[asyncio.Queue[str]] = []
         self._history: Deque[str] = deque(maxlen=settings.LOG_HISTORY_SIZE)
+        try:
+            self.loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop = asyncio.get_event_loop()
 
     async def register(self, queue: asyncio.Queue[str]) -> None:
         """
@@ -150,29 +181,3 @@ class LogBroadcaster:
 
 
 log_broadcaster = LogBroadcaster()
-
-
-class SSELogHandler(logging.Handler):
-    """
-    A logging handler that broadcasts log records to SSE clients.
-    """
-
-    def __init__(self) -> None:
-        """Initializes the handler and its formatter."""
-        super().__init__()
-        self.formatter = APP_FORMATTER
-
-    def emit(self, record: logging.LogRecord) -> None:
-        """
-        Formats the log record and broadcasts it asynchronously.
-        """
-        try:
-            msg = self.format(record)
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.run_coroutine_threadsafe(log_broadcaster.broadcast(msg), loop)
-            else:
-                # This path is less common in async apps but provides a fallback.
-                asyncio.run(log_broadcaster.broadcast(msg))
-        except Exception:
-            self.handleError(record)
