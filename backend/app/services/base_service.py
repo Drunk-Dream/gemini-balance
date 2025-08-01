@@ -6,7 +6,7 @@ from typing import Any, AsyncGenerator, Dict, Optional, Union, cast
 import httpx
 from app.core.config import settings
 from app.core.logging import app_logger, setup_debug_logger, transaction_logger
-from app.services.redis_key_manager import redis_key_manager as key_manager
+from app.services import key_manager
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
@@ -26,7 +26,6 @@ class ApiService(ABC):
         self.max_retries = settings.MAX_RETRIES
         if not settings.GOOGLE_API_KEYS:
             raise ValueError("No Google API keys configured.")
-        self._current_api_key: Optional[str] = None  # 初始化 _current_api_key
 
         self.debug_logger = setup_debug_logger(f"{service_name}_debug_logger")
 
@@ -61,9 +60,8 @@ class ApiService(ABC):
         """
         last_exception = None
         for attempt in range(self.max_retries):
-            api_key = await key_manager.get_next_key()
-            self._current_api_key = api_key
-            if not api_key:
+            key_identifier = await key_manager.get_next_key()
+            if not key_identifier:
                 logger.error(
                     f"Attempt {attempt + 1}/{self.max_retries}: No available API keys."
                 )
@@ -72,11 +70,19 @@ class ApiService(ABC):
                 )
                 continue
 
-            key_identifier = key_manager._get_key_identifier(api_key)
             logger.info(
                 f"Attempt {attempt + 1}/{self.max_retries}: Using API key "
                 f"{key_identifier} for {self.service_name}, stream={stream}"
             )
+            api_key = await key_manager.get_key_from_identifier(key_identifier)
+            if not api_key:
+                logger.error(
+                    f"Attempt {attempt + 1}/{self.max_retries}: API key {key_identifier} not found."
+                )
+                last_exception = HTTPException(
+                    status_code=404, detail="API key not found."
+                )
+                continue
             headers = self._prepare_headers(api_key)
 
             try:
@@ -144,7 +150,7 @@ class ApiService(ABC):
                     f"API Key {key_identifier} failed with status {e.response.status_code}. "
                     f"Deactivating it. Attempt {attempt + 1}/{self.max_retries}."
                 )
-                await key_manager.deactivate_key(key_identifier, error_type)
+                await key_manager.mark_key_fail(key_identifier, error_type)
 
                 if e.response.status_code == 429:
                     retry_after = e.response.headers.get("Retry-After")
@@ -165,7 +171,7 @@ class ApiService(ABC):
                 logger.error(
                     f"Request error with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
-                await key_manager.deactivate_key(key_identifier, "request_error")
+                await key_manager.mark_key_fail(key_identifier, "request_error")
                 continue
             except Exception as e:
                 last_exception = e

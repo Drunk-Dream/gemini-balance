@@ -3,7 +3,7 @@ from typing import AsyncGenerator, List
 
 from app.core.config import LOG_DIR
 from app.core.logging import app_logger, log_broadcaster
-from app.services.redis_key_manager import redis_key_manager as key_manager
+from app.services import key_manager
 from fastapi import APIRouter, Query
 from starlette.responses import StreamingResponse
 

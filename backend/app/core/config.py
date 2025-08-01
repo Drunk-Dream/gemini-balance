@@ -39,6 +39,14 @@ class Settings(BaseSettings):
         os.getenv("FORCE_RESET_REDIS", "False").lower() == "true"
     )
     MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
+    SQLITE_DB: str = os.getenv("SQLITE_DB", "data/sqlite.db")
+    DATABASE_TYPE: str = os.getenv("DATABASE_TYPE", "sqlite")
+
+    @field_validator("DATABASE_TYPE")
+    def validate_database_type(cls, v: str) -> str:
+        if v not in ["redis", "sqlite"]:
+            raise ValueError("DATABASE_TYPE must be 'redis' or 'sqlite'")
+        return v
 
     @field_validator("GOOGLE_API_KEYS", mode="before")
     @classmethod

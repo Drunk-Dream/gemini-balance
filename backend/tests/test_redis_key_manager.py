@@ -5,7 +5,11 @@ from unittest.mock import patch
 
 import pytest
 from app.core.logging import app_logger
-from app.services.redis_key_manager import KeyState, KeyStatusResponse, RedisKeyManager
+from app.services.redis_key_manager import (
+    KeyStatusResponse,
+    RedisKeyManager,
+    RedisKeyState,
+)
 
 
 # Mock settings for testing
@@ -62,7 +66,7 @@ async def test_initialize_keys(redis_client_mock, mock_settings):
     for key in mock_settings.GOOGLE_API_KEYS:
         state_data = await redis_client_mock.hgetall(f"{manager.KEY_STATE_PREFIX}{key}")
         assert state_data is not None
-        key_state = KeyState.from_redis_hash(
+        key_state = RedisKeyState.from_redis_hash(
             {k.decode(): v.decode() for k, v in state_data.items()}
         )
         assert (

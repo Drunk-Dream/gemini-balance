@@ -8,6 +8,7 @@ import redis.asyncio as redis
 from app.core.config import Settings, settings
 from app.core.decorators import log_function_calls
 from app.core.logging import setup_debug_logger
+from app.services.key_manager import KeyManager, KeyState, KeyStatusResponse
 from pydantic import BaseModel, Field
 
 # 为 RedisKeyManager 创建一个专用的日志记录器
@@ -25,16 +26,7 @@ class RedisHealthCheckResult(BaseModel):
     extra_states_in_redis: List[str] = Field(default_factory=list)
 
 
-class KeyState(BaseModel):
-    cool_down_until: float = 0.0
-    request_fail_count: int = 0
-    cool_down_entry_count: int = 0
-    current_cool_down_seconds: int
-    usage_today: Dict[str, int] = Field(default_factory=dict)
-    last_usage_date: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d")
-    )
-
+class RedisKeyState(KeyState):
     def to_redis_hash(self) -> Dict[str, str]:
         """将 KeyState 转换为 Redis Hash 存储的字典。"""
         return {
@@ -44,10 +36,11 @@ class KeyState(BaseModel):
             "current_cool_down_seconds": str(self.current_cool_down_seconds),
             "usage_today": json.dumps(self.usage_today),
             "last_usage_date": self.last_usage_date,
+            "last_usage_time": str(self.last_usage_time),
         }
 
     @classmethod
-    def from_redis_hash(cls, data: Dict[str, str]) -> "KeyState":
+    def from_redis_hash(cls, data: Dict[str, str]) -> "RedisKeyState":
         """从 Redis Hash 字典创建 KeyState 实例。"""
         return cls(
             cool_down_until=float(data.get("cool_down_until", 0.0)),
@@ -62,50 +55,30 @@ class KeyState(BaseModel):
             last_usage_date=data.get(
                 "last_usage_date", datetime.now().strftime("%Y-%m-%d")
             ),
+            last_usage_time=float(data.get("last_usage_time", 0.0)),
         )
 
 
-class KeyStatusResponse(BaseModel):
-    key_identifier: str
-    status: str
-    cool_down_seconds_remaining: float
-    daily_usage: Dict[str, int]
-    failure_count: int
-    cool_down_entry_count: int
-    current_cool_down_seconds: int
-
-
-class RedisKeyManager:
+class RedisKeyManager(KeyManager):
     def __init__(self, redis_client: redis.Redis, settings: Settings):
-        if not settings.GOOGLE_API_KEYS:
-            raise ValueError("API key list cannot be empty.")
+        super().__init__(settings)
         self._redis = redis_client
-        # 创建从密钥标识符到原始密钥的映射
-        self._key_map = {self._get_key_identifier(key): key for key in settings.GOOGLE_API_KEYS}
         # 将原始 API 密钥转换为哈希标识符
-        self._api_keys = list(self._key_map.keys())
-        self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
-        self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
-        self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
-        self._lock = asyncio.Lock()  # 用于保护 Redis 操作的本地锁
-        self._background_task: Optional[asyncio.Task] = None
-        self._wakeup_event = asyncio.Event()
-
         self.AVAILABLE_KEYS_KEY = "key_manager:available_keys"
         self.COOLED_DOWN_KEYS_KEY = "key_manager:cooled_down_keys"
         self.KEY_STATE_PREFIX = "key_manager:state:"
         self.ALL_KEYS_SET_KEY = "key_manager:all_keys"  # 新增的 Redis 键
 
-    async def _get_key_state(self, key_identifier: str) -> KeyState:
+    async def _get_key_state(self, key_identifier: str) -> RedisKeyState:
         """从 Redis 获取密钥状态，如果不存在则初始化。"""
         state_data = await self._redis.hgetall(f"{self.KEY_STATE_PREFIX}{key_identifier}")  # type: ignore
         if state_data:
             # 将 bytes 转换为 str
             decoded_data = {k.decode(): v.decode() for k, v in state_data.items()}
-            return KeyState.from_redis_hash(decoded_data)
+            return RedisKeyState.from_redis_hash(decoded_data)
         else:
             # 初始化并保存到 Redis
-            initial_state = KeyState(
+            initial_state = RedisKeyState(
                 current_cool_down_seconds=self._initial_cool_down_seconds
             )
             await self._redis.hset(  # type: ignore
@@ -114,13 +87,13 @@ class RedisKeyManager:
             )
             return initial_state
 
-    async def _save_key_state(self, key_identifier: str, state: KeyState):
+    async def _save_key_state(self, key_identifier: str, state: RedisKeyState):
         """将密钥状态保存到 Redis。"""
         await self._redis.hset(  # type: ignore
             f"{self.KEY_STATE_PREFIX}{key_identifier}", mapping=state.to_redis_hash()
         )
 
-    async def _reset_daily_usage_if_needed(self, key_state: KeyState) -> bool:
+    async def _reset_daily_usage_if_needed(self, key_state: RedisKeyState) -> bool:
         """
         如果密钥的最后使用日期不是今天，则重置每日用量。
         返回 True 如果用量被重置，否则返回 False。
@@ -342,7 +315,7 @@ class RedisKeyManager:
                         # 修复：配置与 ALL_KEYS_SET 不一致
                         for key_identifier in result.added_keys:
                             # 密钥在配置中但不在 Redis 中，添加它
-                            initial_state = KeyState(
+                            initial_state = RedisKeyState(
                                 current_cool_down_seconds=self._initial_cool_down_seconds
                             )
                             pipe.hset(
@@ -386,7 +359,7 @@ class RedisKeyManager:
                         # 修复：ALL_KEYS_SET 与 KeyState 不一致
                         for key_identifier in result.missing_states:
                             # 密钥状态丢失，创建默认状态
-                            initial_state = KeyState(
+                            initial_state = RedisKeyState(
                                 current_cool_down_seconds=self._initial_cool_down_seconds
                             )
                             pipe.hset(
@@ -484,19 +457,20 @@ class RedisKeyManager:
         )
         if key_bytes:
             key_identifier = key_bytes.decode()
-            return self._key_map.get(key_identifier)
+            return key_identifier
         else:
             await self.repair_redis_database()
             return None
 
     @log_function_calls(key_manager_logger)
-    async def deactivate_key(self, key_identifier: str, error_type: str):
+    async def mark_key_fail(self, key_identifier: str, error_type: str):
         async with self._lock:
             key_state = await self._get_key_state(key_identifier)
             if not key_state:
                 return
 
             key_state.request_fail_count += 1
+            key_state.last_usage_time = time.time()
 
             should_cool_down = False
             if error_type in ["auth_error", "rate_limit_error"]:
@@ -550,6 +524,8 @@ class RedisKeyManager:
             if key_state:
                 key_state.cool_down_entry_count = 0
                 key_state.current_cool_down_seconds = self._initial_cool_down_seconds
+                key_state.request_fail_count = 0
+                key_state.last_usage_time = time.time()
                 await self._save_key_state(key_identifier, key_state)
 
     @log_function_calls(key_manager_logger)
@@ -595,18 +571,9 @@ class RedisKeyManager:
                 )
             return states
 
-    def _get_key_identifier(self, key: str) -> str:
-        """生成一个对日志友好且唯一的密钥标识符"""
-        import hashlib
-
-        return f"key_sha256_{hashlib.sha256(key.encode()).hexdigest()[:8]}"
-
 
 # 假设 redis_client 实例在外部创建并传入
 redis_client = redis.Redis(
     host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB
 )
-redis_key_manager = RedisKeyManager(
-    redis_client,
-    settings
-)
+redis_key_manager = RedisKeyManager(redis_client, settings)

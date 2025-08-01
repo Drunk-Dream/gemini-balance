@@ -7,7 +7,11 @@ from unittest.mock import patch
 import pytest
 
 # 导入待测试的 KeyManager 类
-from app.services.key_manager import KeyManager, KeyState, KeyStatusResponse
+from backend.app.services.sqlite_key_manager import (
+    KeyState,
+    KeyStatusResponse,
+    SQLiteKeyManager,
+)
 
 
 # 模拟 settings 模块，因为 KeyManager 依赖它
@@ -28,7 +32,7 @@ def key_manager_instance(mock_settings):
     cool_down_seconds = 5
     api_key_failure_threshold = mock_settings.API_KEY_FAILURE_THRESHOLD
     max_cool_down_seconds = mock_settings.MAX_COOL_DOWN_SECONDS
-    return KeyManager(
+    return SQLiteKeyManager(
         api_keys, cool_down_seconds, api_key_failure_threshold, max_cool_down_seconds
     )
 
@@ -42,7 +46,7 @@ async def test_key_manager_init(mock_settings):
     cool_down = 10
     api_key_failure_threshold = 3
     max_cool_down_seconds = 3600
-    manager = KeyManager(
+    manager = SQLiteKeyManager(
         api_keys, cool_down, api_key_failure_threshold, max_cool_down_seconds
     )
 
@@ -63,7 +67,7 @@ async def test_key_manager_init(mock_settings):
         assert key_state.cool_down_until == 0.0
 
     with pytest.raises(ValueError, match="API key list cannot be empty."):
-        KeyManager([], 5, 3, 3600)
+        SQLiteKeyManager([], 5, 3, 3600)
 
 
 @pytest.mark.asyncio
