@@ -179,12 +179,6 @@ class SQLiteKeyManager(KeyManager):
                     ]:
                         self._key_states[key_identifier].cool_down_until = 0.0
                         self._key_states[key_identifier].request_fail_count = 0
-                        self._key_states[key_identifier].cool_down_entry_count = (
-                            0  # 冷却结束后重置冷却计数
-                        )
-                        self._key_states[key_identifier].current_cool_down_seconds = (
-                            self._initial_cool_down_seconds
-                        )  # 重置冷却时间
                         heapq.heappush(
                             self._available_keys, (time.time(), key_identifier)
                         )  # 重新加入可用队列
