@@ -31,6 +31,10 @@ class SQLiteDBManager(DBManager):
             conn.close()
 
     async def initialize(self):
+        if self.settings.FORCE_RESET_DATABASE:
+            app_logger.warning("FORCE_RESET_DATABASE is enabled. Dropping key_states table...")
+            await self._execute_query("DROP TABLE IF EXISTS key_states")
+
         await self._execute_query(
             """
             CREATE TABLE IF NOT EXISTS key_states (

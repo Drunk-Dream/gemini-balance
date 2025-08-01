@@ -6,20 +6,8 @@ import redis.asyncio as redis
 from app.core.config import Settings
 from app.core.logging import setup_debug_logger
 from app.services.key_managers.db_manager import DBManager, KeyState
-from pydantic import BaseModel, Field
 
 key_manager_logger = setup_debug_logger("redis_key_manager")
-
-
-class RedisHealthCheckResult(BaseModel):
-    is_healthy: bool
-    error_code: int = 0
-    message: str = ""
-    added_keys: List[str] = Field(default_factory=list)
-    missing_keys: List[str] = Field(default_factory=list)
-    extra_keys_in_redis: List[str] = Field(default_factory=list)
-    missing_states: List[str] = Field(default_factory=list)
-    extra_states_in_redis: List[str] = Field(default_factory=list)
 
 
 class RedisKeyState(KeyState):
@@ -67,7 +55,9 @@ class RedisDBManager(DBManager):
         self.ALL_KEYS_SET_KEY = "key_manager:all_keys"
 
     async def initialize(self):
-        await self.repair_redis_database()
+        if self.settings.FORCE_RESET_DATABASE:
+            key_manager_logger.warning("FORCE_RESET_DATABASE is enabled. Flushing Redis DB...")
+            await self._redis.flushdb()  # type: ignore
 
     async def get_key_state(self, key_identifier: str) -> Optional[RedisKeyState]:
         state_data = await self._redis.hgetall(f"{self.KEY_STATE_PREFIX}{key_identifier}")  # type: ignore
@@ -99,9 +89,7 @@ class RedisDBManager(DBManager):
         )
         if key_bytes:
             return key_bytes.decode()
-        else:
-            await self.repair_redis_database()
-            return None
+        return None
 
     async def move_to_cooldown(self, key_identifier: str, cool_down_until: float):
         pipe = self._redis.pipeline()
@@ -123,48 +111,21 @@ class RedisDBManager(DBManager):
         await pipe.execute()
 
     async def sync_keys(self, config_keys: Set[str]):
-        # This is handled by the repair mechanism
-        pass
-
-    async def repair_redis_database(self):
-        is_lock_acquired = await self._redis.set(  # type: ignore
-            "key_manager:repair_lock", "1", nx=True, ex=30
-        )
-        if not is_lock_acquired:
-            key_manager_logger.info("Repair lock already held. Skipping repair.")
-            return
-
-        try:
-            if self.settings.FORCE_RESET_REDIS:
-                key_manager_logger.warning(
-                    "FORCE_RESET_REDIS is enabled. Flushing Redis DB..."
-                )
-                await self._redis.flushdb()  # type: ignore
-
-            for i in range(5):
-                result = await self._check_redis_health_internal()
-                if result.is_healthy:
-                    key_manager_logger.info(
-                        f"Redis database is healthy on attempt {i + 1}."
-                    )
-                    break
-
-                key_manager_logger.warning(
-                    f"Redis health check failed (code: {result.error_code}) on attempt {i + 1}. "
-                    "Attempting repair..."
-                )
-                await self._perform_repair(result)
-            else:
-                key_manager_logger.error(
-                    "Failed to repair Redis database after multiple attempts."
-                )
-        finally:
-            await self._redis.delete("key_manager:repair_lock")  # type: ignore
-
-    async def _perform_repair(self, result: RedisHealthCheckResult):
+        key_manager_logger.info(f"Syncing keys. Config keys: {config_keys}")
         pipe = self._redis.pipeline()
-        if result.error_code == 1:
-            for key_identifier in result.added_keys:
+
+        # 获取 Redis 中所有已知的密钥
+        redis_all_key_identifiers_bytes = await self._redis.smembers(self.ALL_KEYS_SET_KEY)  # type: ignore
+        redis_all_key_identifiers = {key.decode() for key in redis_all_key_identifiers_bytes}
+
+        # 找出需要添加的密钥 (配置中有，Redis 中没有)
+        keys_to_add = config_keys - redis_all_key_identifiers
+        # 找出需要移除的密钥 (Redis 中有，配置中没有)
+        keys_to_remove = redis_all_key_identifiers - config_keys
+
+        if keys_to_add:
+            key_manager_logger.info(f"Adding new keys to Redis: {keys_to_add}")
+            for key_identifier in keys_to_add:
                 initial_state = RedisKeyState(
                     key_identifier=key_identifier,
                     current_cool_down_seconds=self.settings.API_KEY_COOL_DOWN_SECONDS,
@@ -175,111 +136,14 @@ class RedisDBManager(DBManager):
                 )
                 pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
                 pipe.sadd(self.ALL_KEYS_SET_KEY, key_identifier)
-            for key_identifier in result.missing_keys:
+
+        if keys_to_remove:
+            key_manager_logger.info(f"Removing old keys from Redis: {keys_to_remove}")
+            for key_identifier in keys_to_remove:
                 pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
                 pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
                 pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
                 pipe.srem(self.ALL_KEYS_SET_KEY, key_identifier)
-        elif result.error_code == 2:
-            now = time.time()
-            for key_identifier in result.missing_keys:
-                key_state = await self.get_key_state(key_identifier)
-                if key_state and key_state.cool_down_until > now:
-                    pipe.zadd(
-                        self.COOLED_DOWN_KEYS_KEY,
-                        {key_identifier: key_state.cool_down_until},
-                    )
-                else:
-                    pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
-            for key_identifier in result.extra_keys_in_redis:
-                pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
-                pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
-        elif result.error_code == 3:
-            for key_identifier in result.missing_states:
-                initial_state = RedisKeyState(
-                    key_identifier=key_identifier,
-                    current_cool_down_seconds=self.settings.API_KEY_COOL_DOWN_SECONDS,
-                )
-                pipe.hset(
-                    f"{self.KEY_STATE_PREFIX}{key_identifier}",
-                    mapping=initial_state.to_redis_hash(),
-                )
-            for key_identifier in result.extra_states_in_redis:
-                pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
+
         await pipe.execute()
-
-    async def _check_redis_health_internal(self) -> RedisHealthCheckResult:
-        config_key_identifiers = set(self.settings.GOOGLE_API_KEYS or [])
-
-        redis_all_key_identifiers_bytes = await self._redis.smembers(self.ALL_KEYS_SET_KEY)  # type: ignore
-        redis_all_key_identifiers = {
-            key.decode() for key in redis_all_key_identifiers_bytes
-        }
-
-        added_in_config = list(config_key_identifiers - redis_all_key_identifiers)
-        missing_in_config = list(redis_all_key_identifiers - config_key_identifiers)
-
-        if added_in_config or missing_in_config:
-            return RedisHealthCheckResult(
-                is_healthy=False,
-                error_code=1,
-                message="Config key identifiers and ALL_KEYS_SET_KEY mismatch.",
-                added_keys=added_in_config,
-                missing_keys=missing_in_config,
-            )
-
-        available_key_identifiers_bytes = await self._redis.lrange(self.AVAILABLE_KEYS_KEY, 0, -1)  # type: ignore
-        available_key_identifiers = {
-            key.decode() for key in available_key_identifiers_bytes
-        }
-        cooled_down_key_identifiers_bytes = await self._redis.zrange(self.COOLED_DOWN_KEYS_KEY, 0, -1)  # type: ignore
-        cooled_down_key_identifiers = {
-            key.decode() for key in cooled_down_key_identifiers_bytes
-        }
-        combined_redis_key_identifiers = available_key_identifiers.union(
-            cooled_down_key_identifiers
-        )
-
-        missing_from_combined = list(
-            redis_all_key_identifiers - combined_redis_key_identifiers
-        )
-        extra_in_combined = list(
-            combined_redis_key_identifiers - redis_all_key_identifiers
-        )
-
-        if missing_from_combined or extra_in_combined:
-            return RedisHealthCheckResult(
-                is_healthy=False,
-                error_code=2,
-                message="ALL_KEYS_SET_KEY and combined queues mismatch.",
-                missing_keys=missing_from_combined,
-                extra_keys_in_redis=extra_in_combined,
-            )
-
-        missing_states = []
-        for key_identifier in redis_all_key_identifiers:
-            state_exists = await self._redis.exists(f"{self.KEY_STATE_PREFIX}{key_identifier}")  # type: ignore
-            if not state_exists:
-                missing_states.append(key_identifier)
-
-        all_keys_in_redis_prefix = set()
-        cursor = b"0"
-        while cursor:
-            cursor, keys = await self._redis.scan(cursor, match=f"{self.KEY_STATE_PREFIX}*")  # type: ignore
-            for key_bytes in keys:
-                key_str = key_bytes.decode()
-                all_keys_in_redis_prefix.add(key_str.replace(self.KEY_STATE_PREFIX, ""))
-        extra_states_in_redis = list(
-            all_keys_in_redis_prefix - redis_all_key_identifiers
-        )
-
-        if missing_states or extra_states_in_redis:
-            return RedisHealthCheckResult(
-                is_healthy=False,
-                error_code=3,
-                message="KeyState entries mismatch.",
-                missing_states=missing_states,
-                extra_states_in_redis=extra_states_in_redis,
-            )
-
-        return RedisHealthCheckResult(is_healthy=True)
+        key_manager_logger.info("Key synchronization complete.")
