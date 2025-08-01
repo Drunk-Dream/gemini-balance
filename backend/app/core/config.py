@@ -35,9 +35,7 @@ class Settings(BaseSettings):
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
-    FORCE_RESET_REDIS: bool = (
-        os.getenv("FORCE_RESET_REDIS", "False").lower() == "true"
-    )
+    FORCE_RESET_REDIS: bool = os.getenv("FORCE_RESET_REDIS", "False").lower() == "true"
     MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
     SQLITE_DB: str = os.getenv("SQLITE_DB", "data/sqlite.db")
     DATABASE_TYPE: str = os.getenv("DATABASE_TYPE", "sqlite")

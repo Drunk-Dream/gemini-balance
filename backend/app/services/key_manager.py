@@ -4,9 +4,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from app.core.config import Settings
 from pydantic import BaseModel, Field
-
-from backend.app.core.config import Settings
 
 
 class KeyState(BaseModel):
