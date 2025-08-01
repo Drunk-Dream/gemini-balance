@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class KeyState(BaseModel):
+    key_identifier: str
     cool_down_until: float = 0.0
     request_fail_count: int = 0
     cool_down_entry_count: int = 0
