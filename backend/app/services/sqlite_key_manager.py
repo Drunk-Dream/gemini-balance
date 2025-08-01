@@ -241,7 +241,7 @@ class SQLiteKeyManager(KeyManager):
             await self._update_key_state_in_db(
                 key_identifier, self._key_states[key_identifier]
             )
-            return self._key_map[key_identifier]
+            return key_identifier
 
     async def mark_key_fail(self, key_identifier: str, error_type: str):
         async with self._lock:
