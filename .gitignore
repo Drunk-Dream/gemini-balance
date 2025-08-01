@@ -10,5 +10,6 @@ wheels/
 .venv
 
 logs/
+data/
 .env*
 *.http
