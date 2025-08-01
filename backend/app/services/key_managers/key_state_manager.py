@@ -5,15 +5,45 @@ from typing import Dict, List, Optional
 
 from app.core.config import Settings
 from app.core.logging import app_logger
-from app.services.key_manager import KeyManager, KeyState, KeyStatusResponse
-from app.services.key_managers.db_manager import DBManager
+from app.services.key_managers.db_manager import DBManager, KeyState
+from pydantic import BaseModel
 
 
-class KeyStateManager(KeyManager):
+class KeyStatusResponse(BaseModel):
+    key_identifier: str
+    status: str
+    cool_down_seconds_remaining: float
+    daily_usage: Dict[str, int]
+    failure_count: int
+    cool_down_entry_count: int
+    current_cool_down_seconds: int
+
+
+class KeyStateManager:
     def __init__(self, settings: Settings, db_manager: DBManager):
-        super().__init__(settings)
+        if not settings.GOOGLE_API_KEYS:
+            raise ValueError("No API keys provided")
+        self._key_map = {
+            self._get_key_identifier(key): key for key in settings.GOOGLE_API_KEYS
+        }
+        self._api_keys = list(self._key_map.keys())
+        self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
+        self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
+        self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
+        self._lock = asyncio.Lock()  # 用于保护 Redis 操作的本地锁
+        self._background_task: Optional[asyncio.Task] = None
+        self._wakeup_event = asyncio.Event()
         self._db_manager = db_manager
         self._key_states_cache: Dict[str, KeyState] = {}
+
+    def _get_key_identifier(self, key: str) -> str:
+        """生成一个对日志友好且唯一的密钥标识符"""
+        import hashlib
+
+        return f"key_sha256_{hashlib.sha256(key.encode()).hexdigest()[:8]}"
+
+    async def get_key_from_identifier(self, key_identifier: str) -> Optional[str]:
+        return self._key_map.get(key_identifier)
 
     async def initialize(self):
         await self._db_manager.initialize()

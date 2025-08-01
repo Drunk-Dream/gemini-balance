@@ -7,8 +7,7 @@ from typing import List, Optional, Set
 
 from app.core.config import Settings
 from app.core.logging import app_logger
-from app.services.key_manager import KeyState
-from app.services.key_managers.db_manager import DBManager
+from app.services.key_managers.db_manager import DBManager, KeyState
 
 
 class SQLiteDBManager(DBManager):

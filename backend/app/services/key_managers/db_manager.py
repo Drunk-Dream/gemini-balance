@@ -1,7 +1,22 @@
+import time
 from abc import ABC, abstractmethod
-from typing import List, Optional, Set
+from datetime import datetime
+from typing import Dict, List, Optional, Set
 
-from app.services.key_manager import KeyState
+from pydantic import BaseModel, Field
+
+
+class KeyState(BaseModel):
+    key_identifier: str
+    cool_down_until: float = 0.0
+    request_fail_count: int = 0
+    cool_down_entry_count: int = 0
+    current_cool_down_seconds: int
+    usage_today: Dict[str, int] = Field(default_factory=dict)
+    last_usage_date: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d")
+    )
+    last_usage_time: float = Field(default_factory=lambda: time.time())
 
 
 class DBManager(ABC):

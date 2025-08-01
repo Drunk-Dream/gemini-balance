@@ -5,8 +5,7 @@ from typing import Dict, List, Optional, Set
 import redis.asyncio as redis
 from app.core.config import Settings
 from app.core.logging import setup_debug_logger
-from app.services.key_manager import KeyState
-from app.services.key_managers.db_manager import DBManager
+from app.services.key_managers.db_manager import DBManager, KeyState
 from pydantic import BaseModel, Field
 
 key_manager_logger = setup_debug_logger("redis_key_manager")
