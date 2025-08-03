@@ -1,5 +1,6 @@
 import json
 import time
+import typing  # 导入 typing 模块
 from typing import Dict, List, Optional, Set
 
 import redis.asyncio as redis
@@ -51,12 +52,15 @@ class RedisDBManager(DBManager):
         )
         self.AVAILABLE_KEYS_KEY = "key_manager:available_keys"
         self.COOLED_DOWN_KEYS_KEY = "key_manager:cooled_down_keys"
+        self.IN_USE_KEYS_KEY = "key_manager:in_use_keys"  # 新增的键
         self.KEY_STATE_PREFIX = "key_manager:state:"
         self.ALL_KEYS_SET_KEY = "key_manager:all_keys"
 
     async def initialize(self):
         if self.settings.FORCE_RESET_DATABASE:
-            key_manager_logger.warning("FORCE_RESET_DATABASE is enabled. Flushing Redis DB...")
+            key_manager_logger.warning(
+                "FORCE_RESET_DATABASE is enabled. Flushing Redis DB..."
+            )
             await self._redis.flushdb()  # type: ignore
 
     async def get_key_state(self, key_identifier: str) -> Optional[RedisKeyState]:
@@ -84,17 +88,21 @@ class RedisDBManager(DBManager):
         return states
 
     async def get_next_available_key(self) -> Optional[str]:
-        key_bytes = await self._redis.blmove(  # type: ignore
-            self.AVAILABLE_KEYS_KEY, self.AVAILABLE_KEYS_KEY, 5, "LEFT", "RIGHT"
-        )
-        if key_bytes:
-            return key_bytes.decode()
+        # 从可用队列中取出一个键，并将其移动到正在使用队列
+        key_bytes = await self._redis.lpop(self.AVAILABLE_KEYS_KEY)  # type: ignore
+        if key_bytes is not None:
+            key_identifier = key_bytes.decode()  # type: ignore
+            await self._redis.sadd(self.IN_USE_KEYS_KEY, key_identifier)  # type: ignore
+            return key_identifier
         return None
 
     async def move_to_cooldown(self, key_identifier: str, cool_down_until: float):
         pipe = self._redis.pipeline()
-        pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
-        pipe.zadd(self.COOLED_DOWN_KEYS_KEY, {key_identifier: cool_down_until})
+        pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)  # 从可用队列中移除
+        pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)  # 从正在使用队列中移除
+        pipe.zadd(
+            self.COOLED_DOWN_KEYS_KEY, {key_identifier: cool_down_until}
+        )  # 添加到冷却队列
         await pipe.execute()
 
     async def get_releasable_keys(self) -> List[str]:
@@ -102,11 +110,16 @@ class RedisDBManager(DBManager):
         ready_to_release = await self._redis.zrangebyscore(  # type: ignore
             self.COOLED_DOWN_KEYS_KEY, min=0, max=now
         )
-        return [key.decode() for key in ready_to_release]
+        # 明确 cast 为 List[bytes]
+        return [key.decode() for key in typing.cast(List[bytes], ready_to_release)]
 
     async def reactivate_key(self, key_identifier: str):
         pipe = self._redis.pipeline()
+        # 尝试从冷却队列中移除
         pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
+        # 尝试从正在使用队列中移除 (如果之前因为某种原因没有被正确移除)
+        pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)
+        # 将密钥重新添加到可用队列
         pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
         await pipe.execute()
 
@@ -116,7 +129,9 @@ class RedisDBManager(DBManager):
 
         # 获取 Redis 中所有已知的密钥
         redis_all_key_identifiers_bytes = await self._redis.smembers(self.ALL_KEYS_SET_KEY)  # type: ignore
-        redis_all_key_identifiers = {key.decode() for key in redis_all_key_identifiers_bytes}
+        redis_all_key_identifiers = {
+            key.decode() for key in redis_all_key_identifiers_bytes
+        }
 
         # 找出需要添加的密钥 (配置中有，Redis 中没有)
         keys_to_add = config_keys - redis_all_key_identifiers
@@ -136,12 +151,15 @@ class RedisDBManager(DBManager):
                 )
                 pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
                 pipe.sadd(self.ALL_KEYS_SET_KEY, key_identifier)
+                # 确保新添加的密钥不在正在使用队列中
+                pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)
 
         if keys_to_remove:
             key_manager_logger.info(f"Removing old keys from Redis: {keys_to_remove}")
             for key_identifier in keys_to_remove:
                 pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
                 pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
+                pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)  # 从正在使用队列中移除
                 pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
                 pipe.srem(self.ALL_KEYS_SET_KEY, key_identifier)
 
