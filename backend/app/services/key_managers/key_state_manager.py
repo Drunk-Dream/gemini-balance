@@ -132,7 +132,16 @@ class KeyStateManager:
             await self._load_key_states_to_cache()
             states_response = []
             now = time.time()
+            today_str = datetime.now().strftime("%Y-%m-%d")
             for key_identifier, state in self._key_states_cache.items():
+                # 检查是否跨天，如果跨天则重置 daily_usage
+                if state.last_usage_date != today_str:
+                    state.usage_today = {}
+                    state.last_usage_date = today_str
+                    await self._save_key_state(
+                        key_identifier, state
+                    )  # 保存更新后的状态
+
                 cool_down_remaining = max(0, state.cool_down_until - now)
                 status = "cooling_down" if cool_down_remaining > 0 else "active"
                 states_response.append(
