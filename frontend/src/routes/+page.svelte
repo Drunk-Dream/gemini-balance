@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { authToken, isAuthenticated } from '$lib/stores';
 	import { onMount } from 'svelte';
 
 	interface KeyStatus {
@@ -16,10 +18,24 @@
 	let loading = true;
 
 	async function fetchKeyStatuses() {
+		if (!$authToken) {
+			goto('/login');
+			return;
+		}
+
 		loading = true;
 		errorMessage = null;
 		try {
-			const response = await fetch('/api/status/keys');
+			const response = await fetch('/api/status/keys', {
+				headers: {
+					Authorization: `Bearer ${$authToken}`
+				}
+			});
+			if (response.status === 401) {
+				isAuthenticated.set(false);
+				goto('/login');
+				return;
+			}
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
@@ -34,6 +50,12 @@
 	}
 
 	onMount(() => {
+		// 检查认证状态，如果未认证则重定向
+		if (!$isAuthenticated) {
+			goto('/login');
+			return;
+		}
+
 		fetchKeyStatuses();
 		const interval = setInterval(fetchKeyStatuses, 5000); // Refresh every 5 seconds
 		return () => clearInterval(interval);

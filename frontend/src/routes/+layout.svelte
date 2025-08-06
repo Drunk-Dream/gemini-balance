@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { authToken, isAuthenticated } from '$lib/stores';
 	import { quintOut } from 'svelte/easing';
 	import { slide } from 'svelte/transition';
 	import '../app.css';
@@ -15,6 +17,12 @@
 
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
+	}
+
+	function handleLogout() {
+		authToken.set(null); // 清除令牌
+		isAuthenticated.set(false); // 设置认证状态为未认证
+		goto('/login'); // 重定向到登录页面
 	}
 </script>
 
@@ -69,6 +77,16 @@
 							</a>
 						</li>
 					{/each}
+					{#if $isAuthenticated}
+						<li class="mb-2">
+							<button
+								onclick={handleLogout}
+								class="block w-full cursor-pointer rounded-md p-2 text-left transition-colors duration-200 hover:bg-gray-700"
+							>
+								登出
+							</button>
+						</li>
+					{/if}
 				</ul>
 			</nav>
 		</div>
@@ -102,6 +120,16 @@
 						</a>
 					</li>
 				{/each}
+				{#if $isAuthenticated}
+					<li class="mb-2">
+						<button
+							onclick={handleLogout}
+							class="block w-full cursor-pointer rounded-md p-2 text-left transition-colors duration-200 hover:bg-gray-700"
+						>
+							登出
+						</button>
+					</li>
+				{/if}
 			</ul>
 		</nav>
 	</aside>

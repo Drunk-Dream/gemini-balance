@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
     SQLITE_DB: str = os.getenv("SQLITE_DB", "data/sqlite.db")
     DATABASE_TYPE: str = os.getenv("DATABASE_TYPE", "sqlite")
+    PASSWORD: str = os.getenv(
+        "PASSWORD", "admin"
+    )  # Add a default password for simplicity
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-super-secret-key")  # 从环境变量加载，提供默认值
+    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
     @field_validator("DATABASE_TYPE")
     def validate_database_type(cls, v: str) -> str:
