@@ -1,45 +1,11 @@
 import json
 import time
-import typing  # 导入 typing 模块
 from typing import Dict, List, Optional, Set
 
 import redis.asyncio as redis
 from app.core.config import Settings
 from app.core.logging import app_logger
 from app.services.key_managers.db_manager import DBManager, KeyState
-
-
-class RedisKeyState(KeyState):
-    def to_redis_hash(self) -> Dict[str, str]:
-        return {
-            "key_identifier": self.key_identifier,
-            "cool_down_until": str(self.cool_down_until),
-            "request_fail_count": str(self.request_fail_count),
-            "cool_down_entry_count": str(self.cool_down_entry_count),
-            "current_cool_down_seconds": str(self.current_cool_down_seconds),
-            "usage_today": json.dumps(self.usage_today),
-            "last_usage_date": self.last_usage_date,
-            "last_usage_time": str(self.last_usage_time),
-        }
-
-    @classmethod
-    def from_redis_hash(
-        cls, data: Dict[str, str], settings: Settings
-    ) -> "RedisKeyState":
-        return cls(
-            key_identifier=data.get("key_identifier", ""),
-            cool_down_until=float(data.get("cool_down_until", 0.0)),
-            request_fail_count=int(data.get("request_fail_count", 0)),
-            cool_down_entry_count=int(data.get("cool_down_entry_count", 0)),
-            current_cool_down_seconds=int(
-                data.get(
-                    "current_cool_down_seconds", settings.API_KEY_COOL_DOWN_SECONDS
-                )
-            ),
-            usage_today=json.loads(data.get("usage_today", "{}")),
-            last_usage_date=data.get("last_usage_date", time.strftime("%Y-%m-%d")),
-            last_usage_time=float(data.get("last_usage_time", 0.0)),
-        )
 
 
 class RedisDBManager(DBManager):
@@ -50,7 +16,7 @@ class RedisDBManager(DBManager):
         )
         self.AVAILABLE_KEYS_KEY = "key_manager:available_keys"
         self.COOLED_DOWN_KEYS_KEY = "key_manager:cooled_down_keys"
-        self.IN_USE_KEYS_KEY = "key_manager:in_use_keys"  # 新增的键
+        self.IN_USE_KEYS_KEY = "key_manager:in_use_keys"
         self.KEY_STATE_PREFIX = "key_manager:state:"
         self.ALL_KEYS_SET_KEY = "key_manager:all_keys"
 
@@ -59,19 +25,46 @@ class RedisDBManager(DBManager):
             app_logger.warning("FORCE_RESET_DATABASE is enabled. Flushing Redis DB...")
             await self._redis.flushdb()  # type: ignore
 
-    async def get_key_state(self, key_identifier: str) -> Optional[RedisKeyState]:
+    def _key_state_to_redis_hash(self, state: KeyState) -> Dict[str, str]:
+        return {
+            "key_identifier": state.key_identifier,
+            "cool_down_until": str(state.cool_down_until),
+            "request_fail_count": str(state.request_fail_count),
+            "cool_down_entry_count": str(state.cool_down_entry_count),
+            "current_cool_down_seconds": str(state.current_cool_down_seconds),
+            "usage_today": json.dumps(state.usage_today),
+            "last_usage_date": state.last_usage_date,
+            "last_usage_time": str(state.last_usage_time),
+        }
+
+    def _redis_hash_to_key_state(self, data: Dict[str, str]) -> KeyState:
+        return KeyState(
+            key_identifier=data.get("key_identifier", ""),
+            cool_down_until=float(data.get("cool_down_until", 0.0)),
+            request_fail_count=int(data.get("request_fail_count", 0)),
+            cool_down_entry_count=int(data.get("cool_down_entry_count", 0)),
+            current_cool_down_seconds=int(
+                data.get(
+                    "current_cool_down_seconds", self.settings.API_KEY_COOL_DOWN_SECONDS
+                )
+            ),
+            usage_today=json.loads(data.get("usage_today", "{}")),
+            last_usage_date=data.get("last_usage_date", time.strftime("%Y-%m-%d")),
+            last_usage_time=float(data.get("last_usage_time", 0.0)),
+        )
+
+    async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
         state_data = await self._redis.hgetall(f"{self.KEY_STATE_PREFIX}{key_identifier}")  # type: ignore
         if state_data:
             decoded_data = {k.decode(): v.decode() for k, v in state_data.items()}
-            return RedisKeyState.from_redis_hash(decoded_data, self.settings)
+            return self._redis_hash_to_key_state(decoded_data)
         return None
 
     async def save_key_state(self, key_identifier: str, state: KeyState):
-        if isinstance(state, RedisKeyState):
-            await self._redis.hset(  # type: ignore
-                f"{self.KEY_STATE_PREFIX}{key_identifier}",
-                mapping=state.to_redis_hash(),
-            )
+        await self._redis.hset(  # type: ignore
+            f"{self.KEY_STATE_PREFIX}{key_identifier}",
+            mapping=self._key_state_to_redis_hash(state),
+        )
 
     async def get_all_key_states(self) -> List[KeyState]:
         keys = await self._redis.smembers(self.ALL_KEYS_SET_KEY)  # type: ignore
@@ -86,12 +79,15 @@ class RedisDBManager(DBManager):
     async def get_next_available_key(self) -> Optional[str]:
         pipe = self._redis.pipeline()
         # 从可用队列中取出一个键
-        key_bytes = await pipe.lpop(self.AVAILABLE_KEYS_KEY).execute()  # type: ignore
-        if key_bytes and key_bytes[0] is not None:
-            key_identifier = key_bytes[0].decode()  # type: ignore
-            # 将其移动到正在使用队列
+        pipe.lpop(self.AVAILABLE_KEYS_KEY)
+        result = await pipe.execute()
+        key_bytes = result[0]
+
+        if key_bytes:
+            key_identifier = key_bytes.decode()
+            # 将其移动到正在使用队列并更新 last_usage_time
+            pipe = self._redis.pipeline()
             pipe.sadd(self.IN_USE_KEYS_KEY, key_identifier)
-            # 更新 last_usage_time
             pipe.hset(
                 f"{self.KEY_STATE_PREFIX}{key_identifier}",
                 "last_usage_time",
@@ -103,11 +99,9 @@ class RedisDBManager(DBManager):
 
     async def move_to_cooldown(self, key_identifier: str, cool_down_until: float):
         pipe = self._redis.pipeline()
-        pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)  # 从可用队列中移除
-        pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)  # 从正在使用队列中移除
-        pipe.zadd(
-            self.COOLED_DOWN_KEYS_KEY, {key_identifier: cool_down_until}
-        )  # 添加到冷却队列
+        pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
+        pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)
+        pipe.zadd(self.COOLED_DOWN_KEYS_KEY, {key_identifier: cool_down_until})
         await pipe.execute()
 
     async def get_releasable_keys(self) -> List[str]:
@@ -115,8 +109,7 @@ class RedisDBManager(DBManager):
         ready_to_release = await self._redis.zrangebyscore(  # type: ignore
             self.COOLED_DOWN_KEYS_KEY, min=0, max=now
         )
-        # 明确 cast 为 List[bytes]
-        return [key.decode() for key in typing.cast(List[bytes], ready_to_release)]
+        return [key.decode() for key in ready_to_release]
 
     async def reactivate_key(self, key_identifier: str):
         pipe = self._redis.pipeline()
@@ -131,7 +124,7 @@ class RedisDBManager(DBManager):
             current_state.request_fail_count = 0
             pipe.hset(
                 f"{self.KEY_STATE_PREFIX}{key_identifier}",
-                mapping=current_state.to_redis_hash(),
+                mapping=self._key_state_to_redis_hash(current_state),
             )
 
         # 将密钥重新添加到可用队列
@@ -156,13 +149,13 @@ class RedisDBManager(DBManager):
         if keys_to_add:
             app_logger.info(f"Adding new keys to Redis: {keys_to_add}")
             for key_identifier in keys_to_add:
-                initial_state = RedisKeyState(
+                initial_state = KeyState(
                     key_identifier=key_identifier,
                     current_cool_down_seconds=self.settings.API_KEY_COOL_DOWN_SECONDS,
                 )
                 pipe.hset(
                     f"{self.KEY_STATE_PREFIX}{key_identifier}",
-                    mapping=initial_state.to_redis_hash(),
+                    mapping=self._key_state_to_redis_hash(initial_state),
                 )
                 pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
                 pipe.sadd(self.ALL_KEYS_SET_KEY, key_identifier)
@@ -174,7 +167,7 @@ class RedisDBManager(DBManager):
             for key_identifier in keys_to_remove:
                 pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
                 pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
-                pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)  # 从正在使用队列中移除
+                pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)
                 pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
                 pipe.srem(self.ALL_KEYS_SET_KEY, key_identifier)
 

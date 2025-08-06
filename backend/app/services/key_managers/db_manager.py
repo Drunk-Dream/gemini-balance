@@ -35,7 +35,7 @@ class DBManager(ABC):
         pass
 
     @abstractmethod
-    async def save_key_state(self, key_identifier: str, state: KeyState):
+    async def save_key_state(self, key_identifier: str, state: "KeyState"):
         """Save the state of a single key."""
         pass
 
