@@ -3,22 +3,16 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from app.api.openai.endpoints.chat import router as openai_chat_router
+from app.api.v1beta.endpoints.auth import router as auth_router
 from app.api.v1beta.endpoints.gemini import router as gemini_router
 from app.api.v1beta.endpoints.status import router as status_router
-from app.core.config import settings  # 导入 settings
 from app.core.logging import setup_app_logger, setup_transaction_logger
-from app.core.security import get_password_hash  # 导入 get_password_hash
 from app.services import key_manager
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 logger = logging.getLogger(__name__)
-
-# 在应用启动时哈希密码，避免每次请求都哈希
-# 生产环境中，密码应通过更安全的方式管理，例如环境变量或密钥管理服务
-# 这里为了简化，直接在启动时哈希
-hashed_password = get_password_hash(settings.PASSWORD)
 
 
 @asynccontextmanager
@@ -47,6 +41,7 @@ def create_app() -> FastAPI:
 
     app.include_router(gemini_router, prefix="/v1beta", tags=["Gemini"])
     app.include_router(openai_chat_router, prefix="/v1", tags=["OpenAI"])
+    app.include_router(auth_router, prefix="/api", tags=["Auth"])
     app.include_router(status_router, prefix="/api", tags=["Status"])
 
     frontend_dir = Path("frontend/build")
