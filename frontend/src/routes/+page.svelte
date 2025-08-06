@@ -95,105 +95,49 @@
 	{:else if keyStatuses.length === 0 && !loading}
 		<p class="text-gray-600">没有可用的密钥状态信息。</p>
 	{:else}
-		<div class="overflow-x-auto rounded-lg bg-white shadow-md">
-			<table class="min-w-full leading-normal">
-				<thead>
-					<tr>
-						<th
-							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
-						>
-							密钥标识
-						</th>
-						<th
-							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
-						>
-							状态
-						</th>
-						<th
-							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
-						>
-							剩余冷却时间 (秒)
-						</th>
-						<th
-							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
-						>
-							今日用量
-						</th>
-						<th
-							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
-						>
-							失败次数
-						</th>
-						<th
-							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
-						>
-							进入冷却次数
-						</th>
-						<th
-							class="border-b-2 border-gray-200 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 sm:px-5 sm:py-3"
-						>
-							当前冷却时长 (秒)
-						</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each keyStatuses as keyStatus}
-						<tr>
-							<td
-								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
+		<div class="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+			{#each keyStatuses as keyStatus}
+				<div class="rounded-lg bg-white p-4 shadow-md">
+					<div class="mb-2 flex items-center justify-between">
+						<h3 class="text-md font-semibold text-gray-800">密钥标识:</h3>
+						<p class="text-sm text-gray-900">{keyStatus.key_identifier}</p>
+					</div>
+					<div class="mb-2 flex items-center justify-between">
+						<h3 class="text-md font-semibold text-gray-800">状态:</h3>
+						<span class="relative inline-block px-2 py-0.5 text-sm font-semibold leading-tight">
+							<span
+								aria-hidden="true"
+								class="absolute inset-0 rounded-full opacity-50 {keyStatus.status === 'active'
+									? 'bg-green-200'
+									: 'bg-yellow-200'}"
+							></span>
+							<span class="relative text-gray-900"
+								>{keyStatus.status === 'active' ? '活跃' : '冷却中'}</span
 							>
-								<p class="whitespace-no-wrap text-gray-900">{keyStatus.key_identifier}</p>
-							</td>
-							<td
-								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
-							>
-								<span
-									class="relative inline-block px-2 py-0.5 font-semibold leading-tight sm:px-3 sm:py-1"
-								>
-									<span
-										aria-hidden="true"
-										class="absolute inset-0 rounded-full opacity-50 {keyStatus.status === 'active'
-											? 'bg-green-200'
-											: 'bg-yellow-200'}"
-									></span>
-									<span class="relative text-gray-900"
-										>{keyStatus.status === 'active' ? '活跃' : '冷却中'}</span
-									>
-								</span>
-							</td>
-							<td
-								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
-							>
-								<p class="whitespace-no-wrap text-gray-900">
-									{keyStatus.cool_down_seconds_remaining}
-								</p>
-							</td>
-							<td
-								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
-							>
-								<div class="text-gray-900">{@html formatDailyUsage(keyStatus.daily_usage)}</div>
-							</td>
-							<td
-								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
-							>
-								<p class="whitespace-no-wrap text-gray-900">{keyStatus.failure_count}</p>
-							</td>
-							<td
-								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
-							>
-								<p class="whitespace-no-wrap text-gray-900">{keyStatus.cool_down_entry_count}</p>
-							</td>
-							<td
-								class="border-b border-gray-200 bg-white px-3 py-3 text-xs sm:px-5 sm:py-5 sm:text-sm"
-							>
-								<p class="whitespace-no-wrap text-gray-900">
-									{keyStatus.current_cool_down_seconds}
-								</p>
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
+						</span>
+					</div>
+					<div class="mb-2 flex items-center justify-between">
+						<h3 class="text-md font-semibold text-gray-800">剩余冷却时间:</h3>
+						<p class="text-sm text-gray-900">{keyStatus.cool_down_seconds_remaining} 秒</p>
+					</div>
+					<div class="mb-2 flex items-center justify-between">
+						<h3 class="text-md font-semibold text-gray-800">今日用量:</h3>
+						<div class="text-sm text-gray-900">{@html formatDailyUsage(keyStatus.daily_usage)}</div>
+					</div>
+					<div class="mb-2 flex items-center justify-between">
+						<h3 class="text-md font-semibold text-gray-800">失败次数:</h3>
+						<p class="text-sm text-gray-900">{keyStatus.failure_count}</p>
+					</div>
+					<div class="mb-2 flex items-center justify-between">
+						<h3 class="text-md font-semibold text-gray-800">进入冷却次数:</h3>
+						<p class="text-sm text-gray-900">{keyStatus.cool_down_entry_count}</p>
+					</div>
+					<div class="flex items-center justify-between">
+						<h3 class="text-md font-semibold text-gray-800">当前冷却时长:</h3>
+						<p class="text-sm text-gray-900">{keyStatus.current_cool_down_seconds} 秒</p>
+					</div>
+				</div>
+			{/each}
 		</div>
 	{/if}
 </div>
