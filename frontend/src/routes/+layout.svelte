@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { authToken, isAuthenticated } from '$lib/stores';
 	import { quintOut } from 'svelte/easing';
 	import { slide } from 'svelte/transition';
@@ -67,7 +67,7 @@
 						<li class="mb-2">
 							<a
 								href={link.href}
-								class="block rounded-md p-2 transition-colors duration-200 hover:bg-gray-700 {$page
+								class="block rounded-md p-2 transition-colors duration-200 hover:bg-gray-700 {page
 									.url.pathname === link.href
 									? 'bg-gray-700'
 									: ''}"
@@ -111,7 +111,7 @@
 					<li class="mb-2">
 						<a
 							href={link.href}
-							class="block rounded-md p-2 transition-colors duration-200 hover:bg-gray-700 {$page
+							class="block rounded-md p-2 transition-colors duration-200 hover:bg-gray-700 {page
 								.url.pathname === link.href
 								? 'bg-gray-700'
 								: ''}"
