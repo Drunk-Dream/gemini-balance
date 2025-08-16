@@ -32,7 +32,9 @@ class SQLiteDBManager(DBManager):
 
     async def initialize(self):
         if self.settings.FORCE_RESET_DATABASE:
-            app_logger.warning("FORCE_RESET_DATABASE is enabled. Dropping key_states table...")
+            app_logger.warning(
+                "FORCE_RESET_DATABASE is enabled. Dropping key_states table..."
+            )
             await self._execute_query("DROP TABLE IF EXISTS key_states")
 
         await self._execute_query(
@@ -159,6 +161,12 @@ class SQLiteDBManager(DBManager):
                 "DELETE FROM key_states WHERE key_identifier = ?", (key_identifier,)
             )
             app_logger.info(f"Removed API key '{key_identifier}' from DB.")
+
+    async def release_key_from_use(self, key_identifier: str):
+        await self._execute_query(
+            "UPDATE key_states SET is_in_use = 0 WHERE key_identifier = ?",
+            (key_identifier,),
+        )
 
     def _row_to_key_state(self, row: tuple) -> KeyState:
         return KeyState(

@@ -68,3 +68,8 @@ class DBManager(ABC):
     async def sync_keys(self, config_keys: Set[str]):
         """Synchronize the keys in the database with the keys from the config."""
         pass
+
+    @abstractmethod
+    async def release_key_from_use(self, key_identifier: str):
+        """Release a key from being in use, setting its is_in_use flag to 0."""
+        pass

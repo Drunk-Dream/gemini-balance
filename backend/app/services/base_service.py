@@ -176,8 +176,11 @@ class ApiService(ABC):
             except Exception as e:
                 last_exception = e
                 logger.critical(
-                    f"An unexpected error occurred with key {key_identifier}: {e}. No retry."
+                    f"An unexpected error occurred with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
+                # 标记密钥失败，使用新的错误类型 "unexpected_error"
+                await key_manager.mark_key_fail(key_identifier, "unexpected_error")
+                # 即使标记失败，也需要抛出异常，因为这是不可恢复的错误
                 raise HTTPException(
                     status_code=500, detail=f"An unexpected error occurred: {e}"
                 )

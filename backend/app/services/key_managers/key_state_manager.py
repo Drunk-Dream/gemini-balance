@@ -78,7 +78,11 @@ class KeyStateManager:
             state.last_usage_time = time.time()
 
             should_cool_down = False
-            if error_type in ["auth_error", "rate_limit_error"]:
+            if error_type in [
+                "auth_error",
+                "rate_limit_error",
+                "unexpected_error",
+            ]:  # 新增 unexpected_error
                 should_cool_down = True
             elif error_type in ["other_http_error", "request_error"]:
                 if state.request_fail_count >= self._api_key_failure_threshold:
@@ -100,6 +104,12 @@ class KeyStateManager:
                     f"Key '{key_identifier}' cooled down for "
                     f"{state.current_cool_down_seconds:.2f}s due to {error_type}."
                 )
+            else:  # 如果不需要冷却，则释放密钥
+                await self._db_manager.release_key_from_use(key_identifier)
+                app_logger.info(
+                    f"Key '{key_identifier}' released from use after {error_type} without cooldown."
+                )
+
             await self._save_key_state(key_identifier, state)
 
     async def mark_key_success(self, key_identifier: str):

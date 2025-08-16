@@ -173,3 +173,16 @@ class RedisDBManager(DBManager):
 
         await pipe.execute()
         app_logger.info("Key synchronization complete.")
+
+    async def release_key_from_use(self, key_identifier: str):
+        """Release a key from being in use, setting its is_in_use flag to 0."""
+        # 从正在使用队列中移除
+        await self._redis.srem(self.IN_USE_KEYS_KEY, key_identifier)  # type: ignore
+        # 确保它在可用队列中 (如果它不在冷却中)
+        # 注意: RedisDBManager 没有 is_in_use 字段，而是通过集合来管理状态
+        # 这里的逻辑是确保它不在 IN_USE_KEYS_KEY 中，并且如果它不在 COOLED_DOWN_KEYS_KEY 中，就把它放回 AVAILABLE_KEYS_KEY
+        is_cooled_down = await self._redis.zscore(
+            self.COOLED_DOWN_KEYS_KEY, key_identifier
+        )
+        if is_cooled_down is None:  # 如果不在冷却中
+            await self._redis.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)  # type: ignore
