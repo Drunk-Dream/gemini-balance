@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from app.api.openai.endpoints.chat import router as openai_chat_router
+from app.api.v1beta.endpoints import auth_keys
 from app.api.v1beta.endpoints.auth import router as auth_router
 from app.api.v1beta.endpoints.gemini import router as gemini_router
 from app.api.v1beta.endpoints.status import router as status_router
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(openai_chat_router, prefix="/v1", tags=["OpenAI"])
     app.include_router(auth_router, prefix="/api", tags=["Auth"])
     app.include_router(status_router, prefix="/api", tags=["Status"])
+    app.include_router(auth_keys.router, prefix="/api", tags=["Auth Keys"])
 
     frontend_dir = Path("frontend/build")
 

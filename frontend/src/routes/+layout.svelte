@@ -10,6 +10,7 @@
 
 	const navLinks = [
 		{ name: '密钥状态', href: '/' },
+		{ name: '认证管理', href: '/auth-keys' },
 		{ name: '日志查看', href: '/logs' }
 	];
 
@@ -111,8 +112,8 @@
 					<li class="mb-2">
 						<a
 							href={link.href}
-							class="block rounded-md p-2 transition-colors duration-200 hover:bg-gray-700 {page
-								.url.pathname === link.href
+							class="block rounded-md p-2 transition-colors duration-200 hover:bg-gray-700 {page.url
+								.pathname === link.href
 								? 'bg-gray-700'
 								: ''}"
 						>
