@@ -36,6 +36,8 @@ class ChatCompletionRequest(BaseModel):
     tools: Optional[List[Dict[str, Any]]] = None
     tool_choice: Optional[Union[Literal["none", "auto"], Dict[str, Any]]] = None
     extra_body: Optional[Dict[str, Any]] = None
+    include_thoughts: Optional[bool] = None
+    thinking_budget: Optional[int] = None
 
 
 class ChatCompletionChoiceDelta(BaseModel):

@@ -24,11 +24,36 @@ class OpenAIService(ApiService):
             "Authorization": f"Bearer {api_key}",
         }
 
+    def _handle_thinking_config(self, request_data: ChatCompletionRequest) -> None:
+        """
+        处理 include_thoughts 和 thinking_budget 字段，将其转换为 extra_body 中的 google.thinking_config 结构。
+        """
+        if request_data.include_thoughts is not None or request_data.thinking_budget is not None:
+            if request_data.extra_body is None:
+                request_data.extra_body = {}
+
+            google_config = request_data.extra_body.setdefault("google", {})
+            thinking_config = google_config.setdefault("thinking_config", {})
+
+            if request_data.include_thoughts is not None:
+                thinking_config["include_thoughts"] = request_data.include_thoughts
+                del request_data.include_thoughts
+
+            if request_data.thinking_budget is not None:
+                thinking_config["thinking_budget"] = request_data.thinking_budget
+                del request_data.thinking_budget
+                # reasoning_effort 字段在 GeminiService 中处理，这里删除以避免冲突
+                if hasattr(request_data, "reasoning_effort"):
+                    del request_data.reasoning_effort
+
     async def create_chat_completion(
         self, request_data: ChatCompletionRequest
     ) -> Union[Dict[str, Any], StreamingResponse]:
         url = self._get_api_url()
         stream = bool(request_data.stream)  # 确保 stream 是 bool 类型
+
+        self._handle_thinking_config(request_data)
+
         params = {"alt": "sse"} if stream else {"alt": "json"}
 
         response = await self._send_request(
