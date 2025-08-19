@@ -9,7 +9,7 @@
 	let { children } = $props();
 
 	const navLinks = [
-		{ name: '密钥状态', href: '/' },
+		{ name: '密钥管理', href: '/' },
 		{ name: '认证管理', href: '/auth-keys' },
 		{ name: '日志查看', href: '/logs' }
 	];
