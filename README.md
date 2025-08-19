@@ -31,10 +31,6 @@
 ```
 gemini-balance/
 ├── .clinerules/
-│   ├── coding-standards.md
-│   ├── flake8-lint-waiver.md
-│   └── memory/
-│       └── project_info.md
 ├── .gitignore
 ├── .python-version
 ├── Dockerfile
@@ -42,16 +38,7 @@ gemini-balance/
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── openai/
-│   │   │   │   ├── endpoints/
-│   │   │   │   │   └── chat.py
-│   │   │   │   └── schemas/
-│   │   │   │       └── chat.py
 │   │   │   └── v1beta/
-│   │   │       ├── endpoints/
-│   │   │       │   ├── gemini.py
-│   │   │       │   └── status.py
-│   │   │       └── schemas/
-│   │   │           └── gemini.py
 │   │   ├── core/
 │   │   │   ├── config.py
 │   │   │   ├── decorators.py
@@ -61,19 +48,9 @@ gemini-balance/
 │   │   │   ├── gemini_service.py
 │   │   │   ├── openai_service.py
 │   │   │   └── key_managers/
-│   │   │       ├── __init__.py
-│   │   │       ├── db_manager.py
-│   │   │       ├── key_state_manager.py
-│   │   │       ├── redis_manager.py
-│   │   │       └── sqlite_manager.py
 │   │   └── main.py
 │   ├── pyproject.toml
 │   ├── uv.lock
-│   └── tests/
-│       ├── __init__.py
-│       ├── test_gemini.py
-│       ├── test_key_manager.py
-│       └── test_redis_key_manager.py
 ├── frontend/
 │   ├── package.json
 │   ├── package-lock.json
