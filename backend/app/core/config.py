@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Any, List, Optional
 
 from dotenv import load_dotenv
 from pydantic import field_validator
@@ -15,7 +14,6 @@ LOG_DIR = Path("logs")
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    GOOGLE_API_KEYS: Optional[List[str]] = None
     GEMINI_API_BASE_URL: str = os.getenv(
         "GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com"
     )
@@ -44,29 +42,19 @@ class Settings(BaseSettings):
     PASSWORD: str = os.getenv(
         "PASSWORD", "admin"
     )  # Add a default password for simplicity
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-super-secret-key")  # 从环境变量加载，提供默认值
+    SECRET_KEY: str = os.getenv(
+        "SECRET_KEY", "your-super-secret-key"
+    )  # 从环境变量加载，提供默认值
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
+        os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+    )
 
     @field_validator("DATABASE_TYPE")
     def validate_database_type(cls, v: str) -> str:
         if v not in ["redis", "sqlite"]:
             raise ValueError("DATABASE_TYPE must be 'redis' or 'sqlite'")
         return v
-
-    @field_validator("GOOGLE_API_KEYS", mode="before")
-    @classmethod
-    def _parse_api_keys(cls, v: Any) -> List[str]:
-        # 优先从 GOOGLE_API_KEYS 环境变量中解析逗号分隔的密钥
-        if isinstance(v, str) and v.strip():
-            return [key.strip() for key in v.split(",") if key.strip()]
-
-        # 否则，遍历所有环境变量，查找以 GOOGLE_API_KEY_ 为前缀的密钥
-        api_keys = []
-        for key, value in os.environ.items():
-            if key.startswith("GOOGLE_API_KEY_") and value.strip():
-                api_keys.append(value.strip())
-        return api_keys
 
 
 settings = Settings()

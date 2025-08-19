@@ -24,8 +24,6 @@ class ApiService(ABC):
         self.service_name = service_name
         self.client = httpx.AsyncClient(base_url=self.base_url)
         self.max_retries = settings.MAX_RETRIES
-        if not settings.GOOGLE_API_KEYS:
-            raise ValueError("No Google API keys configured.")
 
         self.debug_logger = setup_debug_logger(f"{service_name}_debug_logger")
 

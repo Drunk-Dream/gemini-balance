@@ -21,12 +21,6 @@ class KeyStatusResponse(BaseModel):
 
 class KeyStateManager:
     def __init__(self, settings: Settings, db_manager: DBManager):
-        if not settings.GOOGLE_API_KEYS:
-            raise ValueError("No API keys provided")
-        self._key_map = {
-            self._get_key_identifier(key): key for key in settings.GOOGLE_API_KEYS
-        }
-        self._api_keys = list(self._key_map.keys())
         self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
         self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
@@ -43,11 +37,11 @@ class KeyStateManager:
         return f"key_sha256_{hashlib.sha256(key.encode()).hexdigest()[:8]}"
 
     async def get_key_from_identifier(self, key_identifier: str) -> Optional[str]:
-        return self._key_map.get(key_identifier)
+        key_state = await self._db_manager.get_key_state(key_identifier)
+        return key_state.api_key if key_state else None
 
     async def initialize(self):
         await self._db_manager.initialize()
-        await self._db_manager.sync_keys(set(self._api_keys))
         await self._load_key_states_to_cache()
 
     async def _load_key_states_to_cache(self):
@@ -166,6 +160,32 @@ class KeyStateManager:
                     )
                 )
             return states_response
+
+    async def add_key(self, api_key: str) -> str:
+        key_identifier = self._get_key_identifier(api_key)
+        async with self._lock:
+            await self._db_manager.add_key(key_identifier, api_key)
+            await self._load_key_states_to_cache()  # Refresh cache
+            app_logger.info(f"Added new API key: {key_identifier}")
+            return key_identifier
+
+    async def delete_key(self, key_identifier: str):
+        async with self._lock:
+            await self._db_manager.delete_key(key_identifier)
+            self._key_states_cache.pop(key_identifier, None)  # Remove from cache
+            app_logger.info(f"Deleted API key: {key_identifier}")
+
+    async def reset_key_state(self, key_identifier: str):
+        async with self._lock:
+            await self._db_manager.reset_key_state(key_identifier)
+            await self._load_key_states_to_cache()  # Refresh cache
+            app_logger.info(f"Reset state for API key: {key_identifier}")
+
+    async def reset_all_key_states(self):
+        async with self._lock:
+            await self._db_manager.reset_all_key_states()
+            await self._load_key_states_to_cache()  # Refresh cache
+            app_logger.info("Reset state for all API keys.")
 
     async def _release_cooled_down_keys(self):
         while True:

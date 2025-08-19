@@ -3,9 +3,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from app.api.openai.endpoints.chat import router as openai_chat_router
-from app.api.v1beta.endpoints import auth_keys
 from app.api.v1beta.endpoints.auth import router as auth_router
+from app.api.v1beta.endpoints.auth_keys import router as auth_keys_router
 from app.api.v1beta.endpoints.gemini import router as gemini_router
+from app.api.v1beta.endpoints.keys import router as keys_router  # 新增导入
 from app.api.v1beta.endpoints.status import router as status_router
 from app.core.logging import setup_app_logger, setup_transaction_logger
 from app.services import key_manager
@@ -44,7 +45,8 @@ def create_app() -> FastAPI:
     app.include_router(openai_chat_router, prefix="/v1", tags=["OpenAI"])
     app.include_router(auth_router, prefix="/api", tags=["Auth"])
     app.include_router(status_router, prefix="/api", tags=["Status"])
-    app.include_router(auth_keys.router, prefix="/api", tags=["Auth Keys"])
+    app.include_router(auth_keys_router, prefix="/api", tags=["Auth Keys"])
+    app.include_router(keys_router, prefix="/api", tags=["Keys"])  # 新增路由
 
     frontend_dir = Path("frontend/build")
 

@@ -1,6 +1,6 @@
 import json
 import time
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 import redis.asyncio as redis
 from app.core.config import Settings
@@ -28,6 +28,7 @@ class RedisDBManager(DBManager):
     def _key_state_to_redis_hash(self, state: KeyState) -> Dict[str, str]:
         return {
             "key_identifier": state.key_identifier,
+            "api_key": state.api_key,
             "cool_down_until": str(state.cool_down_until),
             "request_fail_count": str(state.request_fail_count),
             "cool_down_entry_count": str(state.cool_down_entry_count),
@@ -40,6 +41,7 @@ class RedisDBManager(DBManager):
     def _redis_hash_to_key_state(self, data: Dict[str, str]) -> KeyState:
         return KeyState(
             key_identifier=data.get("key_identifier", ""),
+            api_key=data.get("api_key", ""),
             cool_down_until=float(data.get("cool_down_until", 0.0)),
             request_fail_count=int(data.get("request_fail_count", 0)),
             cool_down_entry_count=int(data.get("cool_down_entry_count", 0)),
@@ -59,6 +61,10 @@ class RedisDBManager(DBManager):
             decoded_data = {k.decode(): v.decode() for k, v in state_data.items()}
             return self._redis_hash_to_key_state(decoded_data)
         return None
+
+    async def get_key_from_identifier(self, key_identifier: str) -> Optional[str]:
+        state = await self.get_key_state(key_identifier)
+        return state.api_key if state else None
 
     async def save_key_state(self, key_identifier: str, state: KeyState):
         await self._redis.hset(  # type: ignore
@@ -131,49 +137,6 @@ class RedisDBManager(DBManager):
         pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
         await pipe.execute()
 
-    async def sync_keys(self, config_keys: Set[str]):
-        app_logger.info(f"Syncing keys. Config keys: {config_keys}")
-        pipe = self._redis.pipeline()
-
-        # 获取 Redis 中所有已知的密钥
-        redis_all_key_identifiers_bytes = await self._redis.smembers(self.ALL_KEYS_SET_KEY)  # type: ignore
-        redis_all_key_identifiers = {
-            key.decode() for key in redis_all_key_identifiers_bytes
-        }
-
-        # 找出需要添加的密钥 (配置中有，Redis 中没有)
-        keys_to_add = config_keys - redis_all_key_identifiers
-        # 找出需要移除的密钥 (Redis 中有，配置中没有)
-        keys_to_remove = redis_all_key_identifiers - config_keys
-
-        if keys_to_add:
-            app_logger.info(f"Adding new keys to Redis: {keys_to_add}")
-            for key_identifier in keys_to_add:
-                initial_state = KeyState(
-                    key_identifier=key_identifier,
-                    current_cool_down_seconds=self.settings.API_KEY_COOL_DOWN_SECONDS,
-                )
-                pipe.hset(
-                    f"{self.KEY_STATE_PREFIX}{key_identifier}",
-                    mapping=self._key_state_to_redis_hash(initial_state),
-                )
-                pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
-                pipe.sadd(self.ALL_KEYS_SET_KEY, key_identifier)
-                # 确保新添加的密钥不在正在使用队列中
-                pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)
-
-        if keys_to_remove:
-            app_logger.info(f"Removing old keys from Redis: {keys_to_remove}")
-            for key_identifier in keys_to_remove:
-                pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
-                pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
-                pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)
-                pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
-                pipe.srem(self.ALL_KEYS_SET_KEY, key_identifier)
-
-        await pipe.execute()
-        app_logger.info("Key synchronization complete.")
-
     async def release_key_from_use(self, key_identifier: str):
         """Release a key from being in use, setting its is_in_use flag to 0."""
         # 从正在使用队列中移除
@@ -186,3 +149,65 @@ class RedisDBManager(DBManager):
         )
         if is_cooled_down is None:  # 如果不在冷却中
             await self._redis.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)  # type: ignore
+
+    async def add_key(self, key_identifier: str, api_key: str):
+        initial_state = KeyState(
+            key_identifier=key_identifier,
+            api_key=api_key,
+            current_cool_down_seconds=self.settings.API_KEY_COOL_DOWN_SECONDS,
+        )
+        pipe = self._redis.pipeline()
+        pipe.hset(
+            f"{self.KEY_STATE_PREFIX}{key_identifier}",
+            mapping=self._key_state_to_redis_hash(initial_state),
+        )
+        pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
+        pipe.sadd(self.ALL_KEYS_SET_KEY, key_identifier)
+        await pipe.execute()
+        app_logger.info(f"Added new API key '{key_identifier}' to Redis.")
+
+    async def delete_key(self, key_identifier: str):
+        pipe = self._redis.pipeline()
+        pipe.lrem(self.AVAILABLE_KEYS_KEY, 0, key_identifier)
+        pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
+        pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)
+        pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
+        pipe.srem(self.ALL_KEYS_SET_KEY, key_identifier)
+        await pipe.execute()
+        app_logger.info(f"Removed API key '{key_identifier}' from Redis.")
+
+    async def reset_key_state(self, key_identifier: str):
+        state = await self.get_key_state(key_identifier)
+        if state:
+            state.cool_down_until = 0.0
+            state.request_fail_count = 0
+            state.cool_down_entry_count = 0
+            state.current_cool_down_seconds = self.settings.API_KEY_COOL_DOWN_SECONDS
+            state.usage_today = {}
+            state.last_usage_date = time.strftime("%Y-%m-%d")
+            state.last_usage_time = time.time()
+            await self.save_key_state(key_identifier, state)
+            await self.reactivate_key(key_identifier)
+            app_logger.info(f"Reset state for API key '{key_identifier}' in Redis.")
+
+    async def reset_all_key_states(self):
+        all_keys = await self.get_all_key_states()
+        pipe = self._redis.pipeline()
+        for state in all_keys:
+            state.cool_down_until = 0.0
+            state.request_fail_count = 0
+            state.cool_down_entry_count = 0
+            state.current_cool_down_seconds = self.settings.API_KEY_COOL_DOWN_SECONDS
+            state.usage_today = {}
+            state.last_usage_date = time.strftime("%Y-%m-%d")
+            state.last_usage_time = time.time()
+            pipe.hset(
+                f"{self.KEY_STATE_PREFIX}{state.key_identifier}",
+                mapping=self._key_state_to_redis_hash(state),
+            )
+            # 确保所有键都回到可用队列，并从冷却和使用中移除
+            pipe.zrem(self.COOLED_DOWN_KEYS_KEY, state.key_identifier)
+            pipe.srem(self.IN_USE_KEYS_KEY, state.key_identifier)
+            pipe.rpush(self.AVAILABLE_KEYS_KEY, state.key_identifier)
+        await pipe.execute()
+        app_logger.info("Reset state for all API keys in Redis.")

@@ -1,13 +1,14 @@
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
 
 class KeyState(BaseModel):
     key_identifier: str
+    api_key: str  # 新增字段
     cool_down_until: float = 0.0
     request_fail_count: int = 0
     cool_down_entry_count: int = 0
@@ -32,6 +33,11 @@ class DBManager(ABC):
     @abstractmethod
     async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
         """Get the state of a single key."""
+        pass
+
+    @abstractmethod
+    async def get_key_from_identifier(self, key_identifier: str) -> Optional[str]:
+        """Get the raw API key from its identifier."""
         pass
 
     @abstractmethod
@@ -65,11 +71,26 @@ class DBManager(ABC):
         pass
 
     @abstractmethod
-    async def sync_keys(self, config_keys: Set[str]):
-        """Synchronize the keys in the database with the keys from the config."""
+    async def release_key_from_use(self, key_identifier: str):
+        """Release a key from being in use, setting its is_in_use flag to 0."""
         pass
 
     @abstractmethod
-    async def release_key_from_use(self, key_identifier: str):
-        """Release a key from being in use, setting its is_in_use flag to 0."""
+    async def add_key(self, key_identifier: str, api_key: str):
+        """Add a new API key to the database."""
+        pass
+
+    @abstractmethod
+    async def delete_key(self, key_identifier: str):
+        """Delete an API key from the database."""
+        pass
+
+    @abstractmethod
+    async def reset_key_state(self, key_identifier: str):
+        """Reset the state of a specific API key."""
+        pass
+
+    @abstractmethod
+    async def reset_all_key_states(self):
+        """Reset the state of all API keys."""
         pass

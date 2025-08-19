@@ -2,7 +2,7 @@ import asyncio  # 导入 asyncio
 import json
 import time
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import List, Optional
 
 import aiosqlite  # type: ignore
 from app.core.config import Settings
@@ -31,6 +31,7 @@ class SQLiteDBManager(DBManager):
                 """
                 CREATE TABLE IF NOT EXISTS key_states (
                     key_identifier TEXT PRIMARY KEY,
+                    api_key TEXT NOT NULL,
                     cool_down_until REAL,
                     request_fail_count INTEGER,
                     cool_down_entry_count INTEGER,
@@ -56,11 +57,21 @@ class SQLiteDBManager(DBManager):
                 return None
             return self._row_to_key_state(row)
 
+    async def get_key_from_identifier(self, key_identifier: str) -> Optional[str]:
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            cursor = await db.execute(
+                "SELECT api_key FROM key_states WHERE key_identifier = ?",
+                (key_identifier,),
+            )
+            row = await cursor.fetchone()
+            return row[0] if row else None
+
     async def save_key_state(self, key_identifier: str, state: KeyState):
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
                 """
                 UPDATE key_states SET
+                    api_key = ?,
                     cool_down_until = ?,
                     request_fail_count = ?,
                     cool_down_entry_count = ?,
@@ -71,6 +82,7 @@ class SQLiteDBManager(DBManager):
                 WHERE key_identifier = ?
                 """,
                 (
+                    state.api_key,
                     state.cool_down_until,
                     state.request_fail_count,
                     state.cool_down_entry_count,
@@ -143,41 +155,100 @@ class SQLiteDBManager(DBManager):
             )
             await db.commit()
 
-    async def sync_keys(self, config_keys: Set[str]):
+    async def add_key(self, key_identifier: str, api_key: str):
         async with aiosqlite.connect(self.sqlite_db) as db:
-            cursor = await db.execute("SELECT key_identifier FROM key_states")
-            db_keys_raw = await cursor.fetchall()
-            db_keys = {row[0] for row in db_keys_raw}
-
-            for key_identifier in config_keys - db_keys:
-                await db.execute(
-                    """
-                    INSERT INTO key_states (
-                        key_identifier, cool_down_until, request_fail_count,
-                        cool_down_entry_count, current_cool_down_seconds,
-                        usage_today, last_usage_date, last_usage_time
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        key_identifier,
-                        0.0,
-                        0,
-                        0,
-                        self.settings.API_KEY_COOL_DOWN_SECONDS,
-                        "{}",
-                        time.strftime("%Y-%m-%d"),
-                        time.time(),
-                    ),
-                )
-                app_logger.info(f"Added new API key '{key_identifier}' to DB.")
+            await db.execute(
+                """
+                INSERT INTO key_states (
+                    key_identifier, api_key, cool_down_until, request_fail_count,
+                    cool_down_entry_count, current_cool_down_seconds,
+                    usage_today, last_usage_date, last_usage_time
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    key_identifier,
+                    api_key,
+                    0.0,
+                    0,
+                    0,
+                    self.settings.API_KEY_COOL_DOWN_SECONDS,
+                    "{}",
+                    time.strftime("%Y-%m-%d"),
+                    time.time(),
+                ),
+            )
             await db.commit()
+            app_logger.info(f"Added new API key '{key_identifier}' to DB.")
 
-            for key_identifier in db_keys - config_keys:
-                await db.execute(
-                    "DELETE FROM key_states WHERE key_identifier = ?", (key_identifier,)
-                )
-                app_logger.info(f"Removed API key '{key_identifier}' from DB.")
+    async def delete_key(self, key_identifier: str):
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            await db.execute(
+                "DELETE FROM key_states WHERE key_identifier = ?", (key_identifier,)
+            )
             await db.commit()
+            app_logger.info(f"Removed API key '{key_identifier}' from DB.")
+
+    async def reset_key_state(self, key_identifier: str):
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            await db.execute(
+                """
+                UPDATE key_states SET
+                    cool_down_until = ?,
+                    request_fail_count = ?,
+                    cool_down_entry_count = ?,
+                    current_cool_down_seconds = ?,
+                    usage_today = ?,
+                    last_usage_date = ?,
+                    last_usage_time = ?,
+                    is_in_use = ?,
+                    is_cooled_down = ?
+                WHERE key_identifier = ?
+                """,
+                (
+                    0.0,
+                    0,
+                    0,
+                    self.settings.API_KEY_COOL_DOWN_SECONDS,
+                    "{}",
+                    time.strftime("%Y-%m-%d"),
+                    time.time(),
+                    0,
+                    0,
+                    key_identifier,
+                ),
+            )
+            await db.commit()
+            app_logger.info(f"Reset state for API key '{key_identifier}' in DB.")
+
+    async def reset_all_key_states(self):
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            await db.execute(
+                """
+                UPDATE key_states SET
+                    cool_down_until = ?,
+                    request_fail_count = ?,
+                    cool_down_entry_count = ?,
+                    current_cool_down_seconds = ?,
+                    usage_today = ?,
+                    last_usage_date = ?,
+                    last_usage_time = ?,
+                    is_in_use = ?,
+                    is_cooled_down = ?
+                """,
+                (
+                    0.0,
+                    0,
+                    0,
+                    self.settings.API_KEY_COOL_DOWN_SECONDS,
+                    "{}",
+                    time.strftime("%Y-%m-%d"),
+                    time.time(),
+                    0,
+                    0,
+                ),
+            )
+            await db.commit()
+            app_logger.info("Reset state for all API keys in DB.")
 
     async def release_key_from_use(self, key_identifier: str):
         async with aiosqlite.connect(self.sqlite_db) as db:
@@ -190,6 +261,7 @@ class SQLiteDBManager(DBManager):
     def _row_to_key_state(self, row: aiosqlite.Row) -> KeyState:
         return KeyState(
             key_identifier=row["key_identifier"],
+            api_key=row["api_key"],
             cool_down_until=row["cool_down_until"],
             request_fail_count=row["request_fail_count"],
             cool_down_entry_count=row["cool_down_entry_count"],
