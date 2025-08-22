@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { authToken, isAuthenticated } from '$lib/stores';
 	import { onMount } from 'svelte';
 
@@ -10,7 +11,7 @@
 	onMount(() => {
 		// 如果已经认证，则直接跳转到主页
 		if ($isAuthenticated) {
-			goto('/');
+			goto($page.url.searchParams.get('redirect') || '/');
 		}
 	});
 
@@ -34,7 +35,7 @@
 			const data = await response.json();
 			authToken.set(data.access_token); // 存储令牌
 			isAuthenticated.set(true); // 设置认证状态
-			goto('/'); // 登录成功后跳转到主页
+			goto($page.url.searchParams.get('redirect') || '/'); // 登录成功后跳转到之前的页面或主页
 		} catch (error: any) {
 			errorMessage = `登录失败: ${error.message}`;
 			console.error(errorMessage);
