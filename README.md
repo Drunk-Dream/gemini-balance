@@ -1,198 +1,134 @@
 # Gemini Balance API
 
-本项目旨在开发一个基于 Python FastAPI 的 Google Gemini API 请求转发服务。其核心目标是提供一个中间层，能够接收符合 Google Gemini API 格式的请求，并将其无缝转发至 Google Gemini 官方 API，然后将接收到的响应原样返回给客户端。这包括对普通响应和流式响应的全面支持，确保转发服务具备原 API 的所有功能。
+本项目是一个基于 Python FastAPI 的 Google Gemini API 请求转发服务。它提供了一个具备用户认证和双层密钥管理的中间层，能够无缝转发符合 Google Gemini API 格式的请求，并支持普通和流式响应。
 
 ## 功能特性
 
-- **请求转发**: 将客户端请求转发至 Google Gemini API。
-- **响应返回**: 将 Gemini API 的响应原样返回给客户端，支持普通响应和流式响应。
-- **可插拔的持久化密钥管理**: 引入高度模块化的密钥管理系统，支持通过配置动态选择 Redis 或 SQLite 作为持久化后端，实现 API 密钥的轮询、冷却、指数退避和状态持久化，极大提高服务可靠性和灵活性。
-- **服务抽象**: 引入 `ApiService` 基类，抽象通用 API 交互逻辑，减少代码重复。
-- **配置管理**: 通过环境变量灵活配置 API Key 和其他设置，包括 API 密钥冷却时间。
-- **日志记录**: 详细的结构化日志输出，支持主应用日志、事务日志和可选的调试日志（通过 `RotatingFileHandler` 管理），便于监控和问题排查。
-- **健康检查**: 提供 `/health` 端点用于服务健康状态检查。
-- **前端界面**: 提供基于 Svelte 的前端界面，用于查看 API Key 状态和后端日志。
+- **请求转发**: 将客户端请求安全地转发至 Google Gemini API 和 OpenAI API。
+- **双层密钥管理**:
+    - **用户级 API 密钥**: 允许用户登录后生成和管理自己的 API 密钥，用于访问本服务。
+    - **服务级密钥池**: 集中管理用于请求 Google Gemini 的一组 API 密钥，实现密钥轮询、冷却和状态持久化。
+- **用户认证**: 提供基于 JWT 的登录认证，保护管理接口。
+- **可插拔的持久化**: 支持通过配置动态选择 Redis 或异步 SQLite (`aiosqlite`) 作为密钥管理的持久化后端。
+- **前后端一体化**: 提供基于 Svelte 的前端界面，用于管理两类密钥和查看日志。
+- **配置管理**: 通过环境变量灵活配置应用。
+- **结构化日志**: 详细的日志输出，便于监控和问题排查。
 
 ## 技术栈
 
-- **后端框架**: FastAPI
-- **前端框架**: SvelteKit
+- **后端**: FastAPI, Pydantic, `aiosqlite`
+- **前端**: SvelteKit
+- **认证**: JWT, `python-jose[cryptography]`, `passlib[bcrypt]`
 - **HTTP 客户端**: httpx
-- **数据验证**: Pydantic
-- **环境变量管理**: python-dotenv
-- **Google Gemini SDK**: google-generativeai
 - **异步**: Python `asyncio`
 - **容器化**: Docker, Docker Compose
 - **数据持久化**: Redis, SQLite
-- **测试**: pytest, pytest-asyncio
 
 ## 项目结构
 
 ```
 gemini-balance/
-├── .clinerules/
-├── .gitignore
-├── .python-version
-├── Dockerfile
 ├── backend/
 │   ├── app/
-│   │   ├── api/
-│   │   │   ├── openai/
-│   │   │   └── v1beta/
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   ├── decorators.py
-│   │   │   └── logging.py
-│   │   ├── services/
-│   │   │   ├── base_service.py
-│   │   │   ├── gemini_service.py
-│   │   │   ├── openai_service.py
-│   │   │   └── key_managers/
-│   │   └── main.py
-│   ├── pyproject.toml
-│   ├── uv.lock
+│   │   ├── api/      # API 端点定义
+│   │   ├── core/     # 核心配置与安全
+│   │   └── services/ # 业务逻辑与密钥管理
+│   └── main.py     # 应用入口
 ├── frontend/
-│   ├── package.json
-│   ├── package-lock.json
-│   ├── svelte.config.js
-│   ├── tsconfig.json
-│   ├── vite.config.ts
-│   └── src/
-│       ├── app.css
-│       ├── app.d.ts
-│       ├── app.html
-│       ├── lib/
-│       └── routes/
-│           ├── +layout.svelte
-│           ├── +page.svelte
-│           └── logs/
-│               └── +page.svelte
-├── logs/
+│   └── src/        # Svelte 前端源码
 ├── docker-compose.yml
-├── README.md
-├── redis.conf
-└── todo_list.md
+└── README.md
 ```
 
 ## 安装与运行
 
-### 1. 克隆仓库
+### 1. 使用 Docker Compose (推荐)
 
-```bash
-git clone https://github.com/your-repo/gemini-balance.git
-cd gemini-balance
-```
+这是最简单的启动方式，它会同时构建和运行所有服务。
 
-### 2. 配置环境变量
+1.  **克隆仓库**
+    ```bash
+    git clone https://github.com/Drunk-Dream/gemini-balance.git
+    cd gemini-balance
+    ```
+2.  **配置环境变量**
+    复制 `.env.example` 为 `.env`，并根据需要修改其中的配置，如 `PASSWORD` 和 `SECRET_KEY`。
+    ```bash
+    cp .env.example .env
+    ```
+3.  **启动服务**
+    ```bash
+    docker-compose up -d --build
+    ```
+服务将在 `http://localhost:8090` 启动。
 
-创建 `.env` 文件，并根据 `.env.example` 填写您的 Google Gemini API Key 和数据库配置。
+### 2. 本地运行 (开发环境)
 
-```bash
-cp .env.example .env
-```
+1.  **构建前端**
+    首先，编译前端静态文件。
+    ```bash
+    cd frontend
+    npm install
+    npm run build
+    ```
+2.  **准备后端静态文件**
+    将编译好的前端文件复制到后端目录。
+    ```bash
+    # On Windows (PowerShell)
+    Copy-Item -Path frontend/build -Destination backend/frontend -Recurse -Force
+    # On macOS/Linux
+    cp -r frontend/build backend/frontend/
+    ```
+    *或者，您可以创建一个符号链接以避免每次都复制。*
 
-编辑 `.env` 文件：
-
-```
-GOOGLE_API_KEYS="YOUR_GEMINI_API_KEY"
-DATABASE_TYPE="redis" # 或 "sqlite"
-REDIS_HOST="localhost"
-REDIS_PORT=6379
-REDIS_PASSWORD=""
-```
-- `DATABASE_TYPE`: 设置为 `redis` 使用 Redis 作为密钥存储，或设置为 `sqlite` 使用 SQLite。
-
-### 3. 使用 Docker Compose 启动服务
-
-本项目推荐使用 Docker Compose 进行部署，它会同时构建和启动后端、前端及 Redis 服务（如果 `DATABASE_TYPE` 设置为 `redis`）。
-
-```bash
-docker-compose up -d --build
-```
-
-服务将在 `http://localhost:8090` 启动。您可以通过访问 `http://localhost:8090` 访问前端界面，并通过 `http://localhost:8090/docs` 查看 API 文档。
-
-**关于代理服务 (v2raya) 和网络配置：**
-
-`docker-compose.yml` 中包含了 `v2raya` 代理服务，用于处理后端服务的网络请求。如果您不需要代理，可以从 `docker-compose.yml` 中删除 `v2raya` 服务及其相关的 `depends_on`、`networks` 和 `environment` 配置。
-
-此外，`docker-compose.yml` 配置了一个名为 `gemini-balance-open-webui` 的外部网络 `shared_net`，旨在与 Open WebUI 等其他服务共享网络。如果您不使用此功能，可以删除 `gemini-balance` 和 `v2raya` 服务下的 `networks` 配置。
-
-### 4. (可选) 本地运行 (开发环境)
-
-如果您希望在本地进行开发，可以分别启动前端和后端服务：
-
-#### 启动后端服务
-
-请确保已安装 `uv` 并执行以下命令：
-
-```bash
-cd backend
-uv sync
-uvicorn app.main:app --host 0.0.0.0 --port 8090
-```
-
-**注意**：`Dockerfile` 中使用的启动命令是 `uv run -m main`，它会运行 `backend/main.py`。在本地开发时，推荐使用 `uvicorn app.main:app` 来启动 `backend/app/main.py`，以便更好地进行开发调试。
-
-#### 启动前端服务
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-前端服务通常会 `http://localhost:5173` 启动，并通过 Vite 代理将 `/api` 请求转发到后端。
+3.  **启动后端服务**
+    ```bash
+    cd backend
+    uv sync
+    uv run -m main
+    ```
+    后端服务将在 `http://localhost:8090` 启动，并托管前端界面。
 
 ## API 端点
 
-### 健康检查
+所有管理端点都需要通过 `/auth/login` 获取 Bearer Token 进行认证。
 
-- **GET** `/health`
-  - **响应**: `{"status": "ok"}`
+### 认证
 
-### Gemini 内容生成
+- **POST** `/auth/login`
+  - **描述**: 用户登录，成功后返回 JWT 访问令牌。
+  - **请求体**: `application/x-www-form-urlencoded`，包含 `username` (任意) 和 `password`。
+
+### 用户 API 密钥管理
+
+- **GET / POST / PUT / DELETE** `/auth_keys`
+  - **描述**: 对用户个人 API 密钥进行增、删、改、查操作。这些密钥用于认证对本转发服务的访问。
+
+### 服务密钥池管理 (Gemini)
+
+- **POST** `/keys`
+  - **描述**: 向服务密钥池中添加一个或多个 Google Gemini API 密钥。
+- **DELETE** `/keys/{key_identifier}`
+  - **描述**: 从池中删除一个指定的 Gemini 密钥。
+- **POST** `/keys/{key_identifier}/reset`
+  - **描述**: 重置指定 Gemini 密钥的状态。
+- **POST** `/keys/reset`
+  - **描述**: 重置所有 Gemini 密钥的状态。
+
+### API 代理
 
 - **POST** `/v1beta/models/{model_id}:generateContent`
-  - **参数**:
-    - `model_id` (path): Gemini 模型 ID (例如 `gemini-pro`)
-  - **请求体**: 遵循 Google Gemini API 的 `GenerateContentRequest` 格式。
-  - **响应**: 遵循 Google Gemini API 的 `GenerateContentResponse` 格式，支持流式响应。
+  - **描述**: 代理 Google Gemini `generateContent` 请求。
 - **POST** `/v1beta/models/{model_id}:streamGenerateContent`
-  - **参数**:
-    - `model_id` (path): Gemini 模型 ID (例如 `gemini-pro`)
-  - **请求体**: 遵循 Google Gemini API 的 `GenerateContentRequest` 格式。
-  - **响应**: 流式响应。
+  - **描述**: 代理 Google Gemini `streamGenerateContent` 请求。
 - **POST** `/v1/chat/completions`
-  - **请求体**: 遵循 OpenAI `chat.completions` API 格式。
-  - **响应**: 遵循 OpenAI `chat.completions` API 格式，支持流式响应。
+  - **描述**: 代理符合 OpenAI 格式的 `chat/completions` 请求。
 
 ### 状态监控
 
-- **GET** `/api/status/keys`
-  - **响应**: 返回所有 API key 的细状态列表，包括 `key` 的部分信息（出于安全，不应返回完整 key）、是否可用、今日用量、冷却状态及剩余时间。
-- **GET** `/api/status/logs`
-  - **响应**: 提供查看日志文件的功能，返回最新的 N 条日志。
-- **GET** `/api/status/logs/ws`
-  - **响应**: WebSocket 连接，用于实时将新日志推送到前端。
-
-## 日志
-
-日志将输出到控制台和项目根目录下的 `logs/app.log` 文件。日志级别可在 `.env` 文件中配置。
-
-## 测试
-
-本项目包含针对 `KeyStateManager`、`RedisDBManager`、`SQLiteDBManager`、`Gemini` 和新增 `Status` 服务的单元测试。
-- 所有自动化测试代码应统一放置于 `tests/` 目录，使用 `test_` 前缀命名，例如 `test_xxx.py`。
-- 推荐使用 `pytest` 工具进行测试组织与断言，测试代码同样需加类型提示。
-- 测试用例应避免对覆盖率、持续集成（CI）和测试数据纳入版本控制的硬性要求。
-- 如因外部依赖数据文件缺失，需用 `pytest.mark.skipif` 跳过该测试，并给出原因说明。
-- 测试代码及其断言风格，需通过 `Flake8` 检查，要求与主代码一致的代码风格和结构。
-- 测试代码示例：
-
-  ```python
-  import pytest
-
-  @pytest.mark.skipif(not Path("data/example.csv").exists(), reason="缺测试数据")
-  def test_xxx():
-      ...
+- **GET** `/status/keys`
+  - **描述**: 返回服务密钥池中所有 Gemini API 密钥的详细状态。
+- **GET** `/status/logs`
+  - **描述**: 获取最新的 N 条日志。
+- **GET** `/status/logs/sse`
+  - **描述**: 通过 Server-Sent Events (SSE) 推送最新的日志。
