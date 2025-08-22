@@ -39,7 +39,7 @@
 			if (response.ok) {
 				authKeys = await response.json();
 			} else if (response.status === 401 || response.status === 403) {
-				errorMessage = '认证失败，请重新登录。';
+				isAuthenticated.set(false);
 				goto(`/login?redirect=${page.url.pathname}`);
 			} else {
 				const errorData = await response.json();
