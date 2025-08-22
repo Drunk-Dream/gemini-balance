@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { authToken, isAuthenticated } from '$lib/stores';
 	import { onMount } from 'svelte';
 
@@ -22,7 +22,7 @@
 
 	async function fetchKeyStatuses() {
 		if (!$authToken) {
-			goto(`/login?redirect=${$page.url.pathname}`);
+			goto(`/login?redirect=${page.url.pathname}`);
 			return;
 		}
 
@@ -186,7 +186,7 @@
 	onMount(() => {
 		// 检查认证状态，如果未认证则重定向
 		if (!$isAuthenticated) {
-			goto(`/login?redirect=${$page.url.pathname}`);
+			goto(`/login?redirect=${page.url.pathname}`);
 			return;
 		}
 

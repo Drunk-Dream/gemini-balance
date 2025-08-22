@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { authToken, isAuthenticated } from '$lib/stores';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
@@ -21,7 +21,7 @@
 	// 检查认证状态
 	onMount(() => {
 		if (!get(isAuthenticated)) {
-			goto(`/login?redirect=${$page.url.pathname}`);
+			goto(`/login?redirect=${page.url.pathname}`);
 		} else {
 			fetchAuthKeys();
 		}
@@ -40,7 +40,7 @@
 				authKeys = await response.json();
 			} else if (response.status === 401 || response.status === 403) {
 				errorMessage = '认证失败，请重新登录。';
-				goto(`/login?redirect=${$page.url.pathname}`);
+				goto(`/login?redirect=${page.url.pathname}`);
 			} else {
 				const errorData = await response.json();
 				errorMessage = errorData.detail || '获取密钥失败。';
@@ -74,7 +74,7 @@
 				successMessage = `密钥 "${newKey.alias}" 创建成功！API Key: ${newKey.api_key}`;
 			} else if (response.status === 401 || response.status === 403) {
 				errorMessage = '认证失败，请重新登录。';
-				goto(`/login?redirect=${$page.url.pathname}`);
+				goto(`/login?redirect=${page.url.pathname}`);
 			} else {
 				const errorData = await response.json();
 				errorMessage = errorData.detail || '创建密钥失败。';
@@ -117,7 +117,7 @@
 				successMessage = `密钥 "${updatedKey.alias}" 更新成功！`;
 			} else if (response.status === 401 || response.status === 403) {
 				errorMessage = '认证失败，请重新登录。';
-				goto(`/login?redirect=${$page.url.pathname}`);
+				goto(`/login?redirect=${page.url.pathname}`);
 			} else {
 				const errorData = await response.json();
 				errorMessage = errorData.detail || '更新密钥失败。';
@@ -153,7 +153,7 @@
 				successMessage = '密钥删除成功！';
 			} else if (response.status === 401 || response.status === 403) {
 				errorMessage = '认证失败，请重新登录。';
-				goto(`/login?redirect=${$page.url.pathname}`);
+				goto(`/login?redirect=${page.url.pathname}`);
 			} else {
 				const errorData = await response.json();
 				errorMessage = errorData.detail || '删除密钥失败。';
