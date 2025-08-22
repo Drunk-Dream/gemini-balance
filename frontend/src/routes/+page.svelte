@@ -17,8 +17,7 @@
 	let keyStatuses: KeyStatus[] = [];
 	let errorMessage: string | null = null;
 	let loading = true;
-	let newKey: string = '';
-	let bulkKeys: string = '';
+	let keysInput: string = '';
 
 	async function fetchKeyStatuses() {
 		if (!$authToken) {
@@ -52,44 +51,17 @@
 		}
 	}
 
-	async function addSingleKey() {
-		if (!newKey.trim()) {
+	async function addKeys() {
+		if (!keysInput.trim()) {
 			alert('请输入密钥');
 			return;
 		}
-		try {
-			const response = await fetch('/api/keys', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${$authToken}`
-				},
-				body: JSON.stringify({ api_keys: [newKey.trim()] })
-			});
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-			}
-			alert('密钥添加成功！');
-			newKey = '';
-			fetchKeyStatuses();
-		} catch (error: any) {
-			alert(`添加密钥失败: ${error.message}`);
-			console.error('添加密钥失败:', error);
-		}
-	}
-
-	async function addBulkKeys() {
-		if (!bulkKeys.trim()) {
-			alert('请输入批量密钥');
-			return;
-		}
-		const keysArray = bulkKeys
+		const keysArray = keysInput
 			.split('\n')
 			.map((key) => key.trim())
 			.filter((key) => key);
 		if (keysArray.length === 0) {
-			alert('请输入有效的批量密钥');
+			alert('请输入有效的密钥');
 			return;
 		}
 		try {
@@ -105,12 +77,12 @@
 				const errorData = await response.json();
 				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
 			}
-			alert('批量密钥添加成功！');
-			bulkKeys = '';
+			alert('密钥添加成功！');
+			keysInput = '';
 			fetchKeyStatuses();
 		} catch (error: any) {
-			alert(`批量添加密钥失败: ${error.message}`);
-			console.error('批量添加密钥失败:', error);
+			alert(`添加密钥失败: ${error.message}`);
+			console.error('添加密钥失败:', error);
 		}
 	}
 
@@ -228,38 +200,22 @@
 
 	<div class="mb-6 rounded-lg bg-white p-4 shadow-md">
 		<h2 class="mb-4 text-xl font-semibold text-gray-800">新增密钥</h2>
-		<div class="mb-4">
-			<label for="newKey" class="mb-2 block text-sm font-medium text-gray-700">新增单个密钥:</label>
-			<input
-				type="text"
-				id="newKey"
-				bind:value={newKey}
-				placeholder="输入新的API密钥"
-				class="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-			/>
-			<button
-				on:click={addSingleKey}
-				class="focus:shadow-outline mt-2 rounded bg-green-500 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 focus:outline-none"
-			>
-				添加密钥
-			</button>
-		</div>
 		<div>
-			<label for="bulkKeys" class="mb-2 block text-sm font-medium text-gray-700"
-				>批量新增密钥 (每行一个):</label
+			<label for="keysInput" class="mb-2 block text-sm font-medium text-gray-700"
+				>新增密钥 (单个或批量，每行一个):</label
 			>
 			<textarea
-				id="bulkKeys"
-				bind:value={bulkKeys}
-				placeholder="每行输入一个API密钥"
+				id="keysInput"
+				bind:value={keysInput}
+				placeholder="输入新的API密钥，每行一个用于批量添加"
 				rows="5"
 				class="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
 			></textarea>
 			<button
-				on:click={addBulkKeys}
+				on:click={addKeys}
 				class="focus:shadow-outline mt-2 rounded bg-green-500 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 focus:outline-none"
 			>
-				批量添加密钥
+				添加密钥
 			</button>
 		</div>
 	</div>
