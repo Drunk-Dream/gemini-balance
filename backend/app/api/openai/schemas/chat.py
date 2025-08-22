@@ -4,15 +4,29 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
-class ChatCompletionContent(BaseModel):
-    type: Literal["text", "image"]
-    text: Optional[str] = None
-    image_url: Optional[Dict[str, str]] = None
+class TextContent(BaseModel):
+    type: Literal["text"]
+    text: str
+
+
+class ImageUrlContent(BaseModel):
+    type: Literal["image_url"]
+    image_url: Dict[str, str]
+
+
+class InputAudioContent(BaseModel):
+    data: str
+    format: str
+
+
+class AudioContent(BaseModel):
+    type: Literal["input_audio"]
+    input_audio: InputAudioContent
 
 
 class ChatCompletionMessage(BaseModel):
     role: Literal["system", "user", "assistant", "tool"]
-    content: Optional[Union[str, ChatCompletionContent]] = None
+    content: Optional[Union[str, List[Union[TextContent, ImageUrlContent, AudioContent]]]] = None
     tool_calls: Optional[List[Dict[str, Any]]] = None  # For assistant messages
     tool_call_id: Optional[str] = None  # For tool messages
 
