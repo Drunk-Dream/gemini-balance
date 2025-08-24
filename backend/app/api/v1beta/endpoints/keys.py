@@ -3,14 +3,12 @@ from app.api.v1beta.schemas.keys import (
     BulkKeyOperationResponse,
     KeyOperationResponse,
 )
-from app.core.config import settings
 from app.core.logging import app_logger
 from app.core.security import get_current_user
-from app.services.key_managers import get_key_manager
+from app.services import key_manager
 from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter()
-key_manager = get_key_manager(settings)
 
 
 @router.post(

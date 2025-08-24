@@ -2,14 +2,14 @@ from typing import List, Optional
 
 import aiosqlite
 from app.api.v1beta.schemas.auth import AuthKey
-from app.core.config import settings
+from app.core.config import Settings
 from app.services.auth_key_manager.db_manager import AuthDBManager
 
 
 class SQLiteAuthDBManager(AuthDBManager):
     """SQLite implementation of the AuthDBManager for authentication key storage."""
 
-    def __init__(self):
+    def __init__(self, settings: Settings):
         self.db_path = settings.SQLITE_DB
 
     async def initialize(self):

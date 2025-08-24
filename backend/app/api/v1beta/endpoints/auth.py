@@ -25,7 +25,9 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="不正确的用户名或密码",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=30)  # 令牌有效期
+    access_token_expires = timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )  # 令牌有效期
     access_token = create_access_token(
         data={"sub": "single_user"}, expires_delta=access_token_expires
     )

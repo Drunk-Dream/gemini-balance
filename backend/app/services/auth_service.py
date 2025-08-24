@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from app.api.v1beta.schemas.auth import AuthKey, AuthKeyCreate
-from app.services.auth_key_manager import get_auth_db_manager
+from app.services import auth_key_manager
 
 
 class AuthService:
@@ -11,7 +11,7 @@ class AuthService:
     """
 
     def __init__(self):
-        self.db_manager = get_auth_db_manager()
+        self.db_manager = auth_key_manager
 
     async def initialize(self):
         """Initializes the underlying database manager."""
