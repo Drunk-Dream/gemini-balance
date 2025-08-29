@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { page } from '$app/stores';
+    import { page } from '$app/state';
 
     let { href, name, onClick } = $props();
 
-    const isActive = $derived($page.url.pathname === href);
+    const isActive = $derived(page.url.pathname === href);
 </script>
 
 <li class="mb-2">

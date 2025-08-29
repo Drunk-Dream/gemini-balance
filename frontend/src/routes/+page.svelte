@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import AddKeyForm from '$lib/components/key-management/AddKeyForm.svelte';
+	import KeyList from '$lib/components/key-management/KeyList.svelte';
+	import KeyManagementHeader from '$lib/components/key-management/KeyManagementHeader.svelte';
 	import { authToken, isAuthenticated } from '$lib/stores';
 	import { onMount } from 'svelte';
 
@@ -17,7 +20,6 @@
 	let keyStatuses: KeyStatus[] = [];
 	let errorMessage: string | null = null;
 	let loading = true;
-	let keysInput: string = '';
 
 	async function fetchKeyStatuses() {
 		if (!$authToken) {
@@ -51,7 +53,7 @@
 		}
 	}
 
-	async function addKeys() {
+	async function addKeys(keysInput: string) {
 		if (!keysInput.trim()) {
 			alert('请输入密钥');
 			return;
@@ -78,7 +80,6 @@
 				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
 			}
 			alert('密钥添加成功！');
-			keysInput = '';
 			fetchKeyStatuses();
 		} catch (error: any) {
 			alert(`添加密钥失败: ${error.message}`);
@@ -156,69 +157,23 @@
 	}
 
 	onMount(() => {
-		// 检查认证状态，如果未认证则重定向
 		if (!$isAuthenticated) {
 			goto(`/login?redirect=${page.url.pathname}`);
 			return;
 		}
 
 		fetchKeyStatuses();
-		const interval = setInterval(fetchKeyStatuses, 5000); // Refresh every 5 seconds
+		const interval = setInterval(fetchKeyStatuses, 5000);
 		return () => clearInterval(interval);
 	});
-
-	function formatDailyUsage(usage: { [model: string]: number }): string {
-		const entries = Object.entries(usage);
-		if (entries.length === 0) {
-			return '无';
-		}
-		entries.sort(([modelA], [modelB]) => modelA.localeCompare(modelB)); // 按模型名称排序
-		return entries.map(([model, count]) => `${model}: ${count}`).join('<br>');
-	}
 </script>
 
 <div class="container mx-auto p-2 sm:p-4">
 	<h1 class="mb-4 text-2xl font-bold text-gray-800 sm:mb-6 sm:text-3xl">密钥管理</h1>
 
-	<div
-		class="mb-4 flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-x-4 sm:space-y-0"
-	>
-		<button
-			on:click={fetchKeyStatuses}
-			class="focus:shadow-outline rounded bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none sm:text-base"
-			disabled={loading}
-		>
-			{loading ? '刷新中...' : '立即刷新'}
-		</button>
-		<button
-			on:click={resetAllKeys}
-			class="focus:shadow-outline rounded bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 focus:outline-none sm:text-base"
-		>
-			重置所有密钥状态
-		</button>
-	</div>
+	<KeyManagementHeader {fetchKeyStatuses} {resetAllKeys} {loading} />
 
-	<div class="mb-6 rounded-lg bg-white p-4 shadow-md">
-		<h2 class="mb-4 text-xl font-semibold text-gray-800">新增密钥</h2>
-		<div>
-			<label for="keysInput" class="mb-2 block text-sm font-medium text-gray-700"
-				>新增密钥 (单个或批量，每行一个):</label
-			>
-			<textarea
-				id="keysInput"
-				bind:value={keysInput}
-				placeholder="输入新的API密钥，每行一个用于批量添加"
-				rows="5"
-				class="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-			></textarea>
-			<button
-				on:click={addKeys}
-				class="focus:shadow-outline mt-2 rounded bg-green-500 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 focus:outline-none"
-			>
-				添加密钥
-			</button>
-		</div>
-	</div>
+	<AddKeyForm {addKeys} />
 
 	{#if errorMessage}
 		<div
@@ -228,66 +183,7 @@
 			<strong class="font-bold">错误!</strong>
 			<span class="block sm:inline"> {errorMessage}</span>
 		</div>
-	{:else if keyStatuses.length === 0 && !loading}
-		<p class="text-gray-600">没有可用的密钥状态信息。</p>
 	{:else}
-		<div class="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-			{#each keyStatuses as keyStatus}
-				<div class="rounded-lg bg-white p-4 shadow-md">
-					<div class="mb-2 flex items-center justify-between">
-						<h3 class="text-md font-semibold text-gray-800">密钥标识:</h3>
-						<p class="text-sm text-gray-900">{keyStatus.key_identifier}</p>
-					</div>
-					<div class="mb-2 flex items-center justify-between">
-						<h3 class="text-md font-semibold text-gray-800">状态:</h3>
-						<span class="relative inline-block px-2 py-0.5 text-sm font-semibold leading-tight">
-							<span
-								aria-hidden="true"
-								class="absolute inset-0 rounded-full opacity-50 {keyStatus.status === 'active'
-									? 'bg-green-200'
-									: 'bg-yellow-200'}"
-							></span>
-							<span class="relative text-gray-900"
-								>{keyStatus.status === 'active' ? '活跃' : '冷却中'}</span
-							>
-						</span>
-					</div>
-					<div class="mb-2 flex items-center justify-between">
-						<h3 class="text-md font-semibold text-gray-800">剩余冷却时间:</h3>
-						<p class="text-sm text-gray-900">{keyStatus.cool_down_seconds_remaining} 秒</p>
-					</div>
-					<div class="mb-2 flex items-center justify-between">
-						<h3 class="text-md font-semibold text-gray-800">今日用量:</h3>
-						<div class="text-sm text-gray-900">{@html formatDailyUsage(keyStatus.daily_usage)}</div>
-					</div>
-					<div class="mb-2 flex items-center justify-between">
-						<h3 class="text-md font-semibold text-gray-800">失败次数:</h3>
-						<p class="text-sm text-gray-900">{keyStatus.failure_count}</p>
-					</div>
-					<div class="mb-2 flex items-center justify-between">
-						<h3 class="text-md font-semibold text-gray-800">进入冷却次数:</h3>
-						<p class="text-sm text-gray-900">{keyStatus.cool_down_entry_count}</p>
-					</div>
-					<div class="flex items-center justify-between">
-						<h3 class="text-md font-semibold text-gray-800">当前冷却时长:</h3>
-						<p class="text-sm text-gray-900">{keyStatus.current_cool_down_seconds} 秒</p>
-					</div>
-					<div class="mt-4 flex justify-end space-x-2">
-						<button
-							on:click={() => resetKey(keyStatus.key_identifier)}
-							class="focus:shadow-outline rounded bg-yellow-500 px-3 py-1.5 text-sm font-bold text-white hover:bg-yellow-700 focus:outline-none"
-						>
-							重置
-						</button>
-						<button
-							on:click={() => deleteKey(keyStatus.key_identifier)}
-							class="focus:shadow-outline rounded bg-red-500 px-3 py-1.5 text-sm font-bold text-white hover:bg-red-700 focus:outline-none"
-						>
-							删除
-						</button>
-					</div>
-				</div>
-			{/each}
-		</div>
+		<KeyList {keyStatuses} {resetKey} {deleteKey} />
 	{/if}
 </div>
