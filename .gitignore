@@ -9,7 +9,8 @@ wheels/
 # Virtual environments
 .venv
 
-logs/
+/logs/
+/backend/logs/
 data/
 .env*
 *.http
