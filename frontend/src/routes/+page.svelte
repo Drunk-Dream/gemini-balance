@@ -23,7 +23,7 @@
 
 	async function fetchKeyStatuses() {
 		if (!$authToken) {
-			goto(`/login?redirect=${page.url.pathname}`);
+			goto(`/login`);
 			return;
 		}
 
@@ -158,7 +158,7 @@
 
 	onMount(() => {
 		if (!$isAuthenticated) {
-			goto(`/login?redirect=${page.url.pathname}`);
+			goto(`/login`);
 			return;
 		}
 

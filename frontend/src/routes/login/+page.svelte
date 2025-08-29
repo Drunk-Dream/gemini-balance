@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import LoginForm from '$lib/components/auth/LoginForm.svelte';
 	import { authToken, isAuthenticated } from '$lib/stores';
 	import { onMount } from 'svelte';
@@ -11,7 +10,7 @@
 
 	onMount(() => {
 		if ($isAuthenticated) {
-			goto(page.url.searchParams.get('redirect') || '/');
+			goto('/');
 		}
 	});
 
@@ -35,7 +34,7 @@
 			const data = await response.json();
 			authToken.set(data.access_token);
 			isAuthenticated.set(true);
-			goto(page.url.searchParams.get('redirect') || '/');
+			goto('/');
 		} catch (error: any) {
 			errorMessage = `登录失败: ${error.message}`;
 			console.error(errorMessage);
