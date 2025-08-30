@@ -22,7 +22,13 @@ class ApiService(ABC):
     def __init__(self, base_url: str, service_name: str):
         self.base_url = base_url
         self.service_name = service_name
-        self.client = httpx.AsyncClient(base_url=self.base_url)
+        self.client = httpx.AsyncClient(
+            base_url=self.base_url,
+            timeout=httpx.Timeout(
+                connect=settings.REQUEST_TIMEOUT_SECONDS,
+                read=settings.REQUEST_TIMEOUT_SECONDS,
+            ),
+        )
         self.max_retries = settings.MAX_RETRIES
 
         self.debug_logger = setup_debug_logger(f"{service_name}_debug_logger")
@@ -78,7 +84,7 @@ class ApiService(ABC):
                     f"Attempt {attempt + 1}/{self.max_retries}: API key {key_identifier} not found."
                 )
                 last_exception = HTTPException(
-                    status_code=404, detail="API key not found."
+                    status_code=503, detail=f"{key_identifier}'s mapper not found."
                 )
                 continue
             headers = self._prepare_headers(api_key)
@@ -99,7 +105,6 @@ class ApiService(ABC):
                         json=request_data.model_dump(by_alias=True, exclude_unset=True),
                         headers=headers,
                         params=params,
-                        timeout=120.0,
                     ) as response:
                         response.raise_for_status()
                         await key_manager.mark_key_success(key_identifier)
@@ -119,7 +124,6 @@ class ApiService(ABC):
                         json=request_data.model_dump(by_alias=True, exclude_unset=True),
                         headers=headers,
                         params=params,
-                        timeout=120.0,
                     )
                     response.raise_for_status()
                     await key_manager.mark_key_success(key_identifier)
