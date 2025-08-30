@@ -30,6 +30,20 @@ class ApiService(ABC):
 
         self.debug_logger = setup_debug_logger(f"{service_name}_debug_logger")
 
+    async def _recreate_client(self):
+        """
+        Closes the current httpx client and creates a new one.
+        This is useful for recovering from connection errors.
+        """
+        if self.client:
+            await self.client.aclose()
+            logger.info(f"Closed existing httpx client for {self.service_name}.")
+        self.client = httpx.AsyncClient(
+            base_url=self.base_url,
+            timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
+        )
+        logger.info(f"Recreated httpx client for {self.service_name}.")
+
     @abstractmethod
     def _get_api_url(self, *args, **kwargs) -> str:
         """
@@ -171,6 +185,7 @@ class ApiService(ABC):
                     f"Request error with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
                 await key_manager.mark_key_fail(key_identifier, "request_error")
+                await self._recreate_client()  # Recreate client on request errors
                 continue
             except Exception as e:
                 last_exception = e
