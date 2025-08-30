@@ -24,10 +24,7 @@ class ApiService(ABC):
         self.service_name = service_name
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
-            timeout=httpx.Timeout(
-                connect=settings.REQUEST_TIMEOUT_SECONDS,
-                read=settings.REQUEST_TIMEOUT_SECONDS,
-            ),
+            timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
         )
         self.max_retries = settings.MAX_RETRIES
 
