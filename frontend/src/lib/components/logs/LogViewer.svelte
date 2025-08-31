@@ -1,4 +1,6 @@
 <script lang="ts">
+	// 导入 Notification 组件
+	import Notification from '$lib/components/common/Notification.svelte';
 	import { colorizeLog } from '$lib/utils/logUtils';
 	import { onMount } from 'svelte';
 
@@ -48,15 +50,7 @@
 <div class="container mx-auto p-2 sm:p-4">
 	<h1 class="mb-4 text-2xl font-bold text-gray-800 sm:mb-6 sm:text-3xl">日志查看器</h1>
 
-	{#if errorMessage}
-		<div
-			class="relative mb-4 rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700"
-			role="alert"
-		>
-			<strong class="font-bold">错误!</strong>
-			<span class="block sm:inline"> {errorMessage}</span>
-		</div>
-	{/if}
+	<Notification message={errorMessage} type="error" />
 
 	<div
 		bind:this={logContainer}

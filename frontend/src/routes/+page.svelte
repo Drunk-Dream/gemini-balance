@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
+	import Notification from '$lib/components/common/Notification.svelte';
 	import AddKeyForm from '$lib/components/key-management/AddKeyForm.svelte';
 	import KeyList from '$lib/components/key-management/KeyList.svelte';
 	import KeyManagementHeader from '$lib/components/key-management/KeyManagementHeader.svelte';
+// 导入 Notification 组件
 	import { authToken, isAuthenticated } from '$lib/stores';
 	import { onMount } from 'svelte';
 
@@ -20,6 +21,8 @@
 	let keyStatuses: KeyStatus[] = [];
 	let errorMessage: string | null = null;
 	let loading = true;
+	let notificationMessage: string | null = null; // 新增通知消息
+	let notificationType: 'success' | 'error' = 'success'; // 新增通知类型
 
 	async function fetchKeyStatuses() {
 		if (!$authToken) {
@@ -46,8 +49,9 @@
 			const data = await response.json();
 			keyStatuses = data.keys; // Access the 'keys' array
 		} catch (error: any) {
-			errorMessage = `Failed to fetch key statuses: ${error.message}`;
-			console.error(errorMessage);
+			notificationMessage = `获取密钥状态失败: ${error.message}`;
+			notificationType = 'error';
+			console.error(notificationMessage);
 		} finally {
 			loading = false;
 		}
@@ -55,7 +59,8 @@
 
 	async function addKeys(keysInput: string) {
 		if (!keysInput.trim()) {
-			alert('请输入密钥');
+			notificationMessage = '请输入密钥';
+			notificationType = 'error';
 			return;
 		}
 		const keysArray = keysInput
@@ -63,7 +68,8 @@
 			.map((key) => key.trim())
 			.filter((key) => key);
 		if (keysArray.length === 0) {
-			alert('请输入有效的密钥');
+			notificationMessage = '请输入有效的密钥';
+			notificationType = 'error';
 			return;
 		}
 		try {
@@ -79,10 +85,12 @@
 				const errorData = await response.json();
 				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
 			}
-			alert('密钥添加成功！');
+			notificationMessage = '密钥添加成功！';
+			notificationType = 'success';
 			fetchKeyStatuses();
 		} catch (error: any) {
-			alert(`添加密钥失败: ${error.message}`);
+			notificationMessage = `添加密钥失败: ${error.message}`;
+			notificationType = 'error';
 			console.error('添加密钥失败:', error);
 		}
 	}
@@ -102,10 +110,12 @@
 				const errorData = await response.json();
 				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
 			}
-			alert(`密钥 "${keyIdentifier}" 删除成功！`);
+			notificationMessage = `密钥 "${keyIdentifier}" 删除成功！`;
+			notificationType = 'success';
 			fetchKeyStatuses();
 		} catch (error: any) {
-			alert(`删除密钥失败: ${error.message}`);
+			notificationMessage = `删除密钥失败: ${error.message}`;
+			notificationType = 'error';
 			console.error('删除密钥失败:', error);
 		}
 	}
@@ -125,10 +135,12 @@
 				const errorData = await response.json();
 				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
 			}
-			alert(`密钥 "${keyIdentifier}" 状态重置成功！`);
+			notificationMessage = `密钥 "${keyIdentifier}" 状态重置成功！`;
+			notificationType = 'success';
 			fetchKeyStatuses();
 		} catch (error: any) {
-			alert(`重置密钥状态失败: ${error.message}`);
+			notificationMessage = `重置密钥状态失败: ${error.message}`;
+			notificationType = 'error';
 			console.error('重置密钥状态失败:', error);
 		}
 	}
@@ -148,10 +160,12 @@
 				const errorData = await response.json();
 				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
 			}
-			alert('所有密钥状态重置成功！');
+			notificationMessage = '所有密钥状态重置成功！';
+			notificationType = 'success';
 			fetchKeyStatuses();
 		} catch (error: any) {
-			alert(`重置所有密钥状态失败: ${error.message}`);
+			notificationMessage = `重置所有密钥状态失败: ${error.message}`;
+			notificationType = 'error';
 			console.error('重置所有密钥状态失败:', error);
 		}
 	}
@@ -175,14 +189,10 @@
 
 	<AddKeyForm {addKeys} />
 
+	<Notification message={notificationMessage} type={notificationType} />
+
 	{#if errorMessage}
-		<div
-			class="relative rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700"
-			role="alert"
-		>
-			<strong class="font-bold">错误!</strong>
-			<span class="block sm:inline"> {errorMessage}</span>
-		</div>
+		<Notification message={errorMessage} type="error" />
 	{:else}
 		<KeyList {keyStatuses} {resetKey} {deleteKey} />
 	{/if}

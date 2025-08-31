@@ -1,4 +1,6 @@
 <script lang="ts">
+	// 导入 Notification 组件
+	import Notification from '$lib/components/common/Notification.svelte';
 	let {
 		password = $bindable(),
 		handleLogin,
@@ -15,15 +17,7 @@
 <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-md">
 	<h1 class="mb-6 text-center text-2xl font-bold text-gray-800">登录</h1>
 
-	{#if errorMessage}
-		<div
-			class="relative mb-4 rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700"
-			role="alert"
-		>
-			<strong class="font-bold">错误!</strong>
-			<span class="block sm:inline"> {errorMessage}</span>
-		</div>
-	{/if}
+	<Notification message={errorMessage} type="error" />
 
 	<form onsubmit={handleLogin}>
 		<div class="mb-4">
