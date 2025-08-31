@@ -62,6 +62,10 @@ def create_app() -> FastAPI:
         async def favicon():
             return FileResponse(frontend_dir / "favicon.svg")
 
+        @app.get("/manifest.json", include_in_schema=False)
+        async def manifest():
+            return FileResponse(frontend_dir / "manifest.json")
+
         @app.get("/{full_path:path}", include_in_schema=False)
         async def serve_frontend(request: Request):
             return FileResponse(frontend_dir / "index.html")
