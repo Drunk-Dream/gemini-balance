@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, Union
 
 from app.api.openai.schemas.chat import ChatCompletionRequest
+from app.api.v1beta.schemas.auth import AuthKey
 from app.core.security import verify_bearer_token
 from app.services.openai_service import OpenAIService
 from fastapi import APIRouter, Depends
@@ -18,10 +19,10 @@ router = APIRouter()
 async def create_chat_completion_endpoint(
     request: ChatCompletionRequest,
     openai_service: OpenAIService = Depends(OpenAIService),
-    authenticated: bool = Depends(verify_bearer_token),
+    auth_key: AuthKey = Depends(verify_bearer_token),
 ) -> Union[Dict[str, Any], StreamingResponse]:
     logger.info(
-        f"Received OpenAI chat completion request for model: {request.model}, stream: {request.stream}"
+        f"Received OpenAI chat completion request from '{auth_key.alias}' for model: {request.model}, stream: {request.stream}"
     )
     response = await openai_service.create_chat_completion(request)
     return response

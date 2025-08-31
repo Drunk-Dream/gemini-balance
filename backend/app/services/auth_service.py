@@ -17,6 +17,10 @@ class AuthService:
         """Initializes the underlying database manager."""
         await self.db_manager.initialize()
 
+    async def get_key(self, api_key: str) -> Optional[AuthKey]:
+        """Retrieves an authentication key by its API key."""
+        return await self.db_manager.get_key(api_key)
+
     async def verify_key(self, api_key: str) -> bool:
         """Verifies if an API key exists and is valid."""
         key = await self.db_manager.get_key(api_key)

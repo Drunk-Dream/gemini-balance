@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+from app.api.v1beta.schemas.auth import AuthKey
 from app.core.config import settings
 from app.services.auth_service import AuthService
 from fastapi import Header  # Import Header
@@ -72,9 +73,10 @@ security_scheme = HTTPBearer()
 async def verify_bearer_token(
     authorization: HTTPAuthorizationCredentials = Depends(security_scheme),
     auth_service: AuthService = Depends(AuthService),
-) -> bool:
+) -> AuthKey:
     """
     FastAPI dependency to verify an authentication key from the Authorization header (Bearer token).
+    Returns the AuthKey object if valid.
     """
     if not authorization or not authorization.credentials:
         raise HTTPException(
@@ -84,21 +86,23 @@ async def verify_bearer_token(
         )
 
     api_key = authorization.credentials
-    if not await auth_service.verify_key(api_key):
+    auth_key = await auth_service.get_key(api_key)
+    if not auth_key:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="无效的认证密钥",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return True
+    return auth_key
 
 
 async def verify_x_goog_api_key(
     x_goog_api_key: str = Header(...),
     auth_service: AuthService = Depends(AuthService),
-) -> bool:
+) -> AuthKey:
     """
     FastAPI dependency to verify an authentication key from the x-goog-api-key header.
+    Returns the AuthKey object if valid.
     """
     if not x_goog_api_key:
         raise HTTPException(
@@ -107,10 +111,11 @@ async def verify_x_goog_api_key(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if not await auth_service.verify_key(x_goog_api_key):
+    auth_key = await auth_service.get_key(x_goog_api_key)
+    if not auth_key:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="无效的认证密钥",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return True
+    return auth_key

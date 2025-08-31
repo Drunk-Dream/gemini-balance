@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Dict
 
+from app.api.v1beta.schemas.auth import AuthKey
 from app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from app.core.security import verify_x_goog_api_key
 from app.services.gemini_service import GeminiService
@@ -19,9 +20,11 @@ async def generate_content_endpoint(
     model_id: str,
     request: GeminiRequest,
     gemini_service: GeminiService = Depends(GeminiService),
-    authenticated: bool = Depends(verify_x_goog_api_key),
+    auth_key: AuthKey = Depends(verify_x_goog_api_key),
 ) -> Dict[str, Any]:
-    logger.info(f"Received request for model: {model_id}, stream: false")
+    logger.info(
+        f"Received request from '{auth_key.alias}' for model: {model_id}, stream: false"
+    )
     response = await gemini_service.generate_content(model_id, request, False)
     return response if isinstance(response, Dict) else {}
 
@@ -34,9 +37,11 @@ async def stream_generate_content_endpoint(
     model_id: str,
     request: GeminiRequest,
     gemini_service: GeminiService = Depends(GeminiService),
-    authenticated: bool = Depends(verify_x_goog_api_key),
+    auth_key: AuthKey = Depends(verify_x_goog_api_key),
 ) -> StreamingResponse:
-    logger.info(f"Received request for model: {model_id}, stream: true")
+    logger.info(
+        f"Received request from '{auth_key.alias}' for model: {model_id}, stream: true"
+    )
     response = await gemini_service.generate_content(model_id, request, True)
     return (
         response
