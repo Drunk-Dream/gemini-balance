@@ -21,6 +21,9 @@ class AuthKey(BaseModel):
         max_length=50,
         description="A user-friendly name for the key.",
     )
+    call_count: int = Field(
+        default=0, description="The number of times this API key has been used."
+    )
 
 
 class AuthKeyCreate(BaseModel):
@@ -50,6 +53,7 @@ class AuthKeyResponse(BaseModel):
 
     api_key: str
     alias: str
+    call_count: int
 
     class Config:
         from_attributes = True

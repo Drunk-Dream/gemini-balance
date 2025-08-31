@@ -10,6 +10,7 @@
 	interface AuthKey {
 		api_key: string;
 		alias: string;
+		call_count: number;
 	}
 
 	let authKeys: AuthKey[] = [];

@@ -33,7 +33,9 @@ async def create_auth_key(
         )
 
     new_key = await auth_service.create_key(key_create)
-    return AuthKeyResponse(api_key=new_key.api_key, alias=new_key.alias)
+    return AuthKeyResponse(
+        api_key=new_key.api_key, alias=new_key.alias, call_count=new_key.call_count
+    )
 
 
 @router.get("/auth_keys", response_model=List[AuthKeyResponse])
@@ -44,7 +46,10 @@ async def get_auth_keys(
     ),  # Protect this endpoint with get_current_user
 ):
     keys = await auth_service.get_keys()
-    return [AuthKeyResponse(api_key=key.api_key, alias=key.alias) for key in keys]
+    return [
+        AuthKeyResponse(api_key=key.api_key, alias=key.alias, call_count=key.call_count)
+        for key in keys
+    ]
 
 
 @router.put("/auth_keys/{api_key}", response_model=AuthKeyResponse)
@@ -61,7 +66,11 @@ async def update_auth_key_alias(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Auth key not found."
         )
-    return AuthKeyResponse(api_key=updated_key.api_key, alias=updated_key.alias)
+    return AuthKeyResponse(
+        api_key=updated_key.api_key,
+        alias=updated_key.alias,
+        call_count=updated_key.call_count,
+    )
 
 
 @router.delete("/auth_keys/{api_key}", status_code=status.HTTP_204_NO_CONTENT)

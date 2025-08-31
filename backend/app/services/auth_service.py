@@ -18,13 +18,11 @@ class AuthService:
         await self.db_manager.initialize()
 
     async def get_key(self, api_key: str) -> Optional[AuthKey]:
-        """Retrieves an authentication key by its API key."""
-        return await self.db_manager.get_key(api_key)
-
-    async def verify_key(self, api_key: str) -> bool:
-        """Verifies if an API key exists and is valid."""
+        """Retrieves an authentication key by its API key and increments its call count."""
         key = await self.db_manager.get_key(api_key)
-        return key is not None
+        if key:
+            await self.db_manager.increment_call_count(api_key)
+        return key
 
     async def create_key(self, key_create: AuthKeyCreate) -> AuthKey:
         """Creates a new authentication key."""

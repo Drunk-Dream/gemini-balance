@@ -2,6 +2,7 @@
 	interface AuthKey {
 		api_key: string;
 		alias: string;
+		call_count: number;
 	}
 
 	let {
@@ -43,6 +44,12 @@
 					</th>
 					<th
 						scope="col"
+						class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+					>
+						调用次数
+					</th>
+					<th
+						scope="col"
 						class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500"
 					>
 						操作
@@ -65,6 +72,9 @@
 						</td>
 						<td class="whitespace-nowrap px-6 py-4">
 							<span class="font-mono text-sm text-gray-500">{key.api_key}</span>
+						</td>
+						<td class="whitespace-nowrap px-6 py-4">
+							<span class="text-sm text-gray-900">{key.call_count}</span>
 						</td>
 						<td class="space-x-2 whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
 							{#if editingKey?.api_key === key.api_key}
