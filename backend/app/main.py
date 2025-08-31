@@ -1,4 +1,3 @@
-import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -8,13 +7,12 @@ from app.api.v1beta.endpoints.auth_keys import router as auth_keys_router
 from app.api.v1beta.endpoints.gemini import router as gemini_router
 from app.api.v1beta.endpoints.keys import router as keys_router  # 新增导入
 from app.api.v1beta.endpoints.status import router as status_router
+from app.core.logging import app_logger as logger
 from app.core.logging import setup_app_logger, setup_transaction_logger
 from app.services import key_manager
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-
-logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

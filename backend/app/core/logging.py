@@ -13,9 +13,7 @@ APP_LOG_FILE = LOG_DIR / "app.log"
 TRANSACTION_LOG_FILE = LOG_DIR / "transactions.log"
 DEBUG_LOG_FILE = Path(settings.DEBUG_LOG_FILE)
 
-APP_FORMATTER = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+APP_FORMATTER = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 CONSOLE_FORMATTER = logging.Formatter("%(levelname)s - %(name)s - %(message)s")
 TRANSACTION_FORMATTER = logging.Formatter("%(message)s")
 DEBUG_FORMATTER = logging.Formatter(
@@ -46,7 +44,9 @@ def setup_app_logger() -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
     # File handler
-    file_handler = RotatingFileHandler(APP_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5)
+    file_handler = RotatingFileHandler(
+        APP_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5
+    )
     file_handler.setFormatter(APP_FORMATTER)
     app_logger.addHandler(file_handler)
 
@@ -83,7 +83,9 @@ def setup_transaction_logger() -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
     # File handler
-    transaction_file_handler = RotatingFileHandler(TRANSACTION_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5)
+    transaction_file_handler = RotatingFileHandler(
+        TRANSACTION_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5
+    )
     transaction_file_handler.setFormatter(TRANSACTION_FORMATTER)
     transaction_logger.addHandler(transaction_file_handler)
 

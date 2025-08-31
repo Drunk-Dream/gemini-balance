@@ -1,14 +1,13 @@
-import logging
 from typing import Any, Dict
 
 from app.api.v1beta.schemas.auth import AuthKey
 from app.api.v1beta.schemas.gemini import Request as GeminiRequest
+from app.core.logging import app_logger as logger
 from app.core.security import verify_x_goog_api_key
 from app.services.gemini_service import GeminiService
 from fastapi import APIRouter, Depends
 from starlette.responses import StreamingResponse
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -23,7 +22,7 @@ async def generate_content_endpoint(
     auth_key: AuthKey = Depends(verify_x_goog_api_key),
 ) -> Dict[str, Any]:
     logger.info(
-        f"Received request from '{auth_key.alias}' for model: {model_id}, stream: false"
+        f"Received Gemini request from '{auth_key.alias}' for model: {model_id}, stream: false"
     )
     response = await gemini_service.generate_content(model_id, request, False)
     return response if isinstance(response, Dict) else {}
@@ -40,7 +39,7 @@ async def stream_generate_content_endpoint(
     auth_key: AuthKey = Depends(verify_x_goog_api_key),
 ) -> StreamingResponse:
     logger.info(
-        f"Received request from '{auth_key.alias}' for model: {model_id}, stream: true"
+        f"Received Gemini request from '{auth_key.alias}' for model: {model_id}, stream: true"
     )
     response = await gemini_service.generate_content(model_id, request, True)
     return (
