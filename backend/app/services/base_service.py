@@ -201,13 +201,13 @@ class ApiService(ABC):
 
         if last_exception:
             logger.critical(
-                f"All {self.max_retries} API key attempts failed. Last error: {last_exception}"
+                f"All {self.max_retries} API request attempts failed. Last error: {last_exception}"
             )
             if isinstance(last_exception, HTTPException):
                 raise last_exception
             raise HTTPException(
                 status_code=500,
-                detail=f"All API key attempts failed. Last error: {str(last_exception)}",
+                detail=f"All API request attempts failed. Last error: {str(last_exception)}",
             )
         raise HTTPException(
             status_code=500, detail="No API keys were available or processed."
