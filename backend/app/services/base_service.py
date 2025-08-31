@@ -77,12 +77,14 @@ class ApiService(ABC):
         for attempt in range(self.max_retries):
             key_identifier = await key_manager.get_next_key()
             if not key_identifier:
-                logger.error(
-                    f"Attempt {attempt + 1}/{self.max_retries}: No available API keys."
+                logger.warning(
+                    f"Attempt {attempt + 1}/{self.max_retries}: No available API keys. "
+                    f"Waiting for {settings.NO_KEY_WAIT_SECONDS} seconds."
                 )
                 last_exception = HTTPException(
                     status_code=503, detail="No available API keys."
                 )
+                await asyncio.sleep(settings.NO_KEY_WAIT_SECONDS)
                 continue
 
             logger.info(

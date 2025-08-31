@@ -37,6 +37,7 @@ class Settings(BaseSettings):
         os.getenv("RATE_LIMIT_DEFAULT_WAIT_SECONDS", "90")
     )
     MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
+    NO_KEY_WAIT_SECONDS: int = int(os.getenv("NO_KEY_WAIT_SECONDS", "5"))
 
     # 数据库配置
     DATABASE_TYPE: str = os.getenv("DATABASE_TYPE", "sqlite")
