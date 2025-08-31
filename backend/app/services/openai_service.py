@@ -52,23 +52,24 @@ class OpenAIService(ApiService):
     async def create_chat_completion(
         self, request_data: ChatCompletionRequest
     ) -> Union[Dict[str, Any], StreamingResponse]:
-        url = self._get_api_url()
-        stream = bool(request_data.stream)  # 确保 stream 是 bool 类型
+        async with self.concurrency_manager.semaphore:
+            url = self._get_api_url()
+            stream = bool(request_data.stream)  # 确保 stream 是 bool 类型
 
-        self._handle_thinking_config(request_data)
+            self._handle_thinking_config(request_data)
 
-        params = {"alt": "sse"} if stream else {"alt": "json"}
+            params = {"alt": "sse"} if stream else {"alt": "json"}
 
-        response = await self._send_request(
-            method="POST",
-            url=url,
-            request_data=request_data,
-            stream=stream,
-            params=params,
-            model_id=request_data.model,  # 传递 model_id
-        )
+            response = await self._send_request(
+                method="POST",
+                url=url,
+                request_data=request_data,
+                stream=stream,
+                params=params,
+                model_id=request_data.model,  # 传递 model_id
+            )
 
-        # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
-        if stream and isinstance(response, StreamingResponse):
-            response.media_type = "text/event-stream"
-        return response
+            # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
+            if stream and isinstance(response, StreamingResponse):
+                response.media_type = "text/event-stream"
+            return response

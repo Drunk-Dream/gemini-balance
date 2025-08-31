@@ -61,6 +61,9 @@ class Settings(BaseSettings):
         os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
     )
 
+    # Concurrency settings
+    MAX_CONCURRENT_REQUESTS: int = int(os.getenv("MAX_CONCURRENT_REQUESTS", "3"))
+
     @field_validator("DATABASE_TYPE")
     def validate_database_type(cls, v: str) -> str:
         if v not in ["redis", "sqlite"]:

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Dict, Optional, Union, cast
 
 import httpx
+from app.core.concurrency import concurrency_manager
 from app.core.config import settings
 from app.core.logging import app_logger, setup_debug_logger, transaction_logger
 from app.services import key_manager
@@ -27,6 +28,7 @@ class ApiService(ABC):
             timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
         )
         self.max_retries = settings.MAX_RETRIES
+        self.concurrency_manager = concurrency_manager
 
         self.debug_logger = setup_debug_logger(f"{service_name}_debug_logger")
 

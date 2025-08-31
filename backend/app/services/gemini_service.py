@@ -25,19 +25,20 @@ class GeminiService(ApiService):
     async def generate_content(
         self, model_id: str, request_data: GeminiRequest, stream: bool = False
     ) -> Union[Dict[str, Any], StreamingResponse]:
-        url = self._get_api_url(model_id, stream)
-        params = {"alt": "sse"} if stream else {"alt": "json"}
+        async with self.concurrency_manager.semaphore:
+            url = self._get_api_url(model_id, stream)
+            params = {"alt": "sse"} if stream else {"alt": "json"}
 
-        response = await self._send_request(
-            method="POST",
-            url=url,
-            request_data=request_data,
-            stream=stream,
-            params=params,
-            model_id=model_id,  # 传递 model_id
-        )
+            response = await self._send_request(
+                method="POST",
+                url=url,
+                request_data=request_data,
+                stream=stream,
+                params=params,
+                model_id=model_id,  # 传递 model_id
+            )
 
-        # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
-        if stream and isinstance(response, StreamingResponse):
-            response.media_type = "application/json"
-        return response
+            # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
+            if stream and isinstance(response, StreamingResponse):
+                response.media_type = "application/json"
+            return response
