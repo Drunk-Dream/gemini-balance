@@ -1,12 +1,12 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from app.api.openai.endpoints.chat import router as openai_chat_router
-from app.api.v1beta.endpoints.auth import router as auth_router
-from app.api.v1beta.endpoints.auth_keys import router as auth_keys_router
+from app.api.management.endpoints.auth import router as auth_router
+from app.api.management.endpoints.auth_keys import router as auth_keys_router
+from app.api.management.endpoints.keys import router as keys_router
+from app.api.management.endpoints.status import router as status_router
+from app.api.v1.endpoints.chat import router as openai_chat_router
 from app.api.v1beta.endpoints.gemini import router as gemini_router
-from app.api.v1beta.endpoints.keys import router as keys_router  # 新增导入
-from app.api.v1beta.endpoints.status import router as status_router
 from app.core.logging import app_logger as logger
 from app.core.logging import setup_app_logger, setup_transaction_logger
 from app.services import key_manager

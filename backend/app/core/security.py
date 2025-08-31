@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from app.api.v1beta.schemas.auth import AuthKey
+from app.api.management.schemas.auth import AuthKey
 from app.core.config import settings
 from app.services.auth_service import AuthService
 from fastapi import Header  # Import Header

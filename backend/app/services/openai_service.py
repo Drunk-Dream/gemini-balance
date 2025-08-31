@@ -1,6 +1,6 @@
 from typing import Any, Dict, Union
 
-from app.api.openai.schemas.chat import ChatCompletionRequest
+from app.api.v1.schemas.chat import ChatCompletionRequest
 from app.core.config import settings
 from app.core.logging import app_logger
 from app.services.base_service import ApiService
@@ -28,7 +28,10 @@ class OpenAIService(ApiService):
         """
         处理 include_thoughts 和 thinking_budget 字段，将其转换为 extra_body 中的 google.thinking_config 结构。
         """
-        if request_data.include_thoughts is not None or request_data.thinking_budget is not None:
+        if (
+            request_data.include_thoughts is not None
+            or request_data.thinking_budget is not None
+        ):
             if request_data.extra_body is None:
                 request_data.extra_body = {}
 

@@ -1,4 +1,4 @@
-from app.api.v1beta.schemas.keys import (
+from app.api.management.schemas.keys import (
     AddKeyRequest,
     BulkKeyOperationResponse,
     KeyOperationResponse,

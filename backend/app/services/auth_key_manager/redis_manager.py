@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 import redis.asyncio as redis
-from app.api.v1beta.schemas.auth import AuthKey
+from app.api.management.schemas.auth import AuthKey
 from app.core.config import Settings
 from app.services.auth_key_manager.db_manager import AuthDBManager
 

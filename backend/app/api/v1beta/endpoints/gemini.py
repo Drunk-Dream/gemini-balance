@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from app.api.v1beta.schemas.auth import AuthKey
+from app.api.management.schemas.auth import AuthKey
 from app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from app.core.logging import app_logger as logger
 from app.core.security import verify_x_goog_api_key

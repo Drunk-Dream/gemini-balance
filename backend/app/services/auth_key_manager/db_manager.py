@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from app.api.v1beta.schemas.auth import AuthKey
+from app.api.management.schemas.auth import AuthKey
 
 
 class AuthDBManager(ABC):

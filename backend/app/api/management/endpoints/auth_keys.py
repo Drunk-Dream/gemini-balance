@@ -1,6 +1,10 @@
 from typing import List
 
-from app.api.v1beta.schemas.auth import AuthKeyCreate, AuthKeyResponse, AuthKeyUpdate
+from app.api.management.schemas.auth import (
+    AuthKeyCreate,
+    AuthKeyResponse,
+    AuthKeyUpdate,
+)
 from app.core.security import get_current_user
 from app.services.auth_service import AuthService
 from fastapi import APIRouter, Depends, HTTPException, status
