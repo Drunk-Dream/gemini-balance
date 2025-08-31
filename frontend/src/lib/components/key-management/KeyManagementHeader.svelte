@@ -15,14 +15,14 @@
 >
 	<button
 		onclick={fetchKeyStatuses}
-		class="focus:shadow-outline rounded bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none sm:text-base"
+		class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none sm:text-base"
 		disabled={loading}
 	>
 		{loading ? '刷新中...' : '立即刷新'}
 	</button>
 	<button
 		onclick={resetAllKeys}
-		class="focus:shadow-outline rounded bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 focus:outline-none sm:text-base"
+		class="focus:shadow-outline cursor-pointer rounded bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 focus:outline-none sm:text-base"
 	>
 		重置所有密钥状态
 	</button>

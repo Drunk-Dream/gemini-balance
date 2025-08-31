@@ -23,7 +23,7 @@
 		></textarea>
 		<button
 			onclick={handleSubmit}
-			class="focus:shadow-outline mt-2 rounded bg-green-500 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 focus:outline-none"
+			class="focus:shadow-outline cursor-pointer mt-2 rounded bg-green-500 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 focus:outline-none"
 		>
 			添加密钥
 		</button>

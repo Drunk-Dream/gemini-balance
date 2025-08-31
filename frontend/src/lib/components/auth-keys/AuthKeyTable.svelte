@@ -78,19 +78,26 @@
 						</td>
 						<td class="space-x-2 whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
 							{#if editingKey?.api_key === key.api_key}
-								<button onclick={updateAuthKey} class="text-indigo-600 hover:text-indigo-900">
+								<button
+									onclick={updateAuthKey}
+									class="cursor-pointer text-indigo-600 hover:text-indigo-900"
+								>
 									保存
 								</button>
-								<button onclick={cancelEdit} class="text-gray-600 hover:text-gray-900">
+								<button
+									onclick={cancelEdit}
+									class="cursor-pointer text-gray-600 hover:text-gray-900"
+								>
 									取消
 								</button>
 							{:else}
-								<button onclick={() => startEdit(key)} class="text-indigo-600 hover:text-indigo-900"
-									>编辑</button
+								<button
+									onclick={() => startEdit(key)}
+									class="cursor-pointer text-indigo-600 hover:text-indigo-900">编辑</button
 								>
 								<button
 									onclick={() => deleteAuthKey(key.api_key)}
-									class="text-red-600 hover:text-red-900">删除</button
+									class="cursor-pointer text-red-600 hover:text-red-900">删除</button
 								>
 							{/if}
 						</td>

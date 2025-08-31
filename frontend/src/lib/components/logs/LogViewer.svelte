@@ -68,7 +68,7 @@
 	{#if showScrollToBottomButton}
 		<button
 			onclick={forceScrollToBottom}
-			class="fixed bottom-4 right-4 rounded-full bg-blue-600 p-3 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+			class="fixed bottom-4 right-4 cursor-pointer rounded-full bg-blue-600 p-3 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
 			aria-label="Scroll to bottom"
 		>
 			<svg
