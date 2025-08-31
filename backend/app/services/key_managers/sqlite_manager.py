@@ -78,7 +78,8 @@ class SQLiteDBManager(DBManager):
                     current_cool_down_seconds = ?,
                     usage_today = ?,
                     last_usage_date = ?,
-                    last_usage_time = ?
+                    last_usage_time = ?,
+                    is_in_use = ?
                 WHERE key_identifier = ?
                 """,
                 (
@@ -90,6 +91,7 @@ class SQLiteDBManager(DBManager):
                     json.dumps(state.usage_today),
                     state.last_usage_date,
                     state.last_usage_time,
+                    int(state.is_in_use),
                     key_identifier,
                 ),
             )
@@ -162,8 +164,8 @@ class SQLiteDBManager(DBManager):
                 INSERT INTO key_states (
                     key_identifier, api_key, cool_down_until, request_fail_count,
                     cool_down_entry_count, current_cool_down_seconds,
-                    usage_today, last_usage_date, last_usage_time
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    usage_today, last_usage_date, last_usage_time, is_in_use
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     key_identifier,
@@ -175,6 +177,7 @@ class SQLiteDBManager(DBManager):
                     "{}",
                     time.strftime("%Y-%m-%d"),
                     time.time(),
+                    0,  # is_in_use 默认值
                 ),
             )
             await db.commit()
@@ -212,7 +215,7 @@ class SQLiteDBManager(DBManager):
                     "{}",
                     time.strftime("%Y-%m-%d"),
                     time.time(),
-                    0,
+                    0,  # is_in_use 重置为 0
                     0,
                     key_identifier,
                 ),
@@ -243,7 +246,7 @@ class SQLiteDBManager(DBManager):
                     "{}",
                     time.strftime("%Y-%m-%d"),
                     time.time(),
-                    0,
+                    0,  # is_in_use 重置为 0
                     0,
                 ),
             )
@@ -269,4 +272,5 @@ class SQLiteDBManager(DBManager):
             usage_today=json.loads(row["usage_today"]),
             last_usage_date=row["last_usage_date"],
             last_usage_time=row["last_usage_time"],
+            is_in_use=bool(row["is_in_use"]),
         )

@@ -9,6 +9,11 @@
 		current_cool_down_seconds: number;
 	}
 
+	const statusMap = new Map<string, { text: string; colorClass: string }>();
+	statusMap.set('active', { text: '活跃', colorClass: 'bg-green-200' });
+	statusMap.set('cooling_down', { text: '冷却中', colorClass: 'bg-yellow-200' });
+	statusMap.set('in_use', { text: '使用中', colorClass: 'bg-blue-200' });
+
 	let {
 		keyStatus,
 		resetKey,
@@ -39,11 +44,11 @@
 		<span class="relative inline-block px-2 py-0.5 text-sm font-semibold leading-tight">
 			<span
 				aria-hidden="true"
-				class="absolute inset-0 rounded-full opacity-50 {keyStatus.status === 'active'
-					? 'bg-green-200'
-					: 'bg-yellow-200'}"
+				class="absolute inset-0 rounded-full opacity-50 {statusMap.get(keyStatus.status)
+					?.colorClass || 'bg-gray-200'}"
 			></span>
-			<span class="relative text-gray-900">{keyStatus.status === 'active' ? '活跃' : '冷却中'}</span
+			<span class="relative text-gray-900"
+				>{statusMap.get(keyStatus.status)?.text || '未知状态'}</span
 			>
 		</span>
 	</div>

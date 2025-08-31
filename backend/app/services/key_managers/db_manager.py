@@ -18,6 +18,7 @@ class KeyState(BaseModel):
         default_factory=lambda: datetime.now().strftime("%Y-%m-%d")
     )
     last_usage_time: float = Field(default_factory=lambda: time.time())
+    is_in_use: bool = False  # 新增字段，指示key是否在使用中
 
 
 class DBManager(ABC):

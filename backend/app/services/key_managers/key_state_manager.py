@@ -17,6 +17,7 @@ class KeyStatusResponse(BaseModel):
     failure_count: int
     cool_down_entry_count: int
     current_cool_down_seconds: int
+    is_in_use: bool  # 新增字段
 
 
 class KeyStateManager:
@@ -147,7 +148,14 @@ class KeyStateManager:
                     )  # 保存更新后的状态
 
                 cool_down_remaining = max(0, state.cool_down_until - now)
-                status = "cooling_down" if cool_down_remaining > 0 else "active"
+
+                if state.is_in_use:
+                    status = "in_use"
+                elif cool_down_remaining > 0:
+                    status = "cooling_down"
+                else:
+                    status = "active"
+
                 states_response.append(
                     KeyStatusResponse(
                         key_identifier=key_identifier,
@@ -157,6 +165,7 @@ class KeyStateManager:
                         failure_count=state.request_fail_count,
                         cool_down_entry_count=state.cool_down_entry_count,
                         current_cool_down_seconds=state.current_cool_down_seconds,
+                        is_in_use=state.is_in_use,  # 新增字段
                     )
                 )
             return states_response

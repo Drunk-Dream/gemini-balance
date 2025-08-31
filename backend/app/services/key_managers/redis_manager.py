@@ -36,6 +36,7 @@ class RedisDBManager(DBManager):
             "usage_today": json.dumps(state.usage_today),
             "last_usage_date": state.last_usage_date,
             "last_usage_time": str(state.last_usage_time),
+            # is_in_use 不存储在 hash 中，而是通过集合管理
         }
 
     def _redis_hash_to_key_state(self, data: Dict[str, str]) -> KeyState:
@@ -53,13 +54,18 @@ class RedisDBManager(DBManager):
             usage_today=json.loads(data.get("usage_today", "{}")),
             last_usage_date=data.get("last_usage_date", time.strftime("%Y-%m-%d")),
             last_usage_time=float(data.get("last_usage_time", 0.0)),
+            is_in_use=False,  # 默认值，实际状态通过 sismember 检查
         )
 
     async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
         state_data = await self._redis.hgetall(f"{self.KEY_STATE_PREFIX}{key_identifier}")  # type: ignore
         if state_data:
             decoded_data = {k.decode(): v.decode() for k, v in state_data.items()}
-            return self._redis_hash_to_key_state(decoded_data)
+            key_state = self._redis_hash_to_key_state(decoded_data)
+            # 检查密钥是否在 IN_USE_KEYS_KEY 集合中
+            is_in_use = await self._redis.sismember(self.IN_USE_KEYS_KEY, key_identifier)  # type: ignore
+            key_state.is_in_use = bool(is_in_use)
+            return key_state
         return None
 
     async def get_key_from_identifier(self, key_identifier: str) -> Optional[str]:
@@ -121,7 +127,7 @@ class RedisDBManager(DBManager):
         pipe = self._redis.pipeline()
         # 尝试从冷却队列中移除
         pipe.zrem(self.COOLED_DOWN_KEYS_KEY, key_identifier)
-        # 尝试从正在使用队列中移除 (如果之前因为某种原因没有被正确移除)
+        # 确保从正在使用队列中移除
         pipe.srem(self.IN_USE_KEYS_KEY, key_identifier)
 
         # 获取密钥当前状态，重置 request_fail_count
