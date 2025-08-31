@@ -9,7 +9,8 @@ export function colorizeLog(logLine: string): string {
 		{ regex: /\b(true)\b/gi, class: 'text-green-400' }, // Boolean true
 		{ regex: /\b(false)\b/gi, class: 'text-red-400' }, // Boolean false
 		{ regex: /(key_sha256_[a-zA-Z0-9]{8})\b/g, class: 'text-violet-400' }, // Key suffix
-		{ regex: /\b(gemini-[\w.-]+|gpt-[\w.-]+)\b/g, class: 'text-pink-400' } // Model name
+		{ regex: /\b(gemini-[\w.-]+|gpt-[\w.-]+)\b/g, class: 'text-pink-400' }, // Model name
+		{ regex: /'(.*?)'/g, class: 'text-cyan-400' } // Quoted strings
 	];
 
 	let coloredLogLine = logLine;
