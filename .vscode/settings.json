@@ -12,6 +12,8 @@
     "**/Thumbs.db": true,
     "**/__pycache__": true,
     "**/.venv": true,
-    "**/.pytest_cache": true
+    "**/.pytest_cache": true,
+    "**/node_modules": true,
+    "**/.svelte-kit": true,
   }
 }
