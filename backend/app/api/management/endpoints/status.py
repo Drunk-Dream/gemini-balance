@@ -1,10 +1,9 @@
 import asyncio
-from typing import AsyncGenerator, List
+from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from starlette.responses import StreamingResponse
 
-from backend.app.core.config import LOG_DIR
 from backend.app.core.logging import app_logger, log_broadcaster
 from backend.app.core.security import get_current_user
 from backend.app.services import key_manager
@@ -30,35 +29,6 @@ async def get_api_key_status(
     """
     key_states = await key_manager.get_key_states()
     return {"keys": key_states}
-
-
-@router.get("/status/logs", summary="获取指定日志文件的最新 N 条日志")
-async def get_logs(
-    log_file_name: str = Query(
-        "backend.app.log", description="要查看的日志文件名 (例如: backend.app.log, transactions.log)"
-    ),
-    lines: int = Query(100, ge=1, le=1000, description="要获取的日志行数"),
-) -> List[str]:
-    """
-    返回指定日志文件的最新 N 条日志内容。
-    """
-    if log_file_name not in ALLOWED_LOG_FILES:
-        app_logger.warning(f"Attempted to access disallowed log file: {log_file_name}")
-        return ["Error: Access to this log file is not allowed."]
-
-    log_file_path = LOG_DIR / log_file_name
-    if not log_file_path.exists():
-        app_logger.warning(f"Log file not found: {log_file_path}")
-        return [f"Error: Log file '{log_file_name}' not found."]
-
-    try:
-        with open(log_file_path, "r", encoding="utf-8", errors="ignore") as f:
-            # Read all lines and take the last 'lines'
-            all_lines = f.readlines()
-            return [line.strip() for line in all_lines[-lines:]]
-    except Exception as e:
-        app_logger.error(f"Error reading log file {log_file_name}: {e}")
-        return [f"Error reading log file: {e}"]
 
 
 @router.get("/status/logs/sse", summary="通过 SSE 实时推送应用日志")
