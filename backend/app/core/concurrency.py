@@ -29,7 +29,7 @@ class ConcurrencyManager:
             await asyncio.wait_for(self._semaphore.acquire(), timeout=self._timeout)
             yield
         except asyncio.TimeoutError:
-            raise ConcurrencyTimeoutError(f"获取并发信号量超时 ({self._timeout} 秒)。")
+            raise ConcurrencyTimeoutError("获取并发信号量超时。")
         finally:
             if self._semaphore.locked():
                 self._semaphore.release()

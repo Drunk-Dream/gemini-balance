@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.core.logging import app_logger
 from app.services.base_service import ApiService
 from starlette.responses import StreamingResponse
-from starlette.status import HTTP_408_REQUEST_TIMEOUT
+from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
 logger = app_logger
 
@@ -80,6 +80,6 @@ class OpenAIService(ApiService):
             logger.warning(f"OpenAI API 请求并发超时: {e}")
             return StreamingResponse(
                 content=f'{{"error": "{e}"}}',
-                status_code=HTTP_408_REQUEST_TIMEOUT,
+                status_code=HTTP_503_SERVICE_UNAVAILABLE,
                 media_type="application/json",
             )
