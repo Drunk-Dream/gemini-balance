@@ -1,0 +1,15 @@
+[tool.bumpversion]
+current_version = "0.9.0"
+commit = true
+tag = true
+message = "chore(release): version {current_version} -> {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "backend/pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "frontend/package.json"
+search = '"version": "{current_version}"'
+replace = '"version": "{new_version}"'
