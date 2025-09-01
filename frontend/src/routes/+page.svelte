@@ -5,7 +5,7 @@
 	import KeyList from '$lib/components/key-management/KeyList.svelte';
 	import KeyManagementHeader from '$lib/components/key-management/KeyManagementHeader.svelte';
 // 导入 Notification 组件
-	import { authToken } from '$lib/stores';
+	import { api } from '$lib/utils/api';
 	import { onMount } from 'svelte';
 
 	interface KeyStatus {
@@ -28,24 +28,14 @@
 		loading = true;
 		errorMessage = null;
 		try {
-			const response = await fetch('/api/status/keys', {
-				headers: {
-					Authorization: `Bearer ${$authToken}`
-				}
-			});
-			if (response.status === 401) {
-				authToken.set(null); // 清除认证状态，AuthGuard 会处理重定向
-				return;
+			const data = await api.get<{ keys: KeyStatus[] }>('/status/keys');
+			if (!data) {
+				throw new Error('No response from the server');
 			}
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-			const data = await response.json();
-			keyStatuses = data.keys; // Access the 'keys' array
+			keyStatuses = data.keys;
 		} catch (error: any) {
 			notificationMessage = `获取密钥状态失败: ${error.message}`;
 			notificationType = 'error';
-			console.error(notificationMessage);
 		} finally {
 			loading = false;
 		}
@@ -67,18 +57,7 @@
 			return;
 		}
 		try {
-			const response = await fetch('/api/keys', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${$authToken}`
-				},
-				body: JSON.stringify({ api_keys: keysArray })
-			});
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-			}
+			await api.post('/keys', { api_keys: keysArray });
 			notificationMessage = '密钥添加成功！';
 			notificationType = 'success';
 			fetchKeyStatuses();
@@ -94,16 +73,7 @@
 			return;
 		}
 		try {
-			const response = await fetch(`/api/keys/${keyIdentifier}`, {
-				method: 'DELETE',
-				headers: {
-					Authorization: `Bearer ${$authToken}`
-				}
-			});
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-			}
+			await api.delete(`/keys/${keyIdentifier}`);
 			notificationMessage = `密钥 "${keyIdentifier}" 删除成功！`;
 			notificationType = 'success';
 			fetchKeyStatuses();
@@ -119,16 +89,7 @@
 			return;
 		}
 		try {
-			const response = await fetch(`/api/keys/${keyIdentifier}/reset`, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${$authToken}`
-				}
-			});
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-			}
+			await api.post(`/keys/${keyIdentifier}/reset`, {});
 			notificationMessage = `密钥 "${keyIdentifier}" 状态重置成功！`;
 			notificationType = 'success';
 			fetchKeyStatuses();
@@ -144,16 +105,7 @@
 			return;
 		}
 		try {
-			const response = await fetch('/api/keys/reset', {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${$authToken}`
-				}
-			});
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-			}
+			await api.post('/keys/reset', {});
 			notificationMessage = '所有密钥状态重置成功！';
 			notificationType = 'success';
 			fetchKeyStatuses();
