@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -57,16 +57,11 @@ def create_app() -> FastAPI:
             name="static_assets",
         )
 
-        @app.get("/favicon.svg", include_in_schema=False)
-        async def favicon():
-            return FileResponse(frontend_dir / "favicon.svg")
-
-        @app.get("/manifest.json", include_in_schema=False)
-        async def manifest():
-            return FileResponse(frontend_dir / "manifest.json")
-
         @app.get("/{full_path:path}", include_in_schema=False)
-        async def serve_frontend(request: Request):
+        async def serve_frontend(full_path: str):
+            file_path = frontend_dir / full_path
+            if file_path.is_file():
+                return FileResponse(file_path)
             return FileResponse(frontend_dir / "index.html")
 
     else:
