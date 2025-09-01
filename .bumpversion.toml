@@ -1,11 +1,16 @@
 [tool.bumpversion]
-current_version = "0.11.1"
+current_version = "0.11.2"
 commit = true
 tag = true
 message = "chore(release): version {current_version} -> {new_version}"
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "uv.lock"
 search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
 
