@@ -2,9 +2,9 @@
 	import LogViewer from '$lib/components/logs/LogViewer.svelte';
 	import { onDestroy, onMount } from 'svelte';
 
-	let logs: string[] = [];
+	let logs: string[] = $state([]);
+	let errorMessage: string | null = $state(null);
 	let eventSource: EventSource | null = null;
-	let errorMessage: string | null = null;
 
 	const BASE_RECONNECT_DELAY = 1000;
 	const MAX_RECONNECT_DELAY = 30000;

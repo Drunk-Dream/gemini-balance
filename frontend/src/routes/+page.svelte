@@ -18,11 +18,11 @@
 		current_cool_down_seconds: number;
 	}
 
-	let keyStatuses: KeyStatus[] = [];
-	let errorMessage: string | null = null;
-	let loading = true;
-	let notificationMessage: string | null = null; // 新增通知消息
-	let notificationType: 'success' | 'error' = 'success'; // 新增通知类型
+	let keyStatuses: KeyStatus[] = $state([]);
+	let errorMessage: string | null = $state(null);
+	let loading = $state(true);
+	let notificationMessage: string | null = $state(null); // 新增通知消息
+	let notificationType: 'success' | 'error' = $state('success'); // 新增通知类型
 
 	async function fetchKeyStatuses() {
 		loading = true;

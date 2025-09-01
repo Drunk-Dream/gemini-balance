@@ -12,12 +12,12 @@
 		call_count: number;
 	}
 
-	let authKeys: AuthKey[] = [];
-	let newAlias: string = '';
-	let editingKey: AuthKey | null = null;
-	let editingAlias: string = '';
-	let errorMessage: string | null = null;
-	let successMessage: string | null = null;
+	let authKeys: AuthKey[] = $state([]);
+	let newAlias: string = $state('');
+	let editingKey: AuthKey | null = $state(null);
+	let editingAlias: string = $state('');
+	let errorMessage: string | null = $state(null);
+	let successMessage: string | null = $state(null);
 
 	onMount(() => {
 		fetchAuthKeys();
