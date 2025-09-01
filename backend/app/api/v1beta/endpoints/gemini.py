@@ -3,7 +3,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends
 from starlette.responses import StreamingResponse
 
-from backend.app.api.management.schemas.auth import AuthKey
+from backend.app.api.management.schemas.auth_keys import AuthKey
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.security import verify_x_goog_api_key

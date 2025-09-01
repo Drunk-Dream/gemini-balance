@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
 	import Notification from '$lib/components/common/Notification.svelte';
 	import AddKeyForm from '$lib/components/key-management/AddKeyForm.svelte';
 	import KeyList from '$lib/components/key-management/KeyList.svelte';
 	import KeyManagementHeader from '$lib/components/key-management/KeyManagementHeader.svelte';
 // 导入 Notification 组件
-	import { authToken, isAuthenticated } from '$lib/stores';
+	import { authToken } from '$lib/stores';
 	import { onMount } from 'svelte';
 
 	interface KeyStatus {
@@ -25,11 +25,6 @@
 	let notificationType: 'success' | 'error' = 'success'; // 新增通知类型
 
 	async function fetchKeyStatuses() {
-		if (!$authToken) {
-			goto(`/login`);
-			return;
-		}
-
 		loading = true;
 		errorMessage = null;
 		try {
@@ -39,8 +34,7 @@
 				}
 			});
 			if (response.status === 401) {
-				isAuthenticated.set(false);
-				goto('/login');
+				authToken.set(null); // 清除认证状态，AuthGuard 会处理重定向
 				return;
 			}
 			if (!response.ok) {
@@ -171,29 +165,26 @@
 	}
 
 	onMount(() => {
-		if (!$isAuthenticated) {
-			goto(`/login`);
-			return;
-		}
-
 		fetchKeyStatuses();
 		const interval = setInterval(fetchKeyStatuses, 5000);
 		return () => clearInterval(interval);
 	});
 </script>
 
-<div class="container mx-auto p-2 sm:p-4">
-	<h1 class="mb-4 text-2xl font-bold text-gray-800 sm:mb-6 sm:text-3xl">密钥管理</h1>
+<AuthGuard>
+	<div class="container mx-auto p-2 sm:p-4">
+		<h1 class="mb-4 text-2xl font-bold text-gray-800 sm:mb-6 sm:text-3xl">密钥管理</h1>
 
-	<KeyManagementHeader {fetchKeyStatuses} {resetAllKeys} {loading} />
+		<KeyManagementHeader {fetchKeyStatuses} {resetAllKeys} {loading} />
 
-	<AddKeyForm {addKeys} />
+		<AddKeyForm {addKeys} />
 
-	<Notification message={notificationMessage} type={notificationType} />
+		<Notification message={notificationMessage} type={notificationType} />
 
-	{#if errorMessage}
-		<Notification message={errorMessage} type="error" />
-	{:else}
-		<KeyList {keyStatuses} {resetKey} {deleteKey} />
-	{/if}
-</div>
+		{#if errorMessage}
+			<Notification message={errorMessage} type="error" />
+		{:else}
+			<KeyList {keyStatuses} {resetKey} {deleteKey} />
+		{/if}
+	</div>
+</AuthGuard>

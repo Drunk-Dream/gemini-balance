@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 
-from backend.app.api.management.schemas.auth import (
+from backend.app.api.management.schemas.auth_keys import (
     AuthKeyCreate,
     AuthKeyResponse,
     AuthKeyUpdate,

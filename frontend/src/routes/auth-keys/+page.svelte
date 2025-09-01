@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import AddAuthKeyForm from '$lib/components/auth-keys/AddAuthKeyForm.svelte';
 	import AuthKeyTable from '$lib/components/auth-keys/AuthKeyTable.svelte';
+	import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
 	import Notification from '$lib/components/common/Notification.svelte';
-	import { authToken, isAuthenticated } from '$lib/stores';
+	import { authToken } from '$lib/stores';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 
@@ -21,11 +21,7 @@
 	let successMessage: string | null = null;
 
 	onMount(() => {
-		if (!get(isAuthenticated)) {
-			goto(`/login`);
-		} else {
-			fetchAuthKeys();
-		}
+		fetchAuthKeys();
 	});
 
 	async function fetchAuthKeys() {
@@ -37,11 +33,12 @@
 					Authorization: `Bearer ${get(authToken)}`
 				}
 			});
+			if (response.status === 401 || response.status === 403) {
+				authToken.set(null); // 清除认证状态，AuthGuard 会处理重定向
+				return;
+			}
 			if (response.ok) {
 				authKeys = await response.json();
-			} else if (response.status === 401 || response.status === 403) {
-				isAuthenticated.set(false);
-				goto(`/login`);
 			} else {
 				const errorData = await response.json();
 				errorMessage = errorData.detail || '获取密钥失败。';
@@ -74,8 +71,8 @@
 				newAlias = '';
 				successMessage = `密钥 "${newKey.alias}" 创建成功！API Key: ${newKey.api_key}`;
 			} else if (response.status === 401 || response.status === 403) {
-				errorMessage = '认证失败，请重新登录。';
-				goto(`/login`);
+				authToken.set(null); // 清除认证状态，AuthGuard 会处理重定向
+				return;
 			} else {
 				const errorData = await response.json();
 				errorMessage = errorData.detail || '创建密钥失败。';
@@ -117,8 +114,8 @@
 				editingAlias = '';
 				successMessage = `密钥 "${updatedKey.alias}" 更新成功！`;
 			} else if (response.status === 401 || response.status === 403) {
-				errorMessage = '认证失败，请重新登录。';
-				goto(`/login`);
+				authToken.set(null); // 清除认证状态，AuthGuard 会处理重定向
+				return;
 			} else {
 				const errorData = await response.json();
 				errorMessage = errorData.detail || '更新密钥失败。';
@@ -153,8 +150,8 @@
 				authKeys = authKeys.filter((k) => k.api_key !== api_key);
 				successMessage = '密钥删除成功！';
 			} else if (response.status === 401 || response.status === 403) {
-				errorMessage = '认证失败，请重新登录。';
-				goto(`/login`);
+				authToken.set(null); // 清除认证状态，AuthGuard 会处理重定向
+				return;
 			} else {
 				const errorData = await response.json();
 				errorMessage = errorData.detail || '删除密钥失败。';
@@ -166,21 +163,23 @@
 	}
 </script>
 
-<div class="container mx-auto p-4 md:p-8">
-	<h1 class="mb-6 text-2xl font-bold">管理认证密钥</h1>
+<AuthGuard>
+	<div class="container mx-auto p-4 md:p-8">
+		<h1 class="mb-6 text-2xl font-bold">管理认证密钥</h1>
 
-	<Notification message={successMessage} type="success" />
-	<Notification message={errorMessage} type="error" />
+		<Notification message={successMessage} type="success" />
+		<Notification message={errorMessage} type="error" />
 
-	<AddAuthKeyForm bind:newAlias {createAuthKey} />
+		<AddAuthKeyForm bind:newAlias {createAuthKey} />
 
-	<AuthKeyTable
-		{authKeys}
-		{editingKey}
-		bind:editingAlias
-		{startEdit}
-		{updateAuthKey}
-		{cancelEdit}
-		{deleteAuthKey}
-	/>
-</div>
+		<AuthKeyTable
+			{authKeys}
+			{editingKey}
+			bind:editingAlias
+			{startEdit}
+			{updateAuthKey}
+			{cancelEdit}
+			{deleteAuthKey}
+		/>
+	</div>
+</AuthGuard>

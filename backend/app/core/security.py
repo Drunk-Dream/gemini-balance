@@ -10,7 +10,7 @@ from fastapi.security import (
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from backend.app.api.management.schemas.auth import AuthKey
+from backend.app.api.management.schemas.auth_keys import AuthKey
 from backend.app.core.config import settings
 from backend.app.services.auth_service import AuthService
 

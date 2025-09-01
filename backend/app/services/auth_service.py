@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from backend.app.api.management.schemas.auth import AuthKey, AuthKeyCreate
+from backend.app.api.management.schemas.auth_keys import AuthKey, AuthKeyCreate
 from backend.app.services import auth_key_manager
 
 

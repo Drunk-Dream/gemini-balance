@@ -6,6 +6,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from backend.app.core.config import settings
 from backend.app.core.security import (
     create_access_token,
+    get_current_user,
     get_password_hash,
     verify_password,
 )
@@ -37,3 +38,11 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         data={"sub": "single_user"}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/validate-token", summary="验证 JWT 令牌是否有效")
+async def validate_token(current_user: dict = Depends(get_current_user)):
+    """
+    验证 JWT 令牌的有效性。如果令牌有效，则返回成功消息。
+    """
+    return {"message": "令牌有效", "user": current_user}
