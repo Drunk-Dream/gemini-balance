@@ -5,7 +5,7 @@ tag = true
 message = "chore(release): version {current_version} -> {new_version}"
 
 [[tool.bumpversion.files]]
-filename = "backend/pyproject.toml"
+filename = "pyproject.toml"
 search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
 
