@@ -50,7 +50,7 @@
 <div class="container mx-auto p-2 sm:p-4">
 	<h1 class="mb-4 text-2xl font-bold text-gray-800 sm:mb-6 sm:text-3xl">日志查看器</h1>
 
-	<Notification message={errorMessage} type="error" />
+	<Notification message={errorMessage} type="error" autoHide={false} />
 
 	<div
 		bind:this={logContainer}

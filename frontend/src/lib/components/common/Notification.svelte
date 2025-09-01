@@ -1,12 +1,21 @@
 <script lang="ts">
-	let { message, type }: { message: string | null; type: 'success' | 'error' } = $props();
+	let {
+		message,
+		type,
+		autoHide = true
+	}: { message: string | null; type: 'success' | 'error'; autoHide?: boolean } = $props();
 
 	$effect(() => {
-		if (message) {
-			setTimeout(() => {
+		let timer: ReturnType<typeof setTimeout>;
+		if (message && autoHide) {
+			timer = setTimeout(() => {
 				message = null;
 			}, 5000); // Hide message after 5 seconds
 		}
+
+		return () => {
+			clearTimeout(timer);
+		};
 	});
 </script>
 

@@ -33,7 +33,9 @@
 
 			eventSource.onerror = (error) => {
 				console.error('SSE error:', error);
-				errorMessage = 'SSE error. Check console for details. Attempting to reconnect...';
+				if (reconnectAttempts >= 3) {
+					errorMessage = 'SSE error. Check console for details. Attempting to reconnect...';
+				}
 				if (eventSource) eventSource.close();
 
 				const delay = Math.min(
