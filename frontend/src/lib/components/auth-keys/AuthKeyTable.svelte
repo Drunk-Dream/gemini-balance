@@ -80,25 +80,29 @@
 							{#if editingKey?.api_key === key.api_key}
 								<button
 									onclick={updateAuthKey}
-									class="cursor-pointer text-indigo-600 hover:text-indigo-900"
+									class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-3 py-1 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none"
 								>
 									保存
 								</button>
 								<button
 									onclick={cancelEdit}
-									class="cursor-pointer text-gray-600 hover:text-gray-900"
+									class="focus:shadow-outline cursor-pointer rounded bg-gray-500 px-3 py-1 text-sm font-bold text-white hover:bg-gray-700 focus:outline-none"
 								>
 									取消
 								</button>
 							{:else}
 								<button
 									onclick={() => startEdit(key)}
-									class="cursor-pointer text-indigo-600 hover:text-indigo-900">编辑</button
+									class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-3 py-1 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none"
 								>
+									编辑
+								</button>
 								<button
 									onclick={() => deleteAuthKey(key.api_key)}
-									class="cursor-pointer text-red-600 hover:text-red-900">删除</button
+									class="focus:shadow-outline cursor-pointer rounded bg-red-500 px-3 py-1 text-sm font-bold text-white hover:bg-red-700 focus:outline-none"
 								>
+									删除
+								</button>
 							{/if}
 						</td>
 					</tr>
