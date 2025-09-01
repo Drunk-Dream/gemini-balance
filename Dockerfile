@@ -7,6 +7,7 @@ COPY frontend/package*.json ./
 RUN npm install
 
 COPY frontend/ . .
+RUN npm run prepare
 RUN npm run build
 
 # Stage 2: Backend Builder
