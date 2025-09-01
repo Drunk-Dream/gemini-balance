@@ -1,8 +1,5 @@
 from datetime import datetime, timedelta, timezone
 
-from app.api.management.schemas.auth import AuthKey
-from app.core.config import settings
-from app.services.auth_service import AuthService
 from fastapi import Header  # Import Header
 from fastapi import Depends, HTTPException, status
 from fastapi.security import (
@@ -12,6 +9,10 @@ from fastapi.security import (
 )
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+
+from backend.app.api.management.schemas.auth import AuthKey
+from backend.app.core.config import settings
+from backend.app.services.auth_service import AuthService
 
 # 用于密码哈希
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

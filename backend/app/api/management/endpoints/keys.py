@@ -1,12 +1,13 @@
-from app.api.management.schemas.keys import (
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from backend.app.api.management.schemas.keys import (
     AddKeyRequest,
     BulkKeyOperationResponse,
     KeyOperationResponse,
 )
-from app.core.logging import app_logger
-from app.core.security import get_current_user
-from app.services import key_manager
-from fastapi import APIRouter, Depends, HTTPException, status
+from backend.app.core.logging import app_logger
+from backend.app.core.security import get_current_user
+from backend.app.services import key_manager
 
 router = APIRouter()
 

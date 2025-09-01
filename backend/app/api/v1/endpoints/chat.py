@@ -1,12 +1,13 @@
 from typing import Any, Dict, Union
 
-from app.api.management.schemas.auth import AuthKey
-from app.api.v1.schemas.chat import ChatCompletionRequest
-from app.core.logging import app_logger as logger
-from app.core.security import verify_bearer_token
-from app.services.openai_service import OpenAIService
 from fastapi import APIRouter, Depends
 from starlette.responses import StreamingResponse
+
+from backend.app.api.management.schemas.auth import AuthKey
+from backend.app.api.v1.schemas.chat import ChatCompletionRequest
+from backend.app.core.logging import app_logger as logger
+from backend.app.core.security import verify_bearer_token
+from backend.app.services.openai_service import OpenAIService
 
 router = APIRouter()
 

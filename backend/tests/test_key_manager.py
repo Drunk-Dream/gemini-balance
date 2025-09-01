@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 # 导入待测试的 KeyManager 类
-from backend.app.services.sqlite_key_manager import (
+from backend.backend.app.services.sqlite_key_manager import (
     KeyState,
     KeyStatusResponse,
     SQLiteKeyManager,
@@ -17,7 +17,7 @@ from backend.app.services.sqlite_key_manager import (
 # 模拟 settings 模块，因为 KeyManager 依赖它
 @pytest.fixture(autouse=True)
 def mock_settings():
-    with patch("app.services.key_manager.settings") as mock_settings_obj:
+    with patch("backend.app.services.key_manager.settings") as mock_settings_obj:
         mock_settings_obj.API_KEY_FAILURE_THRESHOLD = 3
         mock_settings_obj.MAX_COOL_DOWN_SECONDS = 3600
         yield mock_settings_obj

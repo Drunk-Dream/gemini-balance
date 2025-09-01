@@ -1,14 +1,15 @@
 from typing import List
 
-from app.api.management.schemas.auth import (
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer
+
+from backend.app.api.management.schemas.auth import (
     AuthKeyCreate,
     AuthKeyResponse,
     AuthKeyUpdate,
 )
-from app.core.security import get_current_user
-from app.services.auth_service import AuthService
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer
+from backend.app.core.security import get_current_user
+from backend.app.services.auth_service import AuthService
 
 router = APIRouter()
 security = HTTPBearer()

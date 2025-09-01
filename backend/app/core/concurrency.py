@@ -1,7 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 
 class ConcurrencyTimeoutError(Exception):

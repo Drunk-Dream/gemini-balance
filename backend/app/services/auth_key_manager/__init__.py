@@ -1,7 +1,7 @@
-from app.core.config import Settings
-from app.services.auth_key_manager.db_manager import AuthDBManager
-from app.services.auth_key_manager.redis_manager import RedisAuthDBManager
-from app.services.auth_key_manager.sqlite_manager import SQLiteAuthDBManager
+from backend.app.core.config import Settings
+from backend.app.services.auth_key_manager.db_manager import AuthDBManager
+from backend.app.services.auth_key_manager.redis_manager import RedisAuthDBManager
+from backend.app.services.auth_key_manager.sqlite_manager import SQLiteAuthDBManager
 
 
 def get_auth_db_manager(settings: Settings) -> AuthDBManager:

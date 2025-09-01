@@ -5,9 +5,10 @@ from pathlib import Path
 from typing import List, Optional
 
 import aiosqlite  # type: ignore
-from app.core.config import Settings
-from app.core.logging import app_logger
-from app.services.key_managers.db_manager import DBManager, KeyState
+
+from backend.app.core.config import Settings
+from backend.app.core.logging import app_logger
+from backend.app.services.key_managers.db_manager import DBManager, KeyState
 
 
 class SQLiteDBManager(DBManager):

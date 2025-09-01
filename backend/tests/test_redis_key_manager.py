@@ -4,8 +4,9 @@ from datetime import datetime
 from unittest.mock import patch
 
 import pytest
-from app.core.logging import app_logger
-from app.services.redis_key_manager import (
+
+from backend.app.core.logging import app_logger
+from backend.app.services.redis_key_manager import (
     KeyStatusResponse,
     RedisKeyManager,
     RedisKeyState,
@@ -15,7 +16,7 @@ from app.services.redis_key_manager import (
 # Mock settings for testing
 @pytest.fixture(autouse=True)
 def mock_settings():
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.GOOGLE_API_KEYS = ["key1", "key2", "key3"]
         mock_settings.API_KEY_COOL_DOWN_SECONDS = 1
         mock_settings.API_KEY_FAILURE_THRESHOLD = 2
@@ -176,7 +177,7 @@ async def test_record_usage(key_manager, mock_settings):
         assert key_state.usage_today[model] == 2
 
     # Test daily reset
-    with patch("app.services.redis_key_manager.datetime") as mock_datetime:
+    with patch("backend.app.services.redis_key_manager.datetime") as mock_datetime:
         mock_datetime.now.return_value = datetime(2025, 1, 2)
         mock_datetime.strftime = datetime.strftime  # Ensure strftime works
         await key_manager.record_usage(key, "gemini-ultra")

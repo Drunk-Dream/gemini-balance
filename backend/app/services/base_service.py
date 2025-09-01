@@ -4,12 +4,13 @@ from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Dict, Optional, Union, cast
 
 import httpx
-from app.core.concurrency import concurrency_manager
-from app.core.config import settings
-from app.core.logging import app_logger, setup_debug_logger, transaction_logger
-from app.services import key_manager
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
+
+from backend.app.core.concurrency import concurrency_manager
+from backend.app.core.config import settings
+from backend.app.core.logging import app_logger, setup_debug_logger, transaction_logger
+from backend.app.services import key_manager
 
 logger = app_logger
 

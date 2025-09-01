@@ -1,7 +1,7 @@
-from app.core.config import Settings
-from app.services.key_managers.key_state_manager import KeyStateManager
-from app.services.key_managers.redis_manager import RedisDBManager
-from app.services.key_managers.sqlite_manager import SQLiteDBManager
+from backend.app.core.config import Settings
+from backend.app.services.key_managers.key_state_manager import KeyStateManager
+from backend.app.services.key_managers.redis_manager import RedisDBManager
+from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
 
 
 def get_key_manager(settings: Settings) -> KeyStateManager:

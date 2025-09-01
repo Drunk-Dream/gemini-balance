@@ -1,16 +1,17 @@
 import asyncio
 from typing import AsyncGenerator, List
 
-from app.core.config import LOG_DIR
-from app.core.logging import app_logger, log_broadcaster
-from app.core.security import get_current_user
-from app.services import key_manager
 from fastapi import APIRouter, Depends, Query
 from starlette.responses import StreamingResponse
 
+from backend.app.core.config import LOG_DIR
+from backend.app.core.logging import app_logger, log_broadcaster
+from backend.app.core.security import get_current_user
+from backend.app.services import key_manager
+
 router = APIRouter()
 
-ALLOWED_LOG_FILES = {"app.log", "transactions.log"}
+ALLOWED_LOG_FILES = {"backend.app.log", "transactions.log"}
 
 
 @router.get("/status/keys", summary="获取所有 API Key 的状态和用量信息")
@@ -34,7 +35,7 @@ async def get_api_key_status(
 @router.get("/status/logs", summary="获取指定日志文件的最新 N 条日志")
 async def get_logs(
     log_file_name: str = Query(
-        "app.log", description="要查看的日志文件名 (例如: app.log, transactions.log)"
+        "backend.app.log", description="要查看的日志文件名 (例如: backend.app.log, transactions.log)"
     ),
     lines: int = Query(100, ge=1, le=1000, description="要获取的日志行数"),
 ) -> List[str]:

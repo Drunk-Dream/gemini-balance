@@ -1,12 +1,13 @@
 from typing import Any, Dict, Union
 
-from app.api.v1beta.schemas.gemini import Request as GeminiRequest
-from app.core.concurrency import ConcurrencyTimeoutError
-from app.core.config import settings
-from app.core.logging import app_logger
-from app.services.base_service import ApiService
 from starlette.responses import StreamingResponse
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
+
+from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
+from backend.app.core.concurrency import ConcurrencyTimeoutError
+from backend.app.core.config import settings
+from backend.app.core.logging import app_logger
+from backend.app.services.base_service import ApiService
 
 logger = app_logger
 

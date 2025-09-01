@@ -17,16 +17,16 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 # Set the working directory in the container
-WORKDIR /app/backend
+WORKDIR /app
 
 # Copy pyproject.toml and uv.lock to the working directory
-COPY backend/pyproject.toml backend/uv.lock ./
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies using uv
 RUN uv sync --no-dev
 
 # Copy the rest of the backend application code
-COPY backend/ . .
+COPY backend/ ./backend
 
 # Copy frontend build artifacts from the frontend-builder stage
 COPY --from=frontend-builder /app/frontend/build ./frontend/build
@@ -35,4 +35,4 @@ COPY --from=frontend-builder /app/frontend/build ./frontend/build
 EXPOSE 8090
 
 # Run the application
-CMD ["uv", "run", "-m", "main"]
+CMD ["uv", "run", "-m", "backend.main"]

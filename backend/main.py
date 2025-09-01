@@ -10,7 +10,7 @@ def main():
     app_env = os.getenv("APP_ENV", "production")
     # Enable reload only in 'development' environment
     should_reload = app_env.lower() == "development"
-    uvicorn.run("app.main:app", host=host, port=port, reload=should_reload)
+    uvicorn.run("backend.app.main:app", host=host, port=port, reload=should_reload)
 
 
 if __name__ == "__main__":

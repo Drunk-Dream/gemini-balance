@@ -1,9 +1,10 @@
 from typing import List, Optional
 
 import redis.asyncio as redis
-from app.api.management.schemas.auth import AuthKey
-from app.core.config import Settings
-from app.services.auth_key_manager.db_manager import AuthDBManager
+
+from backend.app.api.management.schemas.auth import AuthKey
+from backend.app.core.config import Settings
+from backend.app.services.auth_key_manager.db_manager import AuthDBManager
 
 
 class RedisAuthDBManager(AuthDBManager):

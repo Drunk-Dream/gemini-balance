@@ -5,8 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.responses import StreamingResponse
 
-from app.main import app
-from app.services.gemini_service import GeminiService  # 需要导入 GeminiService
+from backend.app.main import app
+from backend.app.services.gemini_service import GeminiService  # 需要导入 GeminiService
 
 # 创建 TestClient 实例
 client = TestClient(app)
@@ -18,16 +18,16 @@ def mock_gemini_service():
     为 GeminiService 创建一个模拟夹具。
     """
     # 模拟 GeminiService 的 __init__ 方法，使其不执行原始的初始化逻辑
-    with patch("app.services.gemini_service.GeminiService.__init__", return_value=None):
+    with patch("backend.app.services.gemini_service.GeminiService.__init__", return_value=None):
         # 创建一个 GeminiService 实例的模拟
         mock_service_instance = MagicMock(spec=GeminiService)
         mock_service_instance.api_key = "mock_api_key"
         mock_service_instance.base_url = "http://mock-api.com"
         # 将这个模拟实例注入到 FastAPI 的依赖中
-        app.dependency_overrides[GeminiService] = lambda: mock_service_instance
+        backend.app.dependency_overrides[GeminiService] = lambda: mock_service_instance
         yield mock_service_instance
         # 清理依赖覆盖
-        app.dependency_overrides = {}
+        backend.app.dependency_overrides = {}
 
 
 @pytest.fixture

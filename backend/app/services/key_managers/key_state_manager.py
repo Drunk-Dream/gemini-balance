@@ -3,10 +3,11 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from app.core.config import Settings
-from app.core.logging import app_logger
-from app.services.key_managers.db_manager import DBManager, KeyState
 from pydantic import BaseModel
+
+from backend.app.core.config import Settings
+from backend.app.core.logging import app_logger
+from backend.app.services.key_managers.db_manager import DBManager, KeyState
 
 
 class KeyStatusResponse(BaseModel):
