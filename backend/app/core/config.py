@@ -63,7 +63,9 @@ class Settings(BaseSettings):
 
     # Concurrency settings
     MAX_CONCURRENT_REQUESTS: int = int(os.getenv("MAX_CONCURRENT_REQUESTS", "3"))
-    CONCURRENCY_TIMEOUT_SECONDS: int = int(os.getenv("CONCURRENCY_TIMEOUT_SECONDS", "60"))
+    CONCURRENCY_TIMEOUT_SECONDS: float = float(
+        os.getenv("CONCURRENCY_TIMEOUT_SECONDS", "60.0")
+    )
 
     @field_validator("DATABASE_TYPE")
     def validate_database_type(cls, v: str) -> str:
