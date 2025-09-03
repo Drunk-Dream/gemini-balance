@@ -272,24 +272,8 @@ class ApiService(ABC):
                     logger.warning(
                         f"Invalid retryDelay format: {retry_delay_str}. Using default wait time."
                     )
-            else:
-                logger.warning(
-                    "retryDelay not found in response body. Checking Retry-After header."
-                )
-                retry_after = e.response.headers.get("Retry-After")
-                if retry_after:
-                    try:
-                        wait_time = int(retry_after)
-                    except ValueError:
-                        logger.warning("Invalid Retry-After header.")
         except Exception as json_error:
             logger.warning(
                 f"Could not parse 429 response body for retryDelay: {json_error}. Checking Retry-After header."
             )
-            retry_after = e.response.headers.get("Retry-After")
-            if retry_after:
-                try:
-                    wait_time = int(retry_after)
-                except ValueError:
-                    logger.warning("Invalid Retry-After header.")
         return wait_time
