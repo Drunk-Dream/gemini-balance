@@ -4,7 +4,7 @@ export function colorizeLog(logLine: string): string {
 		{ regex: /\b(INFO)\b/, class: 'font-bold text-emerald-400' }, // Log Level INFO
 		{ regex: /\b(ERROR)\b/, class: 'font-bold text-red-400' }, // Log Level ERROR
 		{ regex: /\b(WARNING)\b/, class: 'font-bold text-amber-400' }, // Log Level WARNING
-		{ regex: /\b(CRITICAL)\b/, class: 'font-bold text-amber-400' }, // Log Level CRITICAL
+		{ regex: /\b(CRITICAL)\b/, class: 'font-bold text-red-600' }, // Log Level CRITICAL
 		{ regex: /\b(DEBUG)\b/, class: 'font-bold text-blue-400' }, // Log Level DEBUG
 		{ regex: /\b(true)\b/gi, class: 'text-green-400' }, // Boolean true
 		{ regex: /\b(false)\b/gi, class: 'text-red-400' }, // Boolean false
