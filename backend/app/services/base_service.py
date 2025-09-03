@@ -171,13 +171,7 @@ class ApiService(ABC):
                 await key_manager.mark_key_fail(key_identifier, error_type)
 
                 if e.response.status_code == 429:
-                    retry_after = e.response.headers.get("Retry-After")
-                    wait_time = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
-                    if retry_after:
-                        try:
-                            wait_time = int(retry_after)
-                        except ValueError:
-                            logger.warning("Invalid Retry-After header.")
+                    wait_time = self._extract_wait_time(e)
                     wait_time += random.randint(1, 9)
                     logger.warning(
                         f"Rate limit hit. Retrying after {wait_time} seconds."
@@ -248,3 +242,54 @@ class ApiService(ABC):
             # For non-streaming, get the first (and only) item from the generator
             response_data = await generator.__anext__()
             return cast(Dict[str, Any], response_data)
+
+    def _extract_wait_time(self, e: httpx.HTTPStatusError) -> int:
+        """
+        从 429 HTTPStatusError 响应中提取等待时间。
+        它首先尝试从响应体中解析 'retryDelay'，
+        然后回退到 'Retry-After' 头部，最后使用默认等待时间。
+        """
+        wait_time = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
+        try:
+            response_json = e.response.json()
+            retry_info = next(
+                (
+                    detail
+                    for detail in response_json.get("error", {}).get("details", [])
+                    if detail.get("@type") == "type.googleapis.com/google.rpc.RetryInfo"
+                ),
+                None,
+            )
+            if retry_info and "retryDelay" in retry_info:
+                retry_delay_str = retry_info["retryDelay"]
+                # retryDelay 格式为 "44s"，需要去除 "s" 并转换为整数
+                if retry_delay_str.endswith("s"):
+                    wait_time = int(retry_delay_str[:-1])
+                    logger.info(
+                        f"Found retryDelay in response body: {wait_time} seconds."
+                    )
+                else:
+                    logger.warning(
+                        f"Invalid retryDelay format: {retry_delay_str}. Using default wait time."
+                    )
+            else:
+                logger.warning(
+                    "retryDelay not found in response body. Checking Retry-After header."
+                )
+                retry_after = e.response.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        wait_time = int(retry_after)
+                    except ValueError:
+                        logger.warning("Invalid Retry-After header.")
+        except Exception as json_error:
+            logger.warning(
+                f"Could not parse 429 response body for retryDelay: {json_error}. Checking Retry-After header."
+            )
+            retry_after = e.response.headers.get("Retry-After")
+            if retry_after:
+                try:
+                    wait_time = int(retry_after)
+                except ValueError:
+                    logger.warning("Invalid Retry-After header.")
+        return wait_time
