@@ -1,14 +1,10 @@
 import os
-from pathlib import Path
 
 from dotenv import load_dotenv
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
-
-# Define the base directory for logs, ensuring it's relative to the backend root
-LOG_DIR = Path("logs")
 
 
 class Settings(BaseSettings):

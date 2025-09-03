@@ -6,9 +6,10 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Deque, List
 
-from backend.app.core.config import LOG_DIR, settings
+from backend.app.core.config import settings
 
 # --- Constants ---
+LOG_DIR = Path("logs")
 APP_LOG_FILE = LOG_DIR / "app.log"
 TRANSACTION_LOG_FILE = LOG_DIR / "transactions.log"
 DEBUG_LOG_FILE = Path(settings.DEBUG_LOG_FILE)
