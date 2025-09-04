@@ -37,6 +37,18 @@ async def _migration_v2(db: redis.Redis):
 MIGRATIONS[2] = _migration_v2
 
 
+async def _migration_v3(db: redis.Redis):
+    """
+    迁移到版本 3：Redis 无需模式迁移，仅记录。
+    """
+    app_logger.info(
+        "Running Redis migration to version 3: No schema changes needed for auth_keys."
+    )
+
+
+MIGRATIONS[3] = _migration_v3
+
+
 class RedisMigrationManager(BaseMigrationManager):
     def __init__(self, settings: Settings):
         self.settings = settings

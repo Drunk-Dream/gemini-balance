@@ -1,7 +1,9 @@
 import json
 import time
+from datetime import datetime
 from typing import Dict, List, Optional
 
+import pytz
 import redis.asyncio as redis
 
 from backend.app.core.config import Settings
@@ -30,7 +32,6 @@ class RedisDBManager(DBManager):
             "cool_down_entry_count": str(state.cool_down_entry_count),
             "current_cool_down_seconds": str(state.current_cool_down_seconds),
             "usage_today": json.dumps(state.usage_today),
-            "last_usage_date": state.last_usage_date,
             "last_usage_time": str(state.last_usage_time),
             # is_in_use 不存储在 hash 中，而是通过集合管理
         }
@@ -48,7 +49,7 @@ class RedisDBManager(DBManager):
                 )
             ),
             usage_today=json.loads(data.get("usage_today", "{}")),
-            last_usage_date=data.get("last_usage_date", time.strftime("%Y-%m-%d")),
+            last_usage_date="",  # 日期字段不存储在 Redis 中,需要从 last_usage_time 转换
             last_usage_time=float(data.get("last_usage_time", 0.0)),
             is_in_use=False,  # 默认值，实际状态通过 sismember 检查
         )
@@ -61,6 +62,10 @@ class RedisDBManager(DBManager):
             # 检查密钥是否在 IN_USE_KEYS_KEY 集合中
             is_in_use = await self._redis.sismember(self.IN_USE_KEYS_KEY, key_identifier)  # type: ignore
             key_state.is_in_use = bool(is_in_use)
+            eastern_tz = pytz.timezone("America/New_York")
+            key_state.last_usage_date = datetime.fromtimestamp(
+                key_state.last_usage_time, tz=eastern_tz
+            ).strftime("%Y-%m-%d")
             return key_state
         return None
 
@@ -186,7 +191,6 @@ class RedisDBManager(DBManager):
             state.cool_down_entry_count = 0
             state.current_cool_down_seconds = self.settings.API_KEY_COOL_DOWN_SECONDS
             state.usage_today = {}
-            state.last_usage_date = time.strftime("%Y-%m-%d")
             state.last_usage_time = time.time()
             await self.save_key_state(key_identifier, state)
             await self.reactivate_key(key_identifier)
@@ -201,7 +205,6 @@ class RedisDBManager(DBManager):
             state.cool_down_entry_count = 0
             state.current_cool_down_seconds = self.settings.API_KEY_COOL_DOWN_SECONDS
             state.usage_today = {}
-            state.last_usage_date = time.strftime("%Y-%m-%d")
             state.last_usage_time = time.time()
             pipe.hset(
                 f"{self.KEY_STATE_PREFIX}{state.key_identifier}",

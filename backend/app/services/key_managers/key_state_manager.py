@@ -120,15 +120,10 @@ class KeyStateManager:
             # 使用美国东部时区计算日期
             eastern_tz = pytz.timezone("America/New_York")
             # 从时间戳获取日期，并格式化为字符串
-            current_date_eastern = datetime.fromtimestamp(
-                state.last_usage_time, tz=eastern_tz
+            current_date = datetime.fromtimestamp(
+                time.time(), tz=eastern_tz
             ).strftime("%Y-%m-%d")
-            # 获取上次使用时间的日期部分
-            last_usage_date_eastern = datetime.fromtimestamp(
-                state.last_usage_time, tz=eastern_tz
-            ).strftime("%Y-%m-%d")
-
-            if last_usage_date_eastern != current_date_eastern:
+            if state.last_usage_date != current_date:
                 state.usage_today = {}
             state.usage_today[model] = state.usage_today.get(model, 0) + 1
 
@@ -141,17 +136,13 @@ class KeyStateManager:
             states_response = []
             now = time.time()
             eastern_tz = pytz.timezone("America/New_York")
-            current_date_eastern = datetime.fromtimestamp(now, tz=eastern_tz).strftime(
+            current_date = datetime.fromtimestamp(now, tz=eastern_tz).strftime(
                 "%Y-%m-%d"
             )
             for key_identifier, state in self._key_states_cache.items():
                 # 检查是否跨天，如果跨天则重置 daily_usage
-                # 这里需要根据 last_usage_time 来判断是否跨天
                 if state.last_usage_time:
-                    last_usage_date_eastern = datetime.fromtimestamp(
-                        state.last_usage_time, tz=eastern_tz
-                    ).strftime("%Y-%m-%d")
-                    if last_usage_date_eastern != current_date_eastern:
+                    if state.last_usage_date != current_date:
                         state.usage_today = {}
                         await self._save_key_state(
                             key_identifier, state

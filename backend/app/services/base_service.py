@@ -250,6 +250,7 @@ class ApiService(ABC):
         wait_time = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
         try:
             response_json = e.response.json()
+            transaction_logger.info(f"Response JSON: {response_json}")
             retry_info = next(
                 (
                     detail
