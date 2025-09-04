@@ -1,7 +1,7 @@
 import asyncio
 import random
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Dict, Optional, Union, cast
+from typing import Any, AsyncGenerator, Dict, Union, cast
 
 import httpx
 from fastapi import HTTPException
@@ -70,7 +70,7 @@ class ApiService(ABC):
         request_data: Any,
         stream: bool,
         params: Dict[str, str],
-        model_id: Optional[str] = None,
+        model_id: str,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """
         A unified generator to handle both streaming and non-streaming requests.
@@ -123,9 +123,8 @@ class ApiService(ABC):
                         params=params,
                     ) as response:
                         response.raise_for_status()
-                        await key_manager.mark_key_success(key_identifier)
-                        if model_id:
-                            await key_manager.record_usage(key_identifier, model_id)
+                        await key_manager.mark_key_success(key_identifier, model_id)
+                        # await key_manager.record_usage(key_identifier, model_id)
                         logger.info(
                             f"Streaming request with key {key_identifier} succeeded."
                         )
@@ -142,9 +141,8 @@ class ApiService(ABC):
                         params=params,
                     )
                     response.raise_for_status()
-                    await key_manager.mark_key_success(key_identifier)
-                    if model_id:
-                        await key_manager.record_usage(key_identifier, model_id)
+                    await key_manager.mark_key_success(key_identifier, model_id)
+                    # await key_manager.record_usage(key_identifier, model_id)
                     response_json = response.json()
                     transaction_logger.info(
                         "Response from %s API with key %s: %s",
@@ -219,7 +217,7 @@ class ApiService(ABC):
         request_data: Any,
         stream: bool,
         params: Dict[str, str],
-        model_id: Optional[str] = None,
+        model_id: str,
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
         Handles sending the HTTP request by dispatching to the appropriate generator.

@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional
 
+import pytz
 from pydantic import BaseModel
 
 from backend.app.core.config import Settings
@@ -108,42 +109,56 @@ class KeyStateManager:
 
             await self._save_key_state(key_identifier, state)
 
-    async def mark_key_success(self, key_identifier: str):
-        async with self._lock:
-            state = await self._get_key_state(key_identifier)
-            if state:
-                state.cool_down_entry_count = 0
-                state.current_cool_down_seconds = self._initial_cool_down_seconds
-                state.request_fail_count = 0
-                state.last_usage_time = time.time()
-                await self._save_key_state(key_identifier, state)
-                await self._db_manager.reactivate_key(key_identifier)
-
-    async def record_usage(self, key_identifier: str, model: str):
+    async def mark_key_success(self, key_identifier: str, model: str):
         async with self._lock:
             state = await self._get_key_state(key_identifier)
             if not state:
                 return
+            state.cool_down_entry_count = 0
+            state.current_cool_down_seconds = self._initial_cool_down_seconds
+            state.request_fail_count = 0
+            state.last_usage_time = time.time()
+            # 使用美国东部时区计算日期
+            eastern_tz = pytz.timezone("America/New_York")
+            # 从时间戳获取日期，并格式化为字符串
+            current_date_eastern = datetime.fromtimestamp(
+                state.last_usage_time, tz=eastern_tz
+            ).strftime("%Y-%m-%d")
+            # 获取上次使用时间的日期部分
+            last_usage_date_eastern = datetime.fromtimestamp(
+                state.last_usage_time, tz=eastern_tz
+            ).strftime("%Y-%m-%d")
 
-            today_str = datetime.now().strftime("%Y-%m-%d")
-            if state.last_usage_date != today_str:
+            if last_usage_date_eastern != current_date_eastern:
                 state.usage_today = {}
-                state.last_usage_date = today_str
-
             state.usage_today[model] = state.usage_today.get(model, 0) + 1
+
             await self._save_key_state(key_identifier, state)
+            await self._db_manager.reactivate_key(key_identifier)
 
     async def get_key_states(self) -> List[KeyStatusResponse]:
         async with self._lock:
             await self._load_key_states_to_cache()
             states_response = []
             now = time.time()
-            today_str = datetime.now().strftime("%Y-%m-%d")
+            eastern_tz = pytz.timezone("America/New_York")
+            current_date_eastern = datetime.fromtimestamp(now, tz=eastern_tz).strftime(
+                "%Y-%m-%d"
+            )
             for key_identifier, state in self._key_states_cache.items():
                 # 检查是否跨天，如果跨天则重置 daily_usage
-                if state.last_usage_date != today_str:
+                # 这里需要根据 last_usage_time 来判断是否跨天
+                if state.last_usage_time:
+                    last_usage_date_eastern = datetime.fromtimestamp(
+                        state.last_usage_time, tz=eastern_tz
+                    ).strftime("%Y-%m-%d")
+                    if last_usage_date_eastern != current_date_eastern:
+                        state.usage_today = {}
+                        await self._save_key_state(
+                            key_identifier, state
+                        )  # 保存更新后的状态
+                else:  # 如果 last_usage_time 不存在，也重置 usage_today
                     state.usage_today = {}
-                    state.last_usage_date = today_str
                     await self._save_key_state(
                         key_identifier, state
                     )  # 保存更新后的状态
