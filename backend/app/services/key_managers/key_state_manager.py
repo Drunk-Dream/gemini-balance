@@ -44,7 +44,6 @@ class KeyStateManager:
         return key_state.api_key if key_state else None
 
     async def initialize(self):
-        await self._db_manager.initialize()
         await self._load_key_states_to_cache()
 
     async def _load_key_states_to_cache(self):

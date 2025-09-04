@@ -27,11 +27,6 @@ class DBManager(ABC):
     """
 
     @abstractmethod
-    async def initialize(self):
-        """Initialize the database connection and tables."""
-        pass
-
-    @abstractmethod
     async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
         """Get the state of a single key."""
         pass

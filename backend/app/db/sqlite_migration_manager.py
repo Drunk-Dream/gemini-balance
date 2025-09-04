@@ -1,0 +1,109 @@
+from pathlib import Path
+from typing import Awaitable, Callable, Dict
+
+import aiosqlite
+
+from backend.app.core.logging import app_logger
+
+# 定义数据库的当前版本
+CURRENT_DB_VERSION = 2
+
+# 迁移函数字典，键为版本号，值为对应的迁移函数
+MIGRATIONS: Dict[int, Callable[[aiosqlite.Connection], Awaitable[None]]] = {}
+
+
+async def get_db_version(db: aiosqlite.Connection) -> int:
+    """获取数据库的当前版本号。"""
+    cursor = await db.execute("PRAGMA user_version")
+    row = await cursor.fetchone()
+    return row[0] if row else 0
+
+
+async def set_db_version(db: aiosqlite.Connection, version: int):
+    """设置数据库的版本号。"""
+    await db.execute(f"PRAGMA user_version = {version}")
+    await db.commit()
+
+
+async def _migration_v1(db: aiosqlite.Connection):
+    """
+    迁移到版本 1：创建 key_states 表。
+    """
+    app_logger.info("Running migration to version 1: Creating 'key_states' table.")
+    await db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS key_states (
+            key_identifier TEXT PRIMARY KEY,
+            api_key TEXT NOT NULL,
+            cool_down_until REAL,
+            request_fail_count INTEGER,
+            cool_down_entry_count INTEGER,
+            current_cool_down_seconds INTEGER,
+            usage_today TEXT,
+            last_usage_date TEXT,
+            last_usage_time REAL,
+            is_in_use INTEGER DEFAULT 0,
+            is_cooled_down INTEGER DEFAULT 0
+        )
+        """
+    )
+    await db.commit()
+    app_logger.info("'key_states' table created or already exists.")
+
+
+MIGRATIONS[1] = _migration_v1
+
+
+async def _migration_v2(db: aiosqlite.Connection):
+    """
+    迁移到版本 2：创建 auth_keys 表。
+    """
+    app_logger.info("Running migration to version 2: Creating 'auth_keys' table.")
+    await db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS auth_keys (
+            api_key TEXT PRIMARY KEY,
+            alias TEXT NOT NULL,
+            call_count INTEGER DEFAULT 0
+        )
+        """
+    )
+    await db.commit()
+    app_logger.info("'auth_keys' table created or already exists.")
+
+
+MIGRATIONS[2] = _migration_v2
+
+
+class MigrationManager:
+    def __init__(self, db_path: str):
+        self.db_path = Path(db_path)
+        if not self.db_path.parent.exists():
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    async def run_migrations(self):
+        """
+        运行所有必要的数据库迁移。
+        """
+        async with aiosqlite.connect(self.db_path) as db:
+            current_version = await get_db_version(db)
+            app_logger.info(f"Current database version: {current_version}")
+
+            if current_version < CURRENT_DB_VERSION:
+                app_logger.info(
+                    f"Starting database migration from version {current_version} to {CURRENT_DB_VERSION}."
+                )
+                for version in range(current_version + 1, CURRENT_DB_VERSION + 1):
+                    migration_func = MIGRATIONS.get(version)
+                    if migration_func:
+                        app_logger.info(f"Applying migration for version {version}...")
+                        await migration_func(db)
+                        await set_db_version(db, version)
+                        app_logger.info(f"Migration to version {version} completed.")
+                    else:
+                        app_logger.error(
+                            f"No migration function found for version {version}. This indicates a configuration error."
+                        )
+                        raise RuntimeError(f"Missing migration for version {version}")
+            else:
+                app_logger.info("Database is already up to date.")

@@ -13,29 +13,6 @@ class SQLiteAuthDBManager(AuthDBManager):
     def __init__(self, settings: Settings):
         self.db_path = settings.SQLITE_DB
 
-    async def initialize(self):
-        """Initializes the database table if it doesn't exist."""
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS auth_keys (
-                    api_key TEXT PRIMARY KEY,
-                    alias TEXT NOT NULL,
-                    call_count INTEGER DEFAULT 0
-                )
-                """
-            )
-            # Add migration logic for existing databases
-            cursor = await db.execute("PRAGMA table_info(auth_keys)")
-            columns = [row[1] for row in await cursor.fetchall()]
-            if "call_count" not in columns:
-                await db.execute(
-                    """
-                    ALTER TABLE auth_keys ADD COLUMN call_count INTEGER DEFAULT 0;
-                    """
-                )
-            await db.commit()
-
     async def get_key(self, api_key: str) -> Optional[AuthKey]:
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(

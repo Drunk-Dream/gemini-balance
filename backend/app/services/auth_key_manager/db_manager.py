@@ -8,11 +8,6 @@ class AuthDBManager(ABC):
     """Abstract base class for authentication key database operations."""
 
     @abstractmethod
-    async def initialize(self):
-        """Initialize the database connection and tables."""
-        pass
-
-    @abstractmethod
     async def get_key(self, api_key: str) -> Optional[AuthKey]:
         """Retrieve an authentication key by its API key."""
         pass

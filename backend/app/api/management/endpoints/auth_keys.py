@@ -17,7 +17,6 @@ security = HTTPBearer()
 
 async def get_auth_service() -> AuthService:
     service = AuthService()
-    await service.initialize()
     return service
 
 

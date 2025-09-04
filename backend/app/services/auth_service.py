@@ -13,10 +13,6 @@ class AuthService:
     def __init__(self):
         self.db_manager = auth_key_manager
 
-    async def initialize(self):
-        """Initializes the underlying database manager."""
-        await self.db_manager.initialize()
-
     async def get_key(self, api_key: str) -> Optional[AuthKey]:
         """Retrieves an authentication key by its API key and increments its call count."""
         key = await self.db_manager.get_key(api_key)

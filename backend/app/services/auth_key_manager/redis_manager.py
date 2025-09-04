@@ -20,11 +20,6 @@ class RedisAuthDBManager(AuthDBManager):
         self.auth_keys_hash = "auth_keys"  # Use a single hash key for AuthKey alias
         self.call_count_hash = "auth_key_call_counts"  # Separate hash for call counts
 
-    async def initialize(self):
-        """Initializes the Redis connection (no specific table creation needed for Redis)."""
-        # Ping the Redis server to ensure connection is active
-        await self.redis_client.ping()
-
     async def get_key(self, api_key: str) -> Optional[AuthKey]:
         pipe = self.redis_client.pipeline()
         pipe.hget(self.auth_keys_hash, api_key)

@@ -19,34 +19,6 @@ class SQLiteDBManager(DBManager):
             self.sqlite_db.parent.mkdir(parents=True, exist_ok=True)
         self._lock = asyncio.Lock()  # 初始化异步锁
 
-    async def initialize(self):
-        async with aiosqlite.connect(self.sqlite_db) as db:
-            if self.settings.FORCE_RESET_DATABASE:
-                app_logger.warning(
-                    "FORCE_RESET_DATABASE is enabled. Dropping key_states table..."
-                )
-                await db.execute("DROP TABLE IF EXISTS key_states")
-                await db.commit()
-
-            await db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS key_states (
-                    key_identifier TEXT PRIMARY KEY,
-                    api_key TEXT NOT NULL,
-                    cool_down_until REAL,
-                    request_fail_count INTEGER,
-                    cool_down_entry_count INTEGER,
-                    current_cool_down_seconds INTEGER,
-                    usage_today TEXT,
-                    last_usage_date TEXT,
-                    last_usage_time REAL,
-                    is_in_use INTEGER DEFAULT 0,
-                    is_cooled_down INTEGER DEFAULT 0
-                )
-                """
-            )
-            await db.commit()
-
     async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
         async with aiosqlite.connect(self.sqlite_db) as db:
             db.row_factory = aiosqlite.Row  # Return rows as dict-like objects

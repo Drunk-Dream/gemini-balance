@@ -21,11 +21,6 @@ class RedisDBManager(DBManager):
         self.KEY_STATE_PREFIX = "key_manager:state:"
         self.ALL_KEYS_SET_KEY = "key_manager:all_keys"
 
-    async def initialize(self):
-        if self.settings.FORCE_RESET_DATABASE:
-            app_logger.warning("FORCE_RESET_DATABASE is enabled. Flushing Redis DB...")
-            await self._redis.flushdb()  # type: ignore
-
     def _key_state_to_redis_hash(self, state: KeyState) -> Dict[str, str]:
         return {
             "key_identifier": state.key_identifier,
