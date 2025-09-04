@@ -136,7 +136,7 @@ class SQLiteDBManager(DBManager):
                     key_identifier, api_key, cool_down_until, request_fail_count,
                     cool_down_entry_count, current_cool_down_seconds,
                     usage_today, last_usage_time
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     key_identifier,
