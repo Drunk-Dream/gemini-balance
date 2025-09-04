@@ -12,23 +12,21 @@ from backend.app.api.management.endpoints.logs import router as logs_router
 from backend.app.api.management.endpoints.status import router as status_router
 from backend.app.api.v1.endpoints.chat import router as openai_chat_router
 from backend.app.api.v1beta.endpoints.gemini import router as gemini_router
-from backend.app.core.config import settings
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import setup_app_logger, setup_transaction_logger
-from backend.app.db.sqlite_migration_manager import MigrationManager
+from backend.app.db import migration_manager
 from backend.app.services import key_manager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if settings.DATABASE_TYPE == "sqlite":
-        logger.info("Running SQLite database migrations...")
-        migration_manager = MigrationManager(settings.SQLITE_DB)
-        await migration_manager.run_migrations()
-        logger.info("SQLite database migrations completed.")
+    logger.info("Running database migrations...")
+    await migration_manager.run_migrations()
+    logger.info("Database migrations completed.")
 
     logger.info("Initializing KeyManager...")
     await key_manager.initialize()
+
     logger.info("Starting background task for KeyManager...")
     await key_manager.start_background_task()
     yield

@@ -3,26 +3,15 @@ from typing import Awaitable, Callable, Dict
 
 import aiosqlite
 
+from backend.app.core.config import Settings
 from backend.app.core.logging import app_logger
+from backend.app.db.base_migration_manager import BaseMigrationManager
 
 # 定义数据库的当前版本
 CURRENT_DB_VERSION = 2
 
 # 迁移函数字典，键为版本号，值为对应的迁移函数
 MIGRATIONS: Dict[int, Callable[[aiosqlite.Connection], Awaitable[None]]] = {}
-
-
-async def get_db_version(db: aiosqlite.Connection) -> int:
-    """获取数据库的当前版本号。"""
-    cursor = await db.execute("PRAGMA user_version")
-    row = await cursor.fetchone()
-    return row[0] if row else 0
-
-
-async def set_db_version(db: aiosqlite.Connection, version: int):
-    """设置数据库的版本号。"""
-    await db.execute(f"PRAGMA user_version = {version}")
-    await db.commit()
 
 
 async def _migration_v1(db: aiosqlite.Connection):
@@ -75,18 +64,34 @@ async def _migration_v2(db: aiosqlite.Connection):
 MIGRATIONS[2] = _migration_v2
 
 
-class MigrationManager:
-    def __init__(self, db_path: str):
-        self.db_path = Path(db_path)
-        if not self.db_path.parent.exists():
-            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+class SQLiteMigrationManager(BaseMigrationManager):
+    def __init__(self, settings: Settings):
+        self.db_path = Path(settings.SQLITE_DB)
+
+    async def get_db_version(self) -> int:
+        """获取数据库的当前版本号。"""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("PRAGMA user_version")
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+
+    async def set_db_version(self, version: int):
+        """设置数据库的版本号。"""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(f"PRAGMA user_version = {version}")
+            await db.commit()
 
     async def run_migrations(self):
         """
         运行所有必要的数据库迁移。
         """
+        # 确保数据库文件所在的目录存在
+        if not self.db_path.parent.exists():
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+            app_logger.info(f"Created database directory: {self.db_path.parent}")
+
         async with aiosqlite.connect(self.db_path) as db:
-            current_version = await get_db_version(db)
+            current_version = await self.get_db_version()
             app_logger.info(f"Current database version: {current_version}")
 
             if current_version < CURRENT_DB_VERSION:
@@ -98,7 +103,7 @@ class MigrationManager:
                     if migration_func:
                         app_logger.info(f"Applying migration for version {version}...")
                         await migration_func(db)
-                        await set_db_version(db, version)
+                        await self.set_db_version(version)
                         app_logger.info(f"Migration to version {version} completed.")
                     else:
                         app_logger.error(
