@@ -5,10 +5,7 @@ from starlette.responses import StreamingResponse
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.core.config import settings
-from backend.app.core.logging import app_logger
 from backend.app.services.base_service import ApiService
-
-logger = app_logger
 
 
 class GeminiService(ApiService):
@@ -30,6 +27,7 @@ class GeminiService(ApiService):
         model_id: str,
         stream: bool,
         auth_key_alias: str,
+        request_id: str,  # Add request_id here
     ) -> Union[Dict[str, Any], StreamingResponse]:
         if not isinstance(request_data, GeminiRequest):
             raise ValueError("request_data must be a GeminiRequest instance")
@@ -42,7 +40,8 @@ class GeminiService(ApiService):
             request_data=request_data,
             stream=stream,
             params=params,
-            model_id=model_id,  # 传递 model_id
+            model_id=model_id,
+            request_id=request_id,  # Pass request_id here
         )
 
         # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type

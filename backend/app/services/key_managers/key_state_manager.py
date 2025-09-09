@@ -64,7 +64,9 @@ class KeyStateManager:
     async def get_next_key(self) -> Optional[str]:
         return await self._db_manager.get_next_available_key()
 
-    async def mark_key_fail(self, key_identifier: str, error_type: str):
+    async def mark_key_fail(
+        self, key_identifier: str, error_type: str, request_id: str
+    ):
         async with self._lock:
             state = await self._get_key_state(key_identifier)
             if not state:
@@ -97,13 +99,14 @@ class KeyStateManager:
                 )
                 self._wakeup_event.set()
                 app_logger.warning(
-                    f"Key '{key_identifier}' cooled down for "
+                    f"[Request ID: {request_id}] Key '{key_identifier}' cooled down for "
                     f"{state.current_cool_down_seconds:.2f}s due to {error_type}."
                 )
             else:  # 如果不需要冷却，则释放密钥
                 await self._db_manager.release_key_from_use(key_identifier)
                 app_logger.info(
-                    f"Key '{key_identifier}' released from use after {error_type} without cooldown."
+                    f"[Request ID: {request_id}] Key '{key_identifier}' released from "
+                    f"use after {error_type} without cooldown."
                 )
 
             await self._save_key_state(key_identifier, state)
@@ -120,9 +123,9 @@ class KeyStateManager:
             # 使用美国东部时区计算日期
             eastern_tz = pytz.timezone("America/New_York")
             # 从时间戳获取日期，并格式化为字符串
-            current_date = datetime.fromtimestamp(
-                time.time(), tz=eastern_tz
-            ).strftime("%Y-%m-%d")
+            current_date = datetime.fromtimestamp(time.time(), tz=eastern_tz).strftime(
+                "%Y-%m-%d"
+            )
             if state.last_usage_date != current_date:
                 state.usage_today = {}
             state.usage_today[model] = state.usage_today.get(model, 0) + 1

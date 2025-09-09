@@ -1,5 +1,6 @@
 import asyncio
 import random
+import secrets
 from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Dict, Union, cast
 
@@ -74,6 +75,7 @@ class ApiService(ABC):
         stream: bool,
         params: Dict[str, str],
         model_id: str,
+        request_id: str,  # Add request_id here
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """
         A unified generator to handle both streaming and non-streaming requests.
@@ -84,7 +86,7 @@ class ApiService(ABC):
             key_identifier = await key_manager.get_next_key()
             if not key_identifier:
                 logger.warning(
-                    f"Attempt {attempt + 1}/{self.max_retries}: No available API keys. "
+                    f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: No available API keys. "
                     f"Waiting for {settings.NO_KEY_WAIT_SECONDS} seconds."
                 )
                 last_exception = HTTPException(
@@ -94,13 +96,13 @@ class ApiService(ABC):
                 continue
 
             logger.info(
-                f"Attempt {attempt + 1}/{self.max_retries}: Using API key "
+                f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: Using API key "
                 f"{key_identifier} for {self.service_name}, stream={stream}"
             )
             api_key = await key_manager.get_key_from_identifier(key_identifier)
             if not api_key:
                 logger.error(
-                    f"Attempt {attempt + 1}/{self.max_retries}: API key {key_identifier} not found."
+                    f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: API key {key_identifier} not found."
                 )
                 last_exception = HTTPException(
                     status_code=503, detail=f"{key_identifier}'s mapper not found."
@@ -111,7 +113,8 @@ class ApiService(ABC):
             try:
                 if settings.DEBUG_LOG_ENABLED:
                     self.debug_logger.debug(
-                        "Request to %s API with key %s: %s",
+                        "[Request ID: %s] Request to %s API with key %s: %s",
+                        request_id,
                         self.service_name,
                         key_identifier,
                         request_data.model_dump_json(by_alias=True, exclude_unset=True),
@@ -129,10 +132,12 @@ class ApiService(ABC):
                         await key_manager.mark_key_success(key_identifier, model_id)
                         # await key_manager.record_usage(key_identifier, model_id)
                         logger.info(
-                            f"Streaming request with key {key_identifier} succeeded."
+                            f"[Request ID: {request_id}] Streaming request with key {key_identifier} succeeded."
                         )
                         async for text_chunk in response.aiter_text():
-                            transaction_logger.info(f"Stream chunk: {text_chunk}")
+                            transaction_logger.info(
+                                f"[Request ID: {request_id}] Stream chunk: {text_chunk}"
+                            )
                             yield text_chunk
                         return
                 else:
@@ -148,12 +153,15 @@ class ApiService(ABC):
                     # await key_manager.record_usage(key_identifier, model_id)
                     response_json = response.json()
                     transaction_logger.info(
-                        "Response from %s API with key %s: %s",
+                        "[Request ID: %s] Response from %s API with key %s: %s",
+                        request_id,
                         self.service_name,
                         key_identifier,
                         response_json,
                     )
-                    logger.info(f"Request with key {key_identifier} succeeded.")
+                    logger.info(
+                        f"[Request ID: {request_id}] Request with key {key_identifier} succeeded."
+                    )
                     yield response_json
                     return
 
@@ -166,35 +174,39 @@ class ApiService(ABC):
                     error_type = "rate_limit_error"
 
                 logger.warning(
-                    f"API Key {key_identifier} failed with status {e.response.status_code}. "
+                    f"[Request ID: {request_id}] API Key {key_identifier} failed with status {e.response.status_code}. "
                     f"Deactivating it. Attempt {attempt + 1}/{self.max_retries}."
                 )
-                await key_manager.mark_key_fail(key_identifier, error_type)
+                await key_manager.mark_key_fail(key_identifier, error_type, request_id)
 
                 if e.response.status_code == 429:
                     wait_time = (
                         settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS + random.randint(1, 9)
                     )
                     logger.warning(
-                        f"Rate limit hit. Retrying after {wait_time} seconds."
+                        f"[Request ID: {request_id}] Rate limit hit. Retrying after {wait_time} seconds."
                     )
                     await asyncio.sleep(wait_time)
                 continue
             except httpx.RequestError as e:
                 last_exception = e
                 logger.error(
-                    f"Request error with key {key_identifier}: {e}. Deactivating and retrying..."
+                    f"[Request ID: {request_id}] Request error with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
-                await key_manager.mark_key_fail(key_identifier, "request_error")
+                await key_manager.mark_key_fail(
+                    key_identifier, "request_error", request_id
+                )
                 await self._recreate_client()  # Recreate client on request errors
                 continue
             except Exception as e:
                 last_exception = e
                 logger.critical(
-                    f"An unexpected error occurred with key {key_identifier}: {e}. Deactivating and retrying..."
+                    f"[Request ID: {request_id}] An unexpected error occurred with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
                 # 标记密钥失败，使用新的错误类型 "unexpected_error"
-                await key_manager.mark_key_fail(key_identifier, "unexpected_error")
+                await key_manager.mark_key_fail(
+                    key_identifier, "unexpected_error", request_id
+                )
                 # 即使标记失败，也需要抛出异常，因为这是不可恢复的错误
                 raise HTTPException(
                     status_code=500, detail=f"An unexpected error occurred: {e}"
@@ -202,7 +214,7 @@ class ApiService(ABC):
 
         if last_exception:
             logger.critical(
-                f"All API request attempts({self.service_name} times) failed. Last error: {last_exception}"
+                f"[Request ID: {request_id}] All API request attempts({self.service_name} times) failed. Last error: {last_exception}"
             )
             if isinstance(last_exception, HTTPException):
                 raise last_exception
@@ -222,6 +234,7 @@ class ApiService(ABC):
         stream: bool,
         params: Dict[str, str],
         model_id: str,
+        request_id: str,  # Add request_id here
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
         Handles sending the HTTP request by dispatching to the appropriate generator.
@@ -233,6 +246,7 @@ class ApiService(ABC):
             stream=stream,
             params=params,
             model_id=model_id,
+            request_id=request_id,  # Pass request_id here
         )
 
         if stream:
@@ -252,6 +266,7 @@ class ApiService(ABC):
         model_id: str,
         stream: bool,
         auth_key_alias: str,
+        request_id: str,  # Add request_id here
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
         Handles the logic of generating content from the API, including error handling and retrying.
@@ -269,18 +284,19 @@ class ApiService(ABC):
         Abstract method to create a chat completion request.
         Must be implemented by subclasses.
         """
+        request_id = secrets.token_hex(4)  # Generate a short request ID
         request_type = "Gemini" if isinstance(request_data, GeminiRequest) else "OpenAI"
         logger.info(
-            f"Requesting {request_type} request from {auth_key_alias} for model: {model_id}, stream: {stream}"
+            f"[Request ID: {request_id}] Requesting {request_type} request from {auth_key_alias} for model: {model_id}, stream: {stream}"
         )
 
         try:
             async with self.concurrency_manager.timeout_semaphore():
                 return await self._generate_content(
-                    request_data, model_id, stream, auth_key_alias
+                    request_data, model_id, stream, auth_key_alias, request_id
                 )
         except ConcurrencyTimeoutError as e:
-            logger.warning(f"Concurrency timeout error: {e}")
+            logger.warning(f"[Request ID: {request_id}] Concurrency timeout error: {e}")
             return StreamingResponse(
                 content=f'{{"error": "{e}"}}',
                 status_code=HTTP_503_SERVICE_UNAVAILABLE,

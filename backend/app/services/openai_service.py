@@ -4,11 +4,8 @@ from starlette.responses import StreamingResponse
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest
 from backend.app.core.config import settings
-from backend.app.core.logging import app_logger
 from backend.app.services.base_service import ApiService
 from backend.app.services.gemini_service import GeminiService
-
-logger = app_logger
 
 
 class OpenAIService(ApiService):
@@ -57,11 +54,10 @@ class OpenAIService(ApiService):
         model_id: str,
         stream: bool,
         auth_key_alias: str,
+        request_id: str,  # Add request_id here
     ) -> Union[Dict[str, Any], StreamingResponse]:
         if not isinstance(request_data, ChatCompletionRequest):
-            raise ValueError(
-                "request_data must be a ChatCompletionRequest instance"
-            )
+            raise ValueError("request_data must be a ChatCompletionRequest instance")
         url = self._get_api_url()
         stream = bool(request_data.stream)  # 确保 stream 是 bool 类型
 
@@ -75,7 +71,8 @@ class OpenAIService(ApiService):
             request_data=request_data,
             stream=stream,
             params=params,
-            model_id=request_data.model,  # 传递 model_id
+            model_id=request_data.model,
+            request_id=request_id,  # Pass request_id here
         )
 
         # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
