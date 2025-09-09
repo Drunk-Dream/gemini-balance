@@ -249,7 +249,7 @@ class ApiService(ABC):
     async def _generate_content(
         self,
         request_data: GeminiRequest | ChatCompletionRequest,
-        model_id: str | None,
+        model_id: str,
         stream: bool,
         auth_key_alias: str,
     ) -> Union[Dict[str, Any], StreamingResponse]:
@@ -261,14 +261,19 @@ class ApiService(ABC):
     async def create_chat_completion(
         self,
         request_data: GeminiRequest | ChatCompletionRequest,
-        model_id: str | None = None,
-        stream: bool = False,
+        model_id: str,
+        stream: bool,
         auth_key_alias: str = "anonymous",
     ):
         """
         Abstract method to create a chat completion request.
         Must be implemented by subclasses.
         """
+        request_type = "Gemini" if isinstance(request_data, GeminiRequest) else "OpenAI"
+        logger.info(
+            f"Requesting {request_type} request from {auth_key_alias} for model: {model_id}, stream: {stream}"
+        )
+
         try:
             async with self.concurrency_manager.timeout_semaphore():
                 return await self._generate_content(

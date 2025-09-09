@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from starlette.responses import StreamingResponse
 
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
-from backend.app.core.logging import app_logger as logger
 from backend.app.services.auth_service import AuthService
 from backend.app.services.gemini_service import GeminiService
 
@@ -46,9 +45,6 @@ async def generate_content_endpoint(
     gemini_service: GeminiService = Depends(GeminiService),
     auth_key_alias: str = Depends(verify_x_goog_api_key),
 ) -> Dict[str, Any]:
-    logger.info(
-        f"Received Gemini request from '{auth_key_alias}' for model: {model_id}, stream: false"
-    )
     response = await gemini_service.create_chat_completion(
         request, model_id, False, auth_key_alias
     )
@@ -65,9 +61,6 @@ async def stream_generate_content_endpoint(
     gemini_service: GeminiService = Depends(GeminiService),
     auth_key_alias: str = Depends(verify_x_goog_api_key),
 ) -> StreamingResponse:
-    logger.info(
-        f"Received Gemini request from '{auth_key_alias}' for model: {model_id}, stream: true"
-    )
     response = await gemini_service.create_chat_completion(
         request, model_id, True, auth_key_alias
     )

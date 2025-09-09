@@ -5,7 +5,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.responses import StreamingResponse
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest
-from backend.app.core.logging import app_logger as logger
 from backend.app.services.auth_service import AuthService
 from backend.app.services.openai_service import OpenAIService
 
@@ -48,8 +47,8 @@ async def create_chat_completion_endpoint(
     openai_service: OpenAIService = Depends(OpenAIService),
     auth_key_alias: str = Depends(verify_bearer_token),
 ) -> Union[Dict[str, Any], StreamingResponse]:
-    logger.info(
-        f"Received OpenAI request from '{auth_key_alias}' for model: {request.model}, stream: {request.stream}"
+    stream = bool(request.stream)
+    response = await openai_service.create_chat_completion(
+        request, request.model, stream, auth_key_alias
     )
-    response = await openai_service.create_chat_completion(request)
     return response

@@ -27,14 +27,12 @@ class GeminiService(ApiService):
     async def _generate_content(
         self,
         request_data: GeminiRequest | ChatCompletionRequest,
-        model_id: str | None,
+        model_id: str,
         stream: bool,
         auth_key_alias: str,
     ) -> Union[Dict[str, Any], StreamingResponse]:
         if not isinstance(request_data, GeminiRequest):
-            raise ValueError("Invalid request data type for Gemini API")
-        if not model_id:
-            raise ValueError("Model ID is required for Gemini API")
+            raise ValueError("request_data must be a GeminiRequest instance")
         url = self._get_api_url(model_id, stream)
         params = {"alt": "sse"} if stream else {"alt": "json"}
 

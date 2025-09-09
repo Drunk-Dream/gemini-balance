@@ -54,13 +54,13 @@ class OpenAIService(ApiService):
     async def _generate_content(
         self,
         request_data: GeminiService | ChatCompletionRequest,
-        model_id: str | None,
+        model_id: str,
         stream: bool,
         auth_key_alias: str,
     ) -> Union[Dict[str, Any], StreamingResponse]:
         if not isinstance(request_data, ChatCompletionRequest):
             raise ValueError(
-                "request_data must be an instance of ChatCompletionRequest"
+                "request_data must be a ChatCompletionRequest instance"
             )
         url = self._get_api_url()
         stream = bool(request_data.stream)  # 确保 stream 是 bool 类型
