@@ -1,13 +1,12 @@
 from typing import Any, Dict, Union
 
 from starlette.responses import StreamingResponse
-from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest
-from backend.app.core.concurrency import ConcurrencyTimeoutError
 from backend.app.core.config import settings
 from backend.app.core.logging import app_logger
 from backend.app.services.base_service import ApiService
+from backend.app.services.gemini_service import GeminiService
 
 logger = app_logger
 
@@ -52,35 +51,34 @@ class OpenAIService(ApiService):
                 if hasattr(request_data, "reasoning_effort"):
                     del request_data.reasoning_effort
 
-    async def create_chat_completion(
-        self, request_data: ChatCompletionRequest
+    async def _generate_content(
+        self,
+        request_data: GeminiService | ChatCompletionRequest,
+        model_id: str | None,
+        stream: bool,
+        auth_key_alias: str,
     ) -> Union[Dict[str, Any], StreamingResponse]:
-        try:
-            async with self.concurrency_manager.timeout_semaphore():
-                url = self._get_api_url()
-                stream = bool(request_data.stream)  # 确保 stream 是 bool 类型
-
-                self._handle_thinking_config(request_data)
-
-                params = {"alt": "sse"} if stream else {"alt": "json"}
-
-                response = await self._send_request(
-                    method="POST",
-                    url=url,
-                    request_data=request_data,
-                    stream=stream,
-                    params=params,
-                    model_id=request_data.model,  # 传递 model_id
-                )
-
-                # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
-                if stream and isinstance(response, StreamingResponse):
-                    response.media_type = "text/event-stream"
-                return response
-        except ConcurrencyTimeoutError as e:
-            logger.warning(f"OpenAI API 请求并发超时: {e}")
-            return StreamingResponse(
-                content=f'{{"error": "{e}"}}',
-                status_code=HTTP_503_SERVICE_UNAVAILABLE,
-                media_type="application/json",
+        if not isinstance(request_data, ChatCompletionRequest):
+            raise ValueError(
+                "request_data must be an instance of ChatCompletionRequest"
             )
+        url = self._get_api_url()
+        stream = bool(request_data.stream)  # 确保 stream 是 bool 类型
+
+        self._handle_thinking_config(request_data)
+
+        params = {"alt": "sse"} if stream else {"alt": "json"}
+
+        response = await self._send_request(
+            method="POST",
+            url=url,
+            request_data=request_data,
+            stream=stream,
+            params=params,
+            model_id=request_data.model,  # 传递 model_id
+        )
+
+        # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
+        if stream and isinstance(response, StreamingResponse):
+            response.media_type = "text/event-stream"
+        return response

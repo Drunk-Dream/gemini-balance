@@ -3,7 +3,6 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from starlette.responses import StreamingResponse
 
-from backend.app.api.management.schemas.auth_keys import AuthKey
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.core.logging import app_logger as logger
 from backend.app.services.auth_service import AuthService
@@ -15,7 +14,7 @@ router = APIRouter()
 async def verify_x_goog_api_key(
     x_goog_api_key: str = Header(...),
     auth_service: AuthService = Depends(AuthService),
-) -> AuthKey:
+) -> str:
     """
     FastAPI dependency to verify an authentication key from the x-goog-api-key header.
     Returns the AuthKey object if valid.
@@ -34,7 +33,7 @@ async def verify_x_goog_api_key(
             detail="无效的认证密钥",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return auth_key
+    return auth_key.alias
 
 
 @router.post(
@@ -45,12 +44,14 @@ async def generate_content_endpoint(
     model_id: str,
     request: GeminiRequest,
     gemini_service: GeminiService = Depends(GeminiService),
-    auth_key: AuthKey = Depends(verify_x_goog_api_key),
+    auth_key_alias: str = Depends(verify_x_goog_api_key),
 ) -> Dict[str, Any]:
     logger.info(
-        f"Received Gemini request from '{auth_key.alias}' for model: {model_id}, stream: false"
+        f"Received Gemini request from '{auth_key_alias}' for model: {model_id}, stream: false"
     )
-    response = await gemini_service.generate_content(model_id, request, False)
+    response = await gemini_service.create_chat_completion(
+        request, model_id, False, auth_key_alias
+    )
     return response if isinstance(response, Dict) else {}
 
 
@@ -62,12 +63,14 @@ async def stream_generate_content_endpoint(
     model_id: str,
     request: GeminiRequest,
     gemini_service: GeminiService = Depends(GeminiService),
-    auth_key: AuthKey = Depends(verify_x_goog_api_key),
+    auth_key_alias: str = Depends(verify_x_goog_api_key),
 ) -> StreamingResponse:
     logger.info(
-        f"Received Gemini request from '{auth_key.alias}' for model: {model_id}, stream: true"
+        f"Received Gemini request from '{auth_key_alias}' for model: {model_id}, stream: true"
     )
-    response = await gemini_service.generate_content(model_id, request, True)
+    response = await gemini_service.create_chat_completion(
+        request, model_id, True, auth_key_alias
+    )
     return (
         response
         if isinstance(response, StreamingResponse)

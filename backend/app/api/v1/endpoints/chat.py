@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.responses import StreamingResponse
 
-from backend.app.api.management.schemas.auth_keys import AuthKey
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest
 from backend.app.core.logging import app_logger as logger
 from backend.app.services.auth_service import AuthService
@@ -17,7 +16,7 @@ security_scheme = HTTPBearer()
 async def verify_bearer_token(
     authorization: HTTPAuthorizationCredentials = Depends(security_scheme),
     auth_service: AuthService = Depends(AuthService),
-) -> AuthKey:
+) -> str:
     """
     FastAPI dependency to verify an authentication key from the Authorization header (Bearer token).
     Returns the AuthKey object if valid.
@@ -37,7 +36,7 @@ async def verify_bearer_token(
             detail="无效的认证密钥",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return auth_key
+    return auth_key.alias
 
 
 @router.post(
@@ -47,10 +46,10 @@ async def verify_bearer_token(
 async def create_chat_completion_endpoint(
     request: ChatCompletionRequest,
     openai_service: OpenAIService = Depends(OpenAIService),
-    auth_key: AuthKey = Depends(verify_bearer_token),
+    auth_key_alias: str = Depends(verify_bearer_token),
 ) -> Union[Dict[str, Any], StreamingResponse]:
     logger.info(
-        f"Received OpenAI request from '{auth_key.alias}' for model: {request.model}, stream: {request.stream}"
+        f"Received OpenAI request from '{auth_key_alias}' for model: {request.model}, stream: {request.stream}"
     )
     response = await openai_service.create_chat_completion(request)
     return response

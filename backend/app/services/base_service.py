@@ -6,8 +6,11 @@ from typing import Any, AsyncGenerator, Dict, Union, cast
 import httpx
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
+from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
-from backend.app.core.concurrency import concurrency_manager
+from backend.app.api.v1.schemas.chat import ChatCompletionRequest
+from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
+from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_manager
 from backend.app.core.config import settings
 from backend.app.core.logging import app_logger, setup_debug_logger, transaction_logger
 from backend.app.services import key_manager
@@ -241,3 +244,40 @@ class ApiService(ABC):
             # For non-streaming, get the first (and only) item from the generator
             response_data = await generator.__anext__()
             return cast(Dict[str, Any], response_data)
+
+    @abstractmethod
+    async def _generate_content(
+        self,
+        request_data: GeminiRequest | ChatCompletionRequest,
+        model_id: str | None,
+        stream: bool,
+        auth_key_alias: str,
+    ) -> Union[Dict[str, Any], StreamingResponse]:
+        """
+        Handles the logic of generating content from the API, including error handling and retrying.
+        """
+        pass
+
+    async def create_chat_completion(
+        self,
+        request_data: GeminiRequest | ChatCompletionRequest,
+        model_id: str | None = None,
+        stream: bool = False,
+        auth_key_alias: str = "anonymous",
+    ):
+        """
+        Abstract method to create a chat completion request.
+        Must be implemented by subclasses.
+        """
+        try:
+            async with self.concurrency_manager.timeout_semaphore():
+                return await self._generate_content(
+                    request_data, model_id, stream, auth_key_alias
+                )
+        except ConcurrencyTimeoutError as e:
+            logger.warning(f"Concurrency timeout error: {e}")
+            return StreamingResponse(
+                content=f'{{"error": "{e}"}}',
+                status_code=HTTP_503_SERVICE_UNAVAILABLE,
+                media_type="application/json",
+            )

@@ -1,10 +1,9 @@
 from typing import Any, Dict, Union
 
 from starlette.responses import StreamingResponse
-from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
+from backend.app.api.v1.schemas.chat import ChatCompletionRequest
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
-from backend.app.core.concurrency import ConcurrencyTimeoutError
 from backend.app.core.config import settings
 from backend.app.core.logging import app_logger
 from backend.app.services.base_service import ApiService
@@ -25,31 +24,30 @@ class GeminiService(ApiService):
     def _prepare_headers(self, api_key: str) -> Dict[str, str]:
         return {"Content-Type": "application/json", "x-goog-api-key": api_key}
 
-    async def generate_content(
-        self, model_id: str, request_data: GeminiRequest, stream: bool = False
+    async def _generate_content(
+        self,
+        request_data: GeminiRequest | ChatCompletionRequest,
+        model_id: str | None,
+        stream: bool,
+        auth_key_alias: str,
     ) -> Union[Dict[str, Any], StreamingResponse]:
-        try:
-            async with self.concurrency_manager.timeout_semaphore():
-                url = self._get_api_url(model_id, stream)
-                params = {"alt": "sse"} if stream else {"alt": "json"}
+        if not isinstance(request_data, GeminiRequest):
+            raise ValueError("Invalid request data type for Gemini API")
+        if not model_id:
+            raise ValueError("Model ID is required for Gemini API")
+        url = self._get_api_url(model_id, stream)
+        params = {"alt": "sse"} if stream else {"alt": "json"}
 
-                response = await self._send_request(
-                    method="POST",
-                    url=url,
-                    request_data=request_data,
-                    stream=stream,
-                    params=params,
-                    model_id=model_id,  # 传递 model_id
-                )
+        response = await self._send_request(
+            method="POST",
+            url=url,
+            request_data=request_data,
+            stream=stream,
+            params=params,
+            model_id=model_id,  # 传递 model_id
+        )
 
-                # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
-                if stream and isinstance(response, StreamingResponse):
-                    response.media_type = "application/json"
-                return response
-        except ConcurrencyTimeoutError as e:
-            logger.warning(f"Gemini API 请求并发超时: {e}")
-            return StreamingResponse(
-                content=f'{{"error": "{e}"}}',
-                status_code=HTTP_503_SERVICE_UNAVAILABLE,
-                media_type="application/json",
-            )
+        # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
+        if stream and isinstance(response, StreamingResponse):
+            response.media_type = "application/json"
+        return response
