@@ -1,15 +1,19 @@
+from __future__ import annotations
+
 import asyncio
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 import pytz
 from pydantic import BaseModel
 
-from backend.app.core.config import Settings
 from backend.app.core.logging import app_logger
-from backend.app.services.chat_service.base_service import RequestInfo
-from backend.app.services.key_managers.db_manager import DBManager, KeyState
+
+if TYPE_CHECKING:
+    from backend.app.core.config import Settings
+    from backend.app.services.chat_service.base_service import RequestInfo
+    from backend.app.services.key_managers.db_manager import DBManager, KeyState
 
 
 class KeyStatusResponse(BaseModel):
