@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import random
 import secrets
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Dict, Union, cast
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union, cast
 
 import httpx
 from fastapi import HTTPException
@@ -10,12 +12,14 @@ from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
-from backend.app.api.v1.schemas.chat import ChatCompletionRequest
-from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_manager
 from backend.app.core.config import settings
 from backend.app.core.logging import app_logger, setup_debug_logger, transaction_logger
 from backend.app.services import key_manager
+
+if TYPE_CHECKING:
+    from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
+    from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 
 
 class RequestInfo(BaseModel):
@@ -80,7 +84,7 @@ class ApiService(ABC):
         self,
         method: str,
         url: str,
-        request_data: GeminiRequest | ChatCompletionRequest,
+        request_data: GeminiRequest | OpenAIRequest,
         params: Dict[str, str],
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """
@@ -241,7 +245,7 @@ class ApiService(ABC):
         self,
         method: str,
         url: str,
-        request_data: GeminiRequest | ChatCompletionRequest,
+        request_data: GeminiRequest | OpenAIRequest,
         params: Dict[str, str],
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
@@ -267,7 +271,7 @@ class ApiService(ABC):
     @abstractmethod
     async def _generate_content(
         self,
-        request_data: GeminiRequest | ChatCompletionRequest,
+        request_data: GeminiRequest | OpenAIRequest,
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
         Handles the logic of generating content from the API, including error handling and retrying.
@@ -276,7 +280,7 @@ class ApiService(ABC):
 
     async def create_chat_completion(
         self,
-        request_data: GeminiRequest | ChatCompletionRequest,
+        request_data: GeminiRequest | OpenAIRequest,
     ):
         """
         Abstract method to create a chat completion request.

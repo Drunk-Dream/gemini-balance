@@ -1,9 +1,11 @@
 import os
 
 import uvicorn
+from dotenv import load_dotenv
 
 
 def main():
+    load_dotenv()
     host = os.getenv("UVICORN_HOST", "0.0.0.0")
     port = int(os.getenv("UVICORN_PORT", 8090))
     # Read APP_ENV, default to 'production' if not set
