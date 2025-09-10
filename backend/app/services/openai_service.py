@@ -72,6 +72,7 @@ class OpenAIService(ApiService):
             stream=stream,
             params=params,
             model_id=request_data.model,
+            auth_key_alias=auth_key_alias,
             request_id=request_id,  # Pass request_id here
         )
 

@@ -75,6 +75,7 @@ class ApiService(ABC):
         stream: bool,
         params: Dict[str, str],
         model_id: str,
+        auth_key_alias: str,
         request_id: str,  # Add request_id here
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """
@@ -234,6 +235,7 @@ class ApiService(ABC):
         stream: bool,
         params: Dict[str, str],
         model_id: str,
+        auth_key_alias: str,
         request_id: str,  # Add request_id here
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
@@ -246,6 +248,7 @@ class ApiService(ABC):
             stream=stream,
             params=params,
             model_id=model_id,
+            auth_key_alias=auth_key_alias,
             request_id=request_id,  # Pass request_id here
         )
 
@@ -287,7 +290,7 @@ class ApiService(ABC):
         request_id = secrets.token_hex(4)  # Generate a short request ID
         request_type = "Gemini" if isinstance(request_data, GeminiRequest) else "OpenAI"
         logger.info(
-            f"[Request ID: {request_id}] Requesting {request_type} request from {auth_key_alias} for model: {model_id}, stream: {stream}"
+            f"[Request ID: {request_id}] Receiving {request_type} request from '{auth_key_alias}' for model: {model_id}, stream: {stream}"
         )
 
         try:

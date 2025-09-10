@@ -41,6 +41,7 @@ class GeminiService(ApiService):
             stream=stream,
             params=params,
             model_id=model_id,
+            auth_key_alias=auth_key_alias,
             request_id=request_id,  # Pass request_id here
         )
 
