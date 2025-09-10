@@ -1,16 +1,20 @@
+from __future__ import annotations
+
 import asyncio  # 导入 asyncio
 import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import aiosqlite
 import pytz  # type: ignore
 
-from backend.app.core.config import Settings
 from backend.app.core.logging import app_logger
 from backend.app.services.key_managers.db_manager import DBManager, KeyState
+
+if TYPE_CHECKING:
+    from backend.app.core.config import Settings
 
 
 class SQLiteDBManager(DBManager):

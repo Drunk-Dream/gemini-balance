@@ -1,10 +1,14 @@
-from typing import List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Optional
 
 import aiosqlite
 
-from backend.app.api.management.schemas.auth_keys import AuthKey
-from backend.app.core.config import Settings
 from backend.app.services.auth_key_manager.db_manager import AuthDBManager
+
+if TYPE_CHECKING:
+    from backend.app.api.management.schemas.auth_keys import AuthKey
+    from backend.app.core.config import Settings
 
 
 class SQLiteAuthDBManager(AuthDBManager):
@@ -16,7 +20,8 @@ class SQLiteAuthDBManager(AuthDBManager):
     async def get_key(self, api_key: str) -> Optional[AuthKey]:
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(
-                "SELECT api_key, alias, call_count FROM auth_keys WHERE api_key = ?", (api_key,)
+                "SELECT api_key, alias, call_count FROM auth_keys WHERE api_key = ?",
+                (api_key,),
             )
             row = await cursor.fetchone()
             if row:
@@ -35,7 +40,9 @@ class SQLiteAuthDBManager(AuthDBManager):
     async def get_all_keys(self) -> List[AuthKey]:
         keys = []
         async with aiosqlite.connect(self.db_path) as db:
-            cursor = await db.execute("SELECT api_key, alias, call_count FROM auth_keys")
+            cursor = await db.execute(
+                "SELECT api_key, alias, call_count FROM auth_keys"
+            )
             rows = await cursor.fetchall()
             for row in rows:
                 keys.append(AuthKey(api_key=row[0], alias=row[1], call_count=row[2]))

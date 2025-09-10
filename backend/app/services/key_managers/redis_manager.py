@@ -1,14 +1,18 @@
+from __future__ import annotations
+
 import json
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 import pytz
 import redis.asyncio as redis
 
-from backend.app.core.config import Settings
 from backend.app.core.logging import app_logger
 from backend.app.services.key_managers.db_manager import DBManager, KeyState
+
+if TYPE_CHECKING:
+    from backend.app.core.config import Settings
 
 
 class RedisDBManager(DBManager):

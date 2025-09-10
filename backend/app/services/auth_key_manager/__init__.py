@@ -1,7 +1,13 @@
-from backend.app.core.config import Settings
-from backend.app.services.auth_key_manager.db_manager import AuthDBManager
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from backend.app.services.auth_key_manager.redis_manager import RedisAuthDBManager
 from backend.app.services.auth_key_manager.sqlite_manager import SQLiteAuthDBManager
+
+if TYPE_CHECKING:
+    from backend.app.core.config import Settings
+    from backend.app.services.auth_key_manager.db_manager import AuthDBManager
 
 
 def get_auth_db_manager(settings: Settings) -> AuthDBManager:
