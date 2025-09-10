@@ -237,7 +237,7 @@ wheels = [
 
 [[package]]
 name = "gemini-balance"
-version = "0.16.3"
+version = "0.17.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiosqlite" },
