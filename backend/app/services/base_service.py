@@ -6,6 +6,7 @@ from typing import Any, AsyncGenerator, Dict, Union, cast
 
 import httpx
 from fastapi import HTTPException
+from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
@@ -15,6 +16,14 @@ from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_ma
 from backend.app.core.config import settings
 from backend.app.core.logging import app_logger, setup_debug_logger, transaction_logger
 from backend.app.services import key_manager
+
+
+class RequestInfo(BaseModel):
+    request_id: str
+    model_id: str
+    auth_key_alias: str = "anonymous"
+    stream: bool
+
 
 logger = app_logger
 
@@ -71,18 +80,17 @@ class ApiService(ABC):
         self,
         method: str,
         url: str,
-        request_data: Any,
-        stream: bool,
+        request_data: GeminiRequest | ChatCompletionRequest,
         params: Dict[str, str],
-        model_id: str,
-        auth_key_alias: str,
-        request_id: str,  # Add request_id here
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """
         A unified generator to handle both streaming and non-streaming requests.
         It manages API key rotation, retries, and error handling.
         """
         last_exception = None
+        stream = self.request_info.stream
+        model_id = self.request_info.model_id
+        request_id = self.request_info.request_id
         for attempt in range(self.max_retries):
             key_identifier = await key_manager.get_next_key()
             if not key_identifier:
@@ -215,7 +223,7 @@ class ApiService(ABC):
 
         if last_exception:
             logger.critical(
-                f"[Request ID: {request_id}] All API request attempts({self.service_name} times) failed. Last error: {last_exception}"
+                f"[Request ID: {request_id}] All API request attempts({self.max_retries} times) failed. Last error: {last_exception}"
             )
             if isinstance(last_exception, HTTPException):
                 raise last_exception
@@ -231,12 +239,8 @@ class ApiService(ABC):
         self,
         method: str,
         url: str,
-        request_data: Any,
-        stream: bool,
+        request_data: GeminiRequest | ChatCompletionRequest,
         params: Dict[str, str],
-        model_id: str,
-        auth_key_alias: str,
-        request_id: str,  # Add request_id here
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
         Handles sending the HTTP request by dispatching to the appropriate generator.
@@ -245,14 +249,10 @@ class ApiService(ABC):
             method=method,
             url=url,
             request_data=request_data,
-            stream=stream,
             params=params,
-            model_id=model_id,
-            auth_key_alias=auth_key_alias,
-            request_id=request_id,  # Pass request_id here
         )
 
-        if stream:
+        if self.request_info.stream:
             return StreamingResponse(
                 cast(AsyncGenerator[str, None], generator),
                 media_type="text/event-stream",
@@ -266,10 +266,6 @@ class ApiService(ABC):
     async def _generate_content(
         self,
         request_data: GeminiRequest | ChatCompletionRequest,
-        model_id: str,
-        stream: bool,
-        auth_key_alias: str,
-        request_id: str,  # Add request_id here
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
         Handles the logic of generating content from the API, including error handling and retrying.
@@ -279,25 +275,20 @@ class ApiService(ABC):
     async def create_chat_completion(
         self,
         request_data: GeminiRequest | ChatCompletionRequest,
-        model_id: str,
-        stream: bool,
-        auth_key_alias: str = "anonymous",
     ):
         """
         Abstract method to create a chat completion request.
         Must be implemented by subclasses.
         """
-        request_id = secrets.token_hex(4)  # Generate a short request ID
-        request_type = "Gemini" if isinstance(request_data, GeminiRequest) else "OpenAI"
+        request_id = self.request_info.request_id
         logger.info(
-            f"[Request ID: {request_id}] Receiving {request_type} request from '{auth_key_alias}' for model: {model_id}, stream: {stream}"
+            f"[Request ID: {request_id}] {self.service_name} receives request from "
+            f"'{self.request_info.auth_key_alias}' for model: {self.request_info.model_id}, stream: {self.request_info.stream}"
         )
 
         try:
             async with self.concurrency_manager.timeout_semaphore():
-                return await self._generate_content(
-                    request_data, model_id, stream, auth_key_alias, request_id
-                )
+                return await self._generate_content(request_data)
         except ConcurrencyTimeoutError as e:
             logger.warning(f"[Request ID: {request_id}] Concurrency timeout error: {e}")
             return StreamingResponse(
@@ -305,3 +296,13 @@ class ApiService(ABC):
                 status_code=HTTP_503_SERVICE_UNAVAILABLE,
                 media_type="application/json",
             )
+
+    async def create_request_info(
+        self, model_id: str, auth_key_alias: str, stream: bool
+    ) -> None:
+        self.request_info = RequestInfo(
+            request_id=secrets.token_hex(4),
+            model_id=model_id,
+            auth_key_alias=auth_key_alias,
+            stream=stream,
+        )

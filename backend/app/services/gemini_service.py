@@ -24,25 +24,18 @@ class GeminiService(ApiService):
     async def _generate_content(
         self,
         request_data: GeminiRequest | ChatCompletionRequest,
-        model_id: str,
-        stream: bool,
-        auth_key_alias: str,
-        request_id: str,  # Add request_id here
     ) -> Union[Dict[str, Any], StreamingResponse]:
         if not isinstance(request_data, GeminiRequest):
             raise ValueError("request_data must be a GeminiRequest instance")
-        url = self._get_api_url(model_id, stream)
+        stream = self.request_info.stream
+        url = self._get_api_url(self.request_info.model_id, stream)
         params = {"alt": "sse"} if stream else {"alt": "json"}
 
         response = await self._send_request(
             method="POST",
             url=url,
             request_data=request_data,
-            stream=stream,
             params=params,
-            model_id=model_id,
-            auth_key_alias=auth_key_alias,
-            request_id=request_id,  # Pass request_id here
         )
 
         # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type

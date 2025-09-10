@@ -45,9 +45,8 @@ async def generate_content_endpoint(
     gemini_service: GeminiService = Depends(GeminiService),
     auth_key_alias: str = Depends(verify_x_goog_api_key),
 ) -> Dict[str, Any]:
-    response = await gemini_service.create_chat_completion(
-        request, model_id, False, auth_key_alias
-    )
+    await gemini_service.create_request_info(model_id, auth_key_alias, False)
+    response = await gemini_service.create_chat_completion(request)
     return response if isinstance(response, Dict) else {}
 
 
@@ -61,9 +60,8 @@ async def stream_generate_content_endpoint(
     gemini_service: GeminiService = Depends(GeminiService),
     auth_key_alias: str = Depends(verify_x_goog_api_key),
 ) -> StreamingResponse:
-    response = await gemini_service.create_chat_completion(
-        request, model_id, True, auth_key_alias
-    )
+    await gemini_service.create_request_info(model_id, auth_key_alias, True)
+    response = await gemini_service.create_chat_completion(request)
     return (
         response
         if isinstance(response, StreamingResponse)

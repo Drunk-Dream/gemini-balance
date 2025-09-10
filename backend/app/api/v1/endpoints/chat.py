@@ -48,7 +48,6 @@ async def create_chat_completion_endpoint(
     auth_key_alias: str = Depends(verify_bearer_token),
 ) -> Union[Dict[str, Any], StreamingResponse]:
     stream = bool(request.stream)
-    response = await openai_service.create_chat_completion(
-        request, request.model, stream, auth_key_alias
-    )
+    await openai_service.create_request_info(request.model, auth_key_alias, stream)
+    response = await openai_service.create_chat_completion(request)
     return response
