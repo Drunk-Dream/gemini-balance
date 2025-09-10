@@ -1,11 +1,15 @@
-from typing import Any, Dict, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict, Union
 
 from starlette.responses import StreamingResponse
 
-from backend.app.api.v1.schemas.chat import ChatCompletionRequest
-from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.core.config import settings
 from backend.app.services.chat_service.base_service import ApiService
+
+if TYPE_CHECKING:
+    from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
+    from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 
 
 class GeminiService(ApiService):
@@ -23,7 +27,7 @@ class GeminiService(ApiService):
 
     async def _generate_content(
         self,
-        request_data: GeminiRequest | ChatCompletionRequest,
+        request_data: GeminiRequest | OpenAIRequest,
     ) -> Union[Dict[str, Any], StreamingResponse]:
         if not isinstance(request_data, GeminiRequest):
             raise ValueError("request_data must be a GeminiRequest instance")

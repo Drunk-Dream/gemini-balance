@@ -1,11 +1,15 @@
-from typing import Any, Dict, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict, Union
 
 from starlette.responses import StreamingResponse
 
-from backend.app.api.v1.schemas.chat import ChatCompletionRequest
 from backend.app.core.config import settings
 from backend.app.services.chat_service.base_service import ApiService
-from backend.app.services.chat_service.gemini_service import GeminiService
+
+if TYPE_CHECKING:
+    from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
+    from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 
 
 class OpenAIService(ApiService):
@@ -23,7 +27,7 @@ class OpenAIService(ApiService):
             "Authorization": f"Bearer {api_key}",
         }
 
-    def _handle_thinking_config(self, request_data: ChatCompletionRequest) -> None:
+    def _handle_thinking_config(self, request_data: OpenAIRequest) -> None:
         """
         处理 include_thoughts 和 thinking_budget 字段，将其转换为 extra_body 中的 google.thinking_config 结构。
         """
@@ -50,9 +54,9 @@ class OpenAIService(ApiService):
 
     async def _generate_content(
         self,
-        request_data: GeminiService | ChatCompletionRequest,
+        request_data: GeminiRequest | OpenAIRequest,
     ) -> Union[Dict[str, Any], StreamingResponse]:
-        if not isinstance(request_data, ChatCompletionRequest):
+        if not isinstance(request_data, OpenAIRequest):
             raise ValueError("request_data must be a ChatCompletionRequest instance")
         url = self._get_api_url()
         stream = self.request_info.stream
