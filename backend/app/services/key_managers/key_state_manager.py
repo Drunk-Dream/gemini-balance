@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from backend.app.core.config import Settings
 from backend.app.core.logging import app_logger
+from backend.app.services.base_service import RequestInfo
 from backend.app.services.key_managers.db_manager import DBManager, KeyState
 
 
@@ -65,9 +66,10 @@ class KeyStateManager:
         return await self._db_manager.get_next_available_key()
 
     async def mark_key_fail(
-        self, key_identifier: str, error_type: str, request_id: str
+        self, key_identifier: str, error_type: str, request_info: RequestInfo
     ):
         async with self._lock:
+            request_id = request_info.request_id
             state = await self._get_key_state(key_identifier)
             if not state:
                 return

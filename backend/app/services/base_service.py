@@ -186,7 +186,9 @@ class ApiService(ABC):
                     f"[Request ID: {request_id}] API Key {key_identifier} failed with status {e.response.status_code}. "
                     f"Deactivating it. Attempt {attempt + 1}/{self.max_retries}."
                 )
-                await key_manager.mark_key_fail(key_identifier, error_type, request_id)
+                await key_manager.mark_key_fail(
+                    key_identifier, error_type, self.request_info
+                )
 
                 if e.response.status_code == 429:
                     wait_time = (
@@ -203,7 +205,7 @@ class ApiService(ABC):
                     f"[Request ID: {request_id}] Request error with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
                 await key_manager.mark_key_fail(
-                    key_identifier, "request_error", request_id
+                    key_identifier, "request_error", self.request_info
                 )
                 await self._recreate_client()  # Recreate client on request errors
                 continue
@@ -214,7 +216,7 @@ class ApiService(ABC):
                 )
                 # 标记密钥失败，使用新的错误类型 "unexpected_error"
                 await key_manager.mark_key_fail(
-                    key_identifier, "unexpected_error", request_id
+                    key_identifier, "unexpected_error", self.request_info
                 )
                 # 即使标记失败，也需要抛出异常，因为这是不可恢复的错误
                 raise HTTPException(
