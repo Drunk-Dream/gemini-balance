@@ -21,10 +21,10 @@ dependencies = [
     "pytz>=2025.2",
 ]
 
-# [[tool.uv.index]]
-# url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-url = "https://mirrors.aliyun.com/pypi/simple"
-default = true
+[[tool.uv.index]]
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
+# url = "https://mirrors.aliyun.com/pypi/simple"
+# default = true
 
 [dependency-groups]
 dev = [
