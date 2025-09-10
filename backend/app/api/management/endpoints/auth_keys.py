@@ -9,7 +9,7 @@ from backend.app.api.management.schemas.auth_keys import (
     AuthKeyUpdate,
 )
 from backend.app.core.security import get_current_user
-from backend.app.services.auth_service import AuthService
+from backend.app.services.auth_key_manager.auth_service import AuthService
 
 router = APIRouter()
 security = HTTPBearer()

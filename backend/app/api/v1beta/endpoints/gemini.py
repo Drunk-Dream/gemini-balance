@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from starlette.responses import StreamingResponse
 
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
-from backend.app.services.auth_service import AuthService
-from backend.app.services.gemini_service import GeminiService
+from backend.app.services.auth_key_manager.auth_service import AuthService
+from backend.app.services.chat_service.gemini_service import GeminiService
 
 router = APIRouter()
 

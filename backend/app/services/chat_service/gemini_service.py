@@ -5,7 +5,7 @@ from starlette.responses import StreamingResponse
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.core.config import settings
-from backend.app.services.base_service import ApiService
+from backend.app.services.chat_service.base_service import ApiService
 
 
 class GeminiService(ApiService):

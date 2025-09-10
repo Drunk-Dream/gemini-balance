@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from backend.app.core.config import Settings
 from backend.app.core.logging import app_logger
-from backend.app.services.base_service import RequestInfo
+from backend.app.services.chat_service.base_service import RequestInfo
 from backend.app.services.key_managers.db_manager import DBManager, KeyState
 
 

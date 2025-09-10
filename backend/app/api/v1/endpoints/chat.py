@@ -5,8 +5,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.responses import StreamingResponse
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest
-from backend.app.services.auth_service import AuthService
-from backend.app.services.openai_service import OpenAIService
+from backend.app.services.auth_key_manager.auth_service import AuthService
+from backend.app.services.chat_service.openai_service import OpenAIService
 
 router = APIRouter()
 security_scheme = HTTPBearer()
