@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional
 
+from backend.app.api.management.schemas.auth_keys import AuthKey
 from backend.app.services import auth_key_manager
 
 if TYPE_CHECKING:
-    from backend.app.api.management.schemas.auth_keys import AuthKey, AuthKeyCreate
+    from backend.app.api.management.schemas.auth_keys import AuthKeyCreate
 
 
 class AuthService:
