@@ -124,6 +124,15 @@ class SQLiteDBManager(DBManager):
             rows = await cursor.fetchall()
             return [row[0] for row in rows]
 
+    async def get_keys_in_use(self) -> List[str]:
+        """Get all keys that are currently in use."""
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            cursor = await db.execute(
+                "SELECT key_identifier FROM key_states WHERE is_in_use = 1"
+            )
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
+
     async def reactivate_key(self, key_identifier: str):
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(

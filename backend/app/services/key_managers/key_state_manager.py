@@ -32,6 +32,7 @@ class KeyStateManager:
         self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
         self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
+        self._key_in_use_timeout_seconds = settings.KEY_IN_USE_TIMEOUT_SECONDS  # 新增
         self._lock = asyncio.Lock()  # 用于保护 Redis 操作的本地锁
         self._background_task: Optional[asyncio.Task] = None
         self._wakeup_event = asyncio.Event()
@@ -225,6 +226,27 @@ class KeyStateManager:
                             await self._save_key_state(key_identifier, state)
                             await self._db_manager.reactivate_key(key_identifier)
                             app_logger.info(f"API key '{key_identifier}' reactivated.")
+
+                keys_in_use = await self._db_manager.get_keys_in_use()
+                for key_identifier in keys_in_use:
+                    async with self._lock:
+                        state = await self._get_key_state(key_identifier)
+                        if (
+                            state
+                            and state.last_usage_time
+                            and (
+                                time.time() - state.last_usage_time
+                                > self._key_in_use_timeout_seconds
+                            )
+                        ):
+                            state.request_fail_count += 1
+                            await self._save_key_state(key_identifier, state)
+                            await self._db_manager.release_key_from_use(key_identifier)
+                            app_logger.warning(
+                                f"Key '{key_identifier}' released from use due to timeout. "
+                                f"Last usage: {datetime.fromtimestamp(state.last_usage_time).strftime('%Y-%m-%d %H:%M:%S')}, "
+                                f"Timeout: {self._key_in_use_timeout_seconds}s."
+                            )
 
                 self._wakeup_event.clear()
                 await asyncio.wait_for(self._wakeup_event.wait(), timeout=60)

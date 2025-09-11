@@ -62,6 +62,11 @@ class DBManager(ABC):
         pass
 
     @abstractmethod
+    async def get_keys_in_use(self) -> List[str]:
+        """Get all keys that are currently in use."""
+        pass
+
+    @abstractmethod
     async def reactivate_key(self, key_identifier: str):
         """Reactivate a key, moving it back to the available queue."""
         pass

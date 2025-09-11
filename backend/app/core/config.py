@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT_WAIT_SECONDS: int = 90
     MAX_RETRIES: int = 3
     NO_KEY_WAIT_SECONDS: int = 5
+    KEY_IN_USE_TIMEOUT_SECONDS: int = 300  # 密钥在用状态的超时时间，默认5分钟
 
     # 数据库配置
     DATABASE_TYPE: str = "sqlite"
@@ -68,6 +69,7 @@ async def print_non_sensitive_settings(logger: Logger):
         "RATE_LIMIT_DEFAULT_WAIT_SECONDS": settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS,
         "MAX_RETRIES": settings.MAX_RETRIES,
         "NO_KEY_WAIT_SECONDS": settings.NO_KEY_WAIT_SECONDS,
+        "KEY_IN_USE_TIMEOUT_SECONDS": settings.KEY_IN_USE_TIMEOUT_SECONDS,  # 新增
         "DATABASE_TYPE": settings.DATABASE_TYPE,
         "SQLITE_DB": settings.SQLITE_DB,
         "REDIS_HOST": settings.REDIS_HOST,

@@ -128,6 +128,11 @@ class RedisDBManager(DBManager):
         )
         return [key.decode() for key in ready_to_release]
 
+    async def get_keys_in_use(self) -> List[str]:
+        """Get all keys that are currently in use."""
+        keys = await self._redis.smembers(self.IN_USE_KEYS_KEY)  # type: ignore
+        return [key.decode() for key in keys]
+
     async def reactivate_key(self, key_identifier: str):
         pipe = self._redis.pipeline()
         # 尝试从冷却队列中移除
