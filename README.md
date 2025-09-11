@@ -1,28 +1,32 @@
-# Gemini Balance API
+# Gemini Balance: 为大语言模型设计的安全可观测 API 网关
 
-本项目是一个基于 Python FastAPI 的 Google Gemini API 请求转发服务。它提供了一个具备用户认证和双层密钥管理的中间层，能够无缝转发符合 Google Gemini API 格式的请求，并支持普通和流式响应。
+本项目是一个基于 Python FastAPI 的 Google Gemini 与 OpenAI API 请求转发服务。其核心是提供一个具备**用户认证**和**双层密钥管理**的中间层，能够无缝转发符合 Google Gemini 或 OpenAI API 格式的请求，并完整支持普通和流式响应。
 
-## 功能特性
+## 核心特性
 
-- **请求转发**: 将客户端请求安全地转发至 Google Gemini API 和 OpenAI API。
-- **双层密钥管理**:
-    - **用户级 API 密钥**: 允许用户登录后生成和管理自己的 API 密钥，用于访问本服务。
-    - **服务级密钥池**: 集中管理用于请求 Google Gemini 的一组 API 密钥，实现密钥轮询、冷却和状态持久化。
-- **用户认证**: 提供基于 JWT 的登录认证，保护管理接口。
-- **可插拔的持久化**: 支持通过配置动态选择 Redis 或异步 SQLite (`aiosqlite`) 作为密钥管理的持久化后端。
-- **前后端一体化**: 提供基于 Svelte 的前端界面，用于管理两类密钥和查看日志。
-- **配置管理**: 通过环境变量灵活配置应用。
-- **结构化日志**: 详细的日志输出，便于监控和问题排查。
+- **统一 API 入口**: 为客户端提供统一的访问端点，无需直接处理 Google Gemini 或 OpenAI API 的复杂性。
+- **分级安全与双层密钥管理**:
+    - **用户级 API 密钥**: 用户可通过登录系统，安全地生成、管理和轮换自己的 API 密钥，用于访问本服务。
+    - **服务级密钥池**: 集中管理用于请求上游大模型 API 的一组密钥，实现密钥轮询、冷却和状态持久化，减少客户端直接暴露密钥的风险。
+- **增强的可观测性**:
+    - **请求级 ID 追踪**: 为每个请求分配唯一 ID，贯穿日志系统，极大提升问题排查效率。
+    - **用户密钥调用次数跟踪**: 实时追踪每个用户 API 密钥的使用情况。
+    - **服务密钥池状态可视化**: 提供密钥是否“使用中”的实时状态，优化密钥调度。
+- **可插拔的持久化后端**: 支持通过配置在 **Redis** 和 **异步 SQLite (`aiosqlite`)** 之间无缝切换，并具备自动化的数据库迁移系统。
+- **并发管理**: 通过并发控制器 (`asyncio.Semaphore`) 对发往外部 API 的请求数进行限制，保护服务稳定，防止过载。
+- **现代化的前后端架构**:
+    - **后端**: 基于 FastAPI，充分利用异步特性和依赖注入。
+    - **前端**: 使用 **Svelte 5 (Runes)** 构建的响应式前端界面，由后端统一托管。
 
 ## 技术栈
 
-- **后端**: FastAPI, Pydantic, `aiosqlite`
-- **前端**: SvelteKit
+- **后端**: FastAPI, Pydantic, `uv`
+- **前端**: SvelteKit (Svelte 5)
 - **认证**: JWT, `python-jose[cryptography]`, `passlib[bcrypt]`
-- **HTTP 客户端**: httpx
-- **异步**: Python `asyncio`
-- **容器化**: Docker, Docker Compose
+- **HTTP 客户端**: `httpx`
+- **异步**: Python `asyncio`, `aiosqlite`
 - **数据持久化**: Redis, SQLite
+- **容器化**: Docker, Docker Compose
 
 ## 项目结构
 
@@ -30,12 +34,12 @@
 gemini-balance/
 ├── backend/
 │   ├── app/
-│   │   ├── api/      # API 端点定义
-│   │   ├── core/     # 核心配置与安全
-│   │   └── services/ # 业务逻辑与密钥管理
+│   │   ├── api/      # API 端点定义 (v1, management)
+│   │   ├── core/     # 核心配置、并发与安全
+│   │   └── services/ # 业务逻辑、密钥管理与聊天服务
 │   └── main.py     # 应用入口
 ├── frontend/
-│   └── src/        # Svelte 前端源码
+│   └── src/        # Svelte 5 前端源码
 ├── docker-compose.yml
 └── README.md
 ```
@@ -67,68 +71,53 @@ gemini-balance/
 1.  **构建前端**
     首先，编译前端静态文件。
     ```bash
-    cd frontend
-    npm install
-    npm run build
+    npm install --prefix frontend
+    npm run build --prefix frontend
     ```
-2.  **准备后端静态文件**
-    将编译好的前端文件复制到后端目录。
-    ```bash
-    # On Windows (PowerShell)
-    Copy-Item -Path frontend/build -Destination backend/frontend -Recurse -Force
-    # On macOS/Linux
-    cp -r frontend/build backend/frontend/
-    ```
-    *或者，您可以创建一个符号链接以避免每次都复制。*
 
-3.  **启动后端服务**
+2.  **启动后端服务**
     ```bash
-    cd backend
     uv sync
-    uv run -m main
+    uv run uvicorn backend.app.main:app --host 0.0.0.0 --port 8090 --reload
     ```
     后端服务将在 `http://localhost:8090` 启动，并托管前端界面。
 
 ## API 端点
 
-所有管理端点都需要通过 `/auth/login` 获取 Bearer Token 进行认证。
+API 分为 `management` (管理) 和 `v1` (稳定) 两个版本。所有管理端点都需要通过 `/management/auth/login` 获取 Bearer Token 进行认证。
 
-### 认证
+### 认证 (`/management/auth`)
 
-- **POST** `/auth/login`
+- **POST** `/login`
   - **描述**: 用户登录，成功后返回 JWT 访问令牌。
   - **请求体**: `application/x-www-form-urlencoded`，包含 `username` (任意) 和 `password`。
 
-### 用户 API 密钥管理
+### 用户 API 密钥管理 (`/management/auth_keys`)
 
-- **GET / POST / PUT / DELETE** `/auth_keys`
+- **GET / POST / PUT / DELETE** `/`
   - **描述**: 对用户个人 API 密钥进行增、删、改、查操作。这些密钥用于认证对本转发服务的访问。
 
-### 服务密钥池管理 (Gemini)
+### 服务密钥池管理 (`/management/keys`)
 
-- **POST** `/keys`
-  - **描述**: 向服务密钥池中添加一个或多个 Google Gemini API 密钥。
-- **DELETE** `/keys/{key_identifier}`
-  - **描述**: 从池中删除一个指定的 Gemini 密钥。
-- **POST** `/keys/{key_identifier}/reset`
-  - **描述**: 重置指定 Gemini 密钥的状态。
-- **POST** `/keys/reset`
-  - **描述**: 重置所有 Gemini 密钥的状态。
+- **GET / POST** `/`
+  - **描述**: 添加一个或多个服务密钥到池中，或获取池中所有密钥。
+- **DELETE** `/{key_identifier}`
+  - **描述**: 从池中删除一个指定的服务密钥。
+- **POST** `/{key_identifier}/reset`
+  - **描述**: 重置指定服务密钥的状态。
+- **POST** `/reset`
+  - **描述**: 重置所有服务密钥的状态。
 
-### API 代理
+### API 代理 (`/v1`)
 
-- **POST** `/v1beta/models/{model_id}:generateContent`
-  - **描述**: 代理 Google Gemini `generateContent` 请求。
-- **POST** `/v1beta/models/{model_id}:streamGenerateContent`
-  - **描述**: 代理 Google Gemini `streamGenerateContent` 请求。
-- **POST** `/v1/chat/completions`
-  - **描述**: 代理符合 OpenAI 格式的 `chat/completions` 请求。
+- **POST** `/chat/completions`
+  - **描述**: 代理符合 OpenAI 格式的 `chat/completions` 请求，并根据请求内容自动转发至 Gemini 或 OpenAI。
 
-### 状态监控
+### 状态与日志 (`/management`)
 
 - **GET** `/status/keys`
-  - **描述**: 返回服务密钥池中所有 Gemini API 密钥的详细状态。
-- **GET** `/status/logs`
+  - **描述**: 返回服务密钥池中所有 API 密钥的详细状态。
+- **GET** `/logs`
   - **描述**: 获取最新的 N 条日志。
-- **GET** `/status/logs/sse`
-  - **描述**: 通过 Server-Sent Events (SSE) 推送最新的日志。
+- **GET** `/logs/sse`
+  - **描述**: 通过 Server-Sent Events (SSE) 实时推送最新的日志。

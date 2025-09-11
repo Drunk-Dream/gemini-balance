@@ -86,11 +86,12 @@ class KeyStateManager:
                 "auth_error",
                 "rate_limit_error",
                 "unexpected_error",
-            ]:  # 新增 unexpected_error
+            ]:
                 should_cool_down = True
             elif error_type in ["other_http_error", "request_error"]:
                 if state.request_fail_count >= self._api_key_failure_threshold:
                     should_cool_down = True
+                    error_type = "max_failures_error"
 
             if should_cool_down:
                 state.cool_down_entry_count += 1
