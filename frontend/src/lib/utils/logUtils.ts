@@ -13,7 +13,7 @@ export function colorizeLog(logLine: string): string {
 		{ regex: /\b(OpenAI|Gemini)\b/g, class: 'text-purple-400' }, // OpenAI or Gemini keyword
 		{ regex: /\b(gemini-[\w.-]+|gpt-[\w.-]+)\b/g, class: 'text-pink-400' }, // Model name
 		{ regex: /'(.*?)'/g, class: 'text-cyan-400' }, // Quoted strings
-		{ regex: /\b([\w_]+_error)\b/g, class: 'text-red-300' } // Any word ending with _error
+		{ regex: /\b(\w+_error)\b/g, class: 'text-red-300' } // Any word ending with _error
 	];
 
 	let coloredLogLine = logLine;
