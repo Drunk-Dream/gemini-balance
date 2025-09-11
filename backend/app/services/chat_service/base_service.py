@@ -14,7 +14,8 @@ from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
 from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_manager
 from backend.app.core.config import settings
-from backend.app.core.logging import app_logger, setup_debug_logger, transaction_logger
+from backend.app.core.logging import app_logger as logger
+from backend.app.core.logging import setup_debug_logger, transaction_logger
 from backend.app.services import key_manager
 
 if TYPE_CHECKING:
@@ -27,9 +28,6 @@ class RequestInfo(BaseModel):
     model_id: str
     auth_key_alias: str = "anonymous"
     stream: bool
-
-
-logger = app_logger
 
 
 class ApiService(ABC):
@@ -55,14 +53,19 @@ class ApiService(ABC):
         Closes the current httpx client and creates a new one.
         This is useful for recovering from connection errors.
         """
+        request_id = self.request_info.request_id
         if self.client:
             await self.client.aclose()
-            logger.info(f"Closed existing httpx client for {self.service_name}.")
+            logger.info(
+                f"[Request ID: {request_id}] Closed existing httpx client for {self.service_name}."
+            )
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
             timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
         )
-        logger.info(f"Recreated httpx client for {self.service_name}.")
+        logger.info(
+            f"[Request ID: {request_id}] Recreated httpx client for {self.service_name}."
+        )
 
     @abstractmethod
     def _get_api_url(self, *args, **kwargs) -> str:
