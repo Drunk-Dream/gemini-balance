@@ -1,3 +1,5 @@
+from logging import Logger
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -33,8 +35,8 @@ class Settings(BaseSettings):
     FORCE_RESET_DATABASE: bool = False
 
     # 认证与安全配置
-    PASSWORD: str = "admin"  # Add a default password for simplicity
-    SECRET_KEY: str = "your-super-secret-key"  # 从环境变量加载，提供默认值
+    PASSWORD: str = "admin"
+    SECRET_KEY: str = "your-super-secret-key"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
@@ -50,3 +52,33 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+async def print_non_sensitive_settings(logger: Logger):
+    non_sensitive_settings = {
+        "GEMINI_API_BASE_URL": settings.GEMINI_API_BASE_URL,
+        "OPENAI_API_BASE_URL": settings.OPENAI_API_BASE_URL,
+        "REQUEST_TIMEOUT_SECONDS": settings.REQUEST_TIMEOUT_SECONDS,
+        "LOG_LEVEL": settings.LOG_LEVEL,
+        "DEBUG_LOG_ENABLED": settings.DEBUG_LOG_ENABLED,
+        "LOG_HISTORY_SIZE": settings.LOG_HISTORY_SIZE,
+        "API_KEY_COOL_DOWN_SECONDS": settings.API_KEY_COOL_DOWN_SECONDS,
+        "API_KEY_FAILURE_THRESHOLD": settings.API_KEY_FAILURE_THRESHOLD,
+        "MAX_COOL_DOWN_SECONDS": settings.MAX_COOL_DOWN_SECONDS,
+        "RATE_LIMIT_DEFAULT_WAIT_SECONDS": settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS,
+        "MAX_RETRIES": settings.MAX_RETRIES,
+        "NO_KEY_WAIT_SECONDS": settings.NO_KEY_WAIT_SECONDS,
+        "DATABASE_TYPE": settings.DATABASE_TYPE,
+        "SQLITE_DB": settings.SQLITE_DB,
+        "REDIS_HOST": settings.REDIS_HOST,
+        "REDIS_PORT": settings.REDIS_PORT,
+        "REDIS_DB": settings.REDIS_DB,
+        "FORCE_RESET_DATABASE": settings.FORCE_RESET_DATABASE,
+        "ALGORITHM": settings.ALGORITHM,
+        "ACCESS_TOKEN_EXPIRE_MINUTES": settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+        "MAX_CONCURRENT_REQUESTS": settings.MAX_CONCURRENT_REQUESTS,
+        "CONCURRENCY_TIMEOUT_SECONDS": settings.CONCURRENCY_TIMEOUT_SECONDS,
+    }
+    logger.info("Project settings:")
+    for key, value in non_sensitive_settings.items():
+        logger.info(f"{key}: {value}")
