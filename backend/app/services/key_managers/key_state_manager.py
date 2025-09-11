@@ -37,7 +37,6 @@ class KeyStateManager:
         self._background_task: Optional[asyncio.Task] = None
         self._wakeup_event = asyncio.Event()
         self._db_manager = db_manager
-        self._key_states_cache: Dict[str, KeyState] = {}
 
     def _get_key_identifier(self, key: str) -> str:
         """生成一个对日志友好且唯一的密钥标识符"""
@@ -49,22 +48,10 @@ class KeyStateManager:
         key_state = await self._db_manager.get_key_state(key_identifier)
         return key_state.api_key if key_state else None
 
-    async def initialize(self):
-        await self._load_key_states_to_cache()
-
-    async def _load_key_states_to_cache(self):
-        states = await self._db_manager.get_all_key_states()
-        self._key_states_cache = {state.key_identifier: state for state in states}
-
     async def _get_key_state(self, key_identifier: str) -> Optional[KeyState]:
-        if key_identifier not in self._key_states_cache:
-            state = await self._db_manager.get_key_state(key_identifier)
-            if state:
-                self._key_states_cache[key_identifier] = state
-        return self._key_states_cache.get(key_identifier)
+        return await self._db_manager.get_key_state(key_identifier)
 
     async def _save_key_state(self, key_identifier: str, state: KeyState):
-        self._key_states_cache[key_identifier] = state
         await self._db_manager.save_key_state(key_identifier, state)
 
     async def get_next_key(self) -> Optional[str]:
@@ -143,14 +130,16 @@ class KeyStateManager:
 
     async def get_key_states(self) -> List[KeyStatusResponse]:
         async with self._lock:
-            await self._load_key_states_to_cache()
             states_response = []
             now = time.time()
             eastern_tz = pytz.timezone("America/New_York")
             current_date = datetime.fromtimestamp(now, tz=eastern_tz).strftime(
                 "%Y-%m-%d"
             )
-            for key_identifier, state in self._key_states_cache.items():
+            states = await self._db_manager.get_all_key_states()
+
+            for state in states:
+                key_identifier = state.key_identifier
                 # 检查是否跨天，如果跨天则重置 daily_usage
                 if state.last_usage_time:
                     if state.last_usage_date != current_date:
@@ -191,26 +180,22 @@ class KeyStateManager:
         key_identifier = self._get_key_identifier(api_key)
         async with self._lock:
             await self._db_manager.add_key(key_identifier, api_key)
-            await self._load_key_states_to_cache()  # Refresh cache
             app_logger.info(f"Added new API key: {key_identifier}")
             return key_identifier
 
     async def delete_key(self, key_identifier: str):
         async with self._lock:
             await self._db_manager.delete_key(key_identifier)
-            self._key_states_cache.pop(key_identifier, None)  # Remove from cache
             app_logger.info(f"Deleted API key: {key_identifier}")
 
     async def reset_key_state(self, key_identifier: str):
         async with self._lock:
             await self._db_manager.reset_key_state(key_identifier)
-            await self._load_key_states_to_cache()  # Refresh cache
             app_logger.info(f"Reset state for API key: {key_identifier}")
 
     async def reset_all_key_states(self):
         async with self._lock:
             await self._db_manager.reset_all_key_states()
-            await self._load_key_states_to_cache()  # Refresh cache
             app_logger.info("Reset state for all API keys.")
 
     async def _release_cooled_down_keys(self):
