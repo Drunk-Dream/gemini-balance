@@ -1,6 +1,6 @@
 [project]
 name = "gemini-balance"
-version = "0.19.2"
+version = "0.20.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
