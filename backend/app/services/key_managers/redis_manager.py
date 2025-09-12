@@ -222,3 +222,21 @@ class RedisDBManager(DBManager):
             pipe.rpush(self.AVAILABLE_KEYS_KEY, state.key_identifier)
         await pipe.execute()
         app_logger.info("Reset state for all API keys in Redis.")
+
+    async def get_min_cool_down_until(self) -> Optional[float]:
+        """Get the minimum cool_down_until value among all cooled-down keys."""
+        # ZRANGE with BYSCORE and LIMIT 1 0 to get the member with the minimum score
+        # The score is cool_down_until
+        min_score_member = await self._redis.zrange(
+            self.COOLED_DOWN_KEYS_KEY,
+            0,
+            0,
+            byscore=True,
+            withscores=True,
+            score_cast_func=float,
+        )  # type: ignore
+
+        if min_score_member:
+            # min_score_member will be a list of tuples: [(key_identifier_bytes, cool_down_until_float)]
+            return min_score_member[0][1]
+        return None

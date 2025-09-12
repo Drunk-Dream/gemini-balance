@@ -33,6 +33,9 @@ class KeyStateManager:
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
         self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
         self._key_in_use_timeout_seconds = settings.KEY_IN_USE_TIMEOUT_SECONDS
+        self._default_check_cooled_down_seconds = (
+            settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS
+        )
         self._lock = asyncio.Lock()
         self._background_task: Optional[asyncio.Task] = None
         self._wakeup_event = asyncio.Event()
@@ -256,11 +259,24 @@ class KeyStateManager:
                             await self._db_manager.reactivate_key(key_identifier)
                             app_logger.info(f"API key '{key_identifier}' reactivated.")
 
+                # 获取下一个最近的冷却到期时间戳
+                min_cool_down_until = await self._db_manager.get_min_cool_down_until()
+
+                wait_time = self._default_check_cooled_down_seconds
+                if min_cool_down_until:
+                    now = time.time()
+                    # 计算需要等待的秒数，确保不为负
+                    calculated_wait = max(0, min_cool_down_until - now)
+                    wait_time = calculated_wait
+
                 self._wakeup_event.clear()
-                await asyncio.wait_for(self._wakeup_event.wait(), timeout=60)
+                # 使用计算出的时间或被事件唤醒
+                await asyncio.wait_for(self._wakeup_event.wait(), timeout=wait_time)
             except asyncio.TimeoutError:
+                # 超时是预期的行为，表示我们等待到了下一个检查点
                 pass
             except asyncio.CancelledError:
+                # 任务被取消，正常退出
                 break
 
     async def start_background_task(self):

@@ -95,3 +95,8 @@ class DBManager(ABC):
     async def reset_all_key_states(self):
         """Reset the state of all API keys."""
         pass
+
+    @abstractmethod
+    async def get_min_cool_down_until(self) -> Optional[float]:
+        """Get the minimum cool_down_until value among all cooled-down keys."""
+        pass

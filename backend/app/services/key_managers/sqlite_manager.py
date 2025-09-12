@@ -251,3 +251,19 @@ class SQLiteDBManager(DBManager):
             last_usage_time=row["last_usage_time"],
             is_in_use=bool(row["is_in_use"]),
         )
+
+    async def get_min_cool_down_until(self) -> Optional[float]:
+        """Get the minimum cool_down_until value among all cooled-down keys."""
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            cursor = await db.execute(
+                """
+                SELECT cool_down_until FROM key_states
+                WHERE is_cooled_down = 1
+                ORDER BY cool_down_until ASC
+                LIMIT 1
+                """
+            )
+            row = await cursor.fetchone()
+            if row:
+                return row[0]
+            return None
