@@ -10,7 +10,10 @@ import httpx
 from fastapi import HTTPException
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
-from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
+from starlette.status import (
+    HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_503_SERVICE_UNAVAILABLE,
+)
 
 from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_manager
 from backend.app.core.config import settings
@@ -180,7 +183,8 @@ class ApiService(ABC):
 
             except httpx.HTTPStatusError as e:
                 # Ensure the response body is read before accessing it, especially for streaming responses.
-                await e.response.aread()
+                if not e.response.is_closed:
+                    await e.response.aread()
                 transaction_logger.error(
                     "[Request ID: %s] Error response from %s API with key %s: %s",
                     request_id,
@@ -320,11 +324,30 @@ class ApiService(ABC):
                 return await self._generate_content(request_data)
         except ConcurrencyTimeoutError as e:
             logger.warning(f"[Request ID: {request_id}] Concurrency timeout error: {e}")
-            return StreamingResponse(
-                content=f'{{"error": "{e}"}}',
-                status_code=HTTP_503_SERVICE_UNAVAILABLE,
-                media_type="application/json",
+            if self.request_info.stream:
+                return StreamingResponse(
+                    content=f'{{"error": "{e}"}}',
+                    status_code=HTTP_503_SERVICE_UNAVAILABLE,
+                    media_type="application/json",
+                )
+            else:
+                raise HTTPException(
+                    status_code=HTTP_503_SERVICE_UNAVAILABLE, detail=f"Concurrency timeout error: {e}"
+                )
+        except Exception as e:
+            logger.error(
+                f"[Request ID: {request_id}] An unexpected error occurred: {e}"
             )
+            if self.request_info.stream:
+                return StreamingResponse(
+                    content=f'{{"error": "An unexpected error occurred: {e}"}}',
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                    media_type="application/json",
+                )
+            else:
+                raise HTTPException(
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected error occurred: {e}"
+                )
 
     async def create_request_info(
         self, model_id: str, auth_key_alias: str, stream: bool
