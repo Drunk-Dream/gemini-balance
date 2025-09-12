@@ -16,7 +16,7 @@ DEBUG_LOG_FILE = Path(settings.DEBUG_LOG_FILE)
 
 APP_FORMATTER = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 CONSOLE_FORMATTER = logging.Formatter("%(levelname)s - %(name)s - %(message)s")
-TRANSACTION_FORMATTER = logging.Formatter("%(message)s")
+TRANSACTION_FORMATTER = logging.Formatter("%(asctime)s - %(message)s")
 DEBUG_FORMATTER = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )

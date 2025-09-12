@@ -15,7 +15,7 @@ from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_manager
 from backend.app.core.config import settings
 from backend.app.core.logging import app_logger as logger
-from backend.app.core.logging import setup_debug_logger, transaction_logger
+from backend.app.core.logging import transaction_logger
 from backend.app.services import key_manager
 
 if TYPE_CHECKING:
@@ -45,8 +45,6 @@ class ApiService(ABC):
         )
         self.max_retries = settings.MAX_RETRIES
         self.concurrency_manager = concurrency_manager
-
-        self.debug_logger = setup_debug_logger(f"{service_name}_debug_logger")
 
     async def _recreate_client(self):
         """
@@ -127,14 +125,13 @@ class ApiService(ABC):
             headers = self._prepare_headers(api_key)
 
             try:
-                if settings.DEBUG_LOG_ENABLED:
-                    self.debug_logger.debug(
-                        "[Request ID: %s] Request to %s API with key %s: %s",
-                        request_id,
-                        self.service_name,
-                        key_identifier,
-                        request_data.model_dump_json(by_alias=True, exclude_unset=True),
-                    )
+                transaction_logger.info(
+                    "[Request ID: %s] Request to %s API with key %s: %s",
+                    request_id,
+                    self.service_name,
+                    key_identifier,
+                    request_data.model_dump_json(by_alias=True, exclude_unset=True),
+                )
 
                 if stream:
                     async with self.client.stream(
