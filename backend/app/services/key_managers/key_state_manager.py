@@ -55,7 +55,10 @@ class KeyStateManager:
         await self._db_manager.save_key_state(key_identifier, state)
 
     async def get_next_key(self) -> Optional[str]:
-        return await self._db_manager.get_next_available_key()
+        key_identifier = await self._db_manager.get_next_available_key()
+        if key_identifier:
+            await self._db_manager.move_to_use(key_identifier)
+        return key_identifier
 
     async def mark_key_fail(
         self, key_identifier: str, error_type: str, request_info: RequestInfo

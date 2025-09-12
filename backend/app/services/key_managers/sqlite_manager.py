@@ -95,16 +95,20 @@ class SQLiteDBManager(DBManager):
                     if not row:
                         return None
                     key_identifier = row[0]
-                    await db.execute(
-                        "UPDATE key_states SET is_in_use = 1, last_usage_time = ? WHERE key_identifier = ?",
-                        (time.time(), key_identifier),
-                    )
-                    await db.commit()
                     return key_identifier
                 except Exception as e:
                     app_logger.error(f"Error getting next available key: {e}")
                     await db.rollback()
                     return None
+
+    async def move_to_use(self, key_identifier: str):
+        """Mark a key as in use and update its last usage time in SQLite."""
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            await db.execute(
+                "UPDATE key_states SET is_in_use = 1, last_usage_time = ? WHERE key_identifier = ?",
+                (time.time(), key_identifier),
+            )
+            await db.commit()
 
     async def move_to_cooldown(self, key_identifier: str, cool_down_until: float):
         async with aiosqlite.connect(self.sqlite_db) as db:

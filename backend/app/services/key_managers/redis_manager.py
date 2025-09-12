@@ -102,17 +102,19 @@ class RedisDBManager(DBManager):
 
         if key_bytes:
             key_identifier = key_bytes.decode()
-            # 将其移动到正在使用队列并更新 last_usage_time
-            pipe = self._redis.pipeline()
-            pipe.sadd(self.IN_USE_KEYS_KEY, key_identifier)
-            pipe.hset(
-                f"{self.KEY_STATE_PREFIX}{key_identifier}",
-                "last_usage_time",
-                str(time.time()),
-            )
-            await pipe.execute()
             return key_identifier
         return None
+
+    async def move_to_use(self, key_identifier: str):
+        """Mark a key as in use and update its last usage time in Redis."""
+        pipe = self._redis.pipeline()
+        pipe.sadd(self.IN_USE_KEYS_KEY, key_identifier)
+        pipe.hset(
+            f"{self.KEY_STATE_PREFIX}{key_identifier}",
+            "last_usage_time",
+            str(time.time()),
+        )
+        await pipe.execute()
 
     async def move_to_cooldown(self, key_identifier: str, cool_down_until: float):
         pipe = self._redis.pipeline()

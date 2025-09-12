@@ -77,6 +77,11 @@ class DBManager(ABC):
         pass
 
     @abstractmethod
+    async def move_to_use(self, key_identifier: str):
+        """Mark a key as in use and update its last usage time."""
+        pass
+
+    @abstractmethod
     async def add_key(self, key_identifier: str, api_key: str):
         """Add a new API key to the database."""
         pass
