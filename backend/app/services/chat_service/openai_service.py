@@ -59,6 +59,10 @@ class OpenAIService(ApiService):
 
         self._handle_thinking_config(request_data)
 
+        # 检查并删除 'seed' 字段，因为 OpenAI API 不支持此字段
+        if hasattr(request_data, "seed") and request_data.seed is not None:
+            del request_data.seed
+
         params = {"alt": "sse"} if stream else {"alt": "json"}
 
         response = await self._send_request(
