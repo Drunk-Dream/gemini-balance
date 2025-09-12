@@ -49,6 +49,25 @@ class ApiService(ABC):
         self.max_retries = settings.MAX_RETRIES
         self.concurrency_manager = concurrency_manager
 
+    def _handle_exception_response(
+        self,
+        e: Exception,
+        status_code: int,
+        error_message: str,
+    ) -> Union[StreamingResponse, HTTPException]:
+        """
+        Handles exception responses, returning a StreamingResponse for stream requests
+        or raising an HTTPException for non-stream requests.
+        """
+        if self.request_info.stream:
+            return StreamingResponse(
+                content=f'{{"error": "{error_message}: {e}"}}',
+                status_code=status_code,
+                media_type="application/json",
+            )
+        else:
+            raise HTTPException(status_code=status_code, detail=f"{error_message}: {e}")
+
     async def _recreate_client(self):
         """
         Closes the current httpx client and creates a new one.
@@ -324,30 +343,20 @@ class ApiService(ABC):
                 return await self._generate_content(request_data)
         except ConcurrencyTimeoutError as e:
             logger.warning(f"[Request ID: {request_id}] Concurrency timeout error: {e}")
-            if self.request_info.stream:
-                return StreamingResponse(
-                    content=f'{{"error": "{e}"}}',
-                    status_code=HTTP_503_SERVICE_UNAVAILABLE,
-                    media_type="application/json",
-                )
-            else:
-                raise HTTPException(
-                    status_code=HTTP_503_SERVICE_UNAVAILABLE, detail=f"Concurrency timeout error: {e}"
-                )
+            return self._handle_exception_response(
+                e,
+                HTTP_503_SERVICE_UNAVAILABLE,
+                "Concurrency timeout error",
+            )
         except Exception as e:
             logger.error(
                 f"[Request ID: {request_id}] An unexpected error occurred: {e}"
             )
-            if self.request_info.stream:
-                return StreamingResponse(
-                    content=f'{{"error": "An unexpected error occurred: {e}"}}',
-                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                    media_type="application/json",
-                )
-            else:
-                raise HTTPException(
-                    status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected error occurred: {e}"
-                )
+            return self._handle_exception_response(
+                e,
+                HTTP_500_INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred",
+            )
 
     async def create_request_info(
         self, model_id: str, auth_key_alias: str, stream: bool
