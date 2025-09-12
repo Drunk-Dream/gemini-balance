@@ -179,6 +179,8 @@ class ApiService(ABC):
                     return
 
             except httpx.HTTPStatusError as e:
+                # Ensure the response body is read before accessing it, especially for streaming responses.
+                await e.response.aread()
                 transaction_logger.error(
                     "[Request ID: %s] Error response from %s API with key %s: %s",
                     request_id,
