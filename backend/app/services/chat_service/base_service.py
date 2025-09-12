@@ -179,6 +179,13 @@ class ApiService(ABC):
                     return
 
             except httpx.HTTPStatusError as e:
+                transaction_logger.error(
+                    "[Request ID: %s] Error response from %s API with key %s: %s",
+                    request_id,
+                    self.service_name,
+                    key_identifier,
+                    e.response.text,
+                )
                 last_exception = e
                 error_type = "other_http_error"
                 if e.response.status_code in [401, 403]:
@@ -204,6 +211,13 @@ class ApiService(ABC):
                     await asyncio.sleep(wait_time)
                 continue
             except httpx.RequestError as e:
+                transaction_logger.error(
+                    "[Request ID: %s] Request error from %s API with key %s: %s",
+                    request_id,
+                    self.service_name,
+                    key_identifier,
+                    e,
+                )
                 last_exception = e
                 logger.error(
                     f"[Request ID: {request_id}] Request error with key {key_identifier}: {e}. Deactivating and retrying..."
@@ -214,6 +228,13 @@ class ApiService(ABC):
                 await self._recreate_client()  # Recreate client on request errors
                 continue
             except Exception as e:
+                transaction_logger.error(
+                    "[Request ID: %s] Unexpected error from %s API with key %s: %s",
+                    request_id,
+                    self.service_name,
+                    key_identifier,
+                    e,
+                )
                 last_exception = e
                 logger.critical(
                     f"[Request ID: {request_id}] An unexpected error occurred with key {key_identifier}: {e}. Deactivating and retrying..."
