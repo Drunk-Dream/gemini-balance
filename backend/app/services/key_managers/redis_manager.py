@@ -109,11 +109,6 @@ class RedisDBManager(DBManager):
         """Mark a key as in use and update its last usage time in Redis."""
         pipe = self._redis.pipeline()
         pipe.sadd(self.IN_USE_KEYS_KEY, key_identifier)
-        pipe.hset(
-            f"{self.KEY_STATE_PREFIX}{key_identifier}",
-            "last_usage_time",
-            str(time.time()),
-        )
         await pipe.execute()
 
     async def move_to_cooldown(self, key_identifier: str, cool_down_until: float):

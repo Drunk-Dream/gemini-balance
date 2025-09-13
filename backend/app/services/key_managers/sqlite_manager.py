@@ -105,8 +105,8 @@ class SQLiteDBManager(DBManager):
         """Mark a key as in use and update its last usage time in SQLite."""
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
-                "UPDATE key_states SET is_in_use = 1, last_usage_time = ? WHERE key_identifier = ?",
-                (time.time(), key_identifier),
+                "UPDATE key_states SET is_in_use = 1, WHERE key_identifier = ?",
+                (key_identifier,),
             )
             await db.commit()
 
