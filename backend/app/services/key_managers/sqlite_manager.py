@@ -105,7 +105,7 @@ class SQLiteDBManager(DBManager):
         """Mark a key as in use and update its last usage time in SQLite."""
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
-                "UPDATE key_states SET is_in_use = 1, WHERE key_identifier = ?",
+                "UPDATE key_states SET is_in_use = 1 WHERE key_identifier = ?",
                 (key_identifier,),
             )
             await db.commit()
@@ -167,7 +167,7 @@ class SQLiteDBManager(DBManager):
                 ),
             )
             await db.commit()
-            app_logger.info(f"Added new API key '{key_identifier}' to DB.")
+            app_logger.info(f"Added new API key {key_identifier} to SQLite.")
 
     async def delete_key(self, key_identifier: str):
         async with aiosqlite.connect(self.sqlite_db) as db:
@@ -175,7 +175,7 @@ class SQLiteDBManager(DBManager):
                 "DELETE FROM key_states WHERE key_identifier = ?", (key_identifier,)
             )
             await db.commit()
-            app_logger.info(f"Removed API key '{key_identifier}' from DB.")
+            app_logger.info(f"Removed API key {key_identifier} from SQLite.")
 
     async def reset_key_state(self, key_identifier: str):
         async with aiosqlite.connect(self.sqlite_db) as db:
@@ -205,7 +205,7 @@ class SQLiteDBManager(DBManager):
                 ),
             )
             await db.commit()
-            app_logger.info(f"Reset state for API key '{key_identifier}' in DB.")
+            app_logger.info(f"Reset state for API key {key_identifier} in SQLite.")
 
     async def reset_all_key_states(self):
         async with aiosqlite.connect(self.sqlite_db) as db:
@@ -233,7 +233,7 @@ class SQLiteDBManager(DBManager):
                 ),
             )
             await db.commit()
-            app_logger.info("Reset state for all API keys in DB.")
+            app_logger.info("Reset state for all API keys in SQLite.")
 
     async def release_key_from_use(self, key_identifier: str):
         async with aiosqlite.connect(self.sqlite_db) as db:

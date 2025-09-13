@@ -53,14 +53,14 @@ async def delete_key(
     try:
         await key_manager.delete_key(key_identifier)
         return KeyOperationResponse(
-            message=f"Key '{key_identifier}' deleted successfully",
+            message=f"Key {key_identifier} deleted successfully",
             key_identifier=key_identifier,
         )
     except Exception as e:
-        app_logger.error(f"Failed to delete key '{key_identifier}': {e}")
+        app_logger.error(f"Failed to delete key {key_identifier}: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to delete key '{key_identifier}': {e}",
+            detail=f"Failed to delete key {key_identifier}: {e}",
         )
 
 
@@ -78,14 +78,14 @@ async def reset_single_key_state(
     try:
         await key_manager.reset_key_state(key_identifier)
         return KeyOperationResponse(
-            message=f"State for key '{key_identifier}' reset successfully",
+            message=f"State for key {key_identifier} reset successfully",
             key_identifier=key_identifier,
         )
     except Exception as e:
-        app_logger.error(f"Failed to reset state for key '{key_identifier}': {e}")
+        app_logger.error(f"Failed to reset state for key {key_identifier}: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to reset state for key '{key_identifier}': {e}",
+            detail=f"Failed to reset state for key {key_identifier}: {e}",
         )
 
 

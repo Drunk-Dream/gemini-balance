@@ -26,6 +26,9 @@ async def lifespan(app: FastAPI):
     await migration_manager.run_migrations()
     logger.info("Database migrations completed.")
 
+    logger.info("Initializing KeyManager...")
+    await key_manager.initialize()
+
     logger.info("Starting background task for KeyManager...")
     await key_manager.start_background_task()
     yield

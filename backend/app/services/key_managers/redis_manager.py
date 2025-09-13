@@ -177,7 +177,7 @@ class RedisDBManager(DBManager):
         pipe.rpush(self.AVAILABLE_KEYS_KEY, key_identifier)
         pipe.sadd(self.ALL_KEYS_SET_KEY, key_identifier)
         await pipe.execute()
-        app_logger.info(f"Added new API key '{key_identifier}' to Redis.")
+        app_logger.info(f"Added new API key {key_identifier} to Redis.")
 
     async def delete_key(self, key_identifier: str):
         pipe = self._redis.pipeline()
@@ -187,7 +187,7 @@ class RedisDBManager(DBManager):
         pipe.delete(f"{self.KEY_STATE_PREFIX}{key_identifier}")
         pipe.srem(self.ALL_KEYS_SET_KEY, key_identifier)
         await pipe.execute()
-        app_logger.info(f"Removed API key '{key_identifier}' from Redis.")
+        app_logger.info(f"Removed API key {key_identifier} from Redis.")
 
     async def reset_key_state(self, key_identifier: str):
         state = await self.get_key_state(key_identifier)
@@ -200,7 +200,7 @@ class RedisDBManager(DBManager):
             state.last_usage_time = time.time()
             await self.save_key_state(key_identifier, state)
             await self.reactivate_key(key_identifier)
-            app_logger.info(f"Reset state for API key '{key_identifier}' in Redis.")
+            app_logger.info(f"Reset state for API key {key_identifier} in Redis.")
 
     async def reset_all_key_states(self):
         all_keys = await self.get_all_key_states()

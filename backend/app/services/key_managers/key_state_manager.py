@@ -4,6 +4,7 @@ import asyncio
 import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List, Optional
+from venv import logger
 
 import pytz
 from pydantic import BaseModel
@@ -74,16 +75,23 @@ class KeyStateManager:
                     await self._save_key_state(key_identifier, state)
                     await self._db_manager.release_key_from_use(key_identifier)
                     app_logger.warning(
-                        f"Key '{key_identifier}' released from use due to timeout. "
+                        f"Key {key_identifier} released from use due to timeout. "
                         f"Last usage: {datetime.fromtimestamp(state.last_usage_time).strftime('%Y-%m-%d %H:%M:%S')}, "
                         f"Timeout: {self._key_in_use_timeout_seconds}s."
                     )
         except asyncio.CancelledError:
-            app_logger.debug(f"Timeout task for key '{key_identifier}' was cancelled.")
+            app_logger.debug(f"Timeout task for key {key_identifier} was cancelled.")
         finally:
             # 无论任务是否完成或取消，都从字典中移除
             if key_identifier in self._timeout_tasks:
                 del self._timeout_tasks[key_identifier]
+
+    async def initialize(self):
+        async with self._lock:
+            keys_in_use = await self._db_manager.get_keys_in_use()
+            for key in keys_in_use:
+                logger.warning(f"Releasing {key} from use due to initialization.")
+                await self._db_manager.release_key_from_use(key)
 
     async def get_next_key(self) -> Optional[str]:
         key_identifier = await self._db_manager.get_next_available_key()
@@ -136,13 +144,13 @@ class KeyStateManager:
                 )
                 self._wakeup_event.set()
                 app_logger.warning(
-                    f"[Request ID: {request_id}] Key '{key_identifier}' cooled down for "
+                    f"[Request ID: {request_id}] Key {key_identifier} cooled down for "
                     f"{state.current_cool_down_seconds:.2f}s due to {error_type}."
                 )
             else:  # 如果不需要冷却，则释放密钥
                 await self._db_manager.release_key_from_use(key_identifier)
                 app_logger.info(
-                    f"[Request ID: {request_id}] Key '{key_identifier}' released from "
+                    f"[Request ID: {request_id}] Key {key_identifier} released from "
                     f"use after {error_type} without cooldown."
                 )
 
@@ -257,7 +265,7 @@ class KeyStateManager:
                             state.request_fail_count = 0
                             await self._save_key_state(key_identifier, state)
                             await self._db_manager.reactivate_key(key_identifier)
-                            app_logger.info(f"API key '{key_identifier}' reactivated.")
+                            app_logger.info(f"API key {key_identifier} reactivated.")
 
                 # 获取下一个最近的冷却到期时间戳
                 min_cool_down_until = await self._db_manager.get_min_cool_down_until()
