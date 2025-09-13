@@ -76,8 +76,6 @@ class KeyStateManager:
                     await self._db_manager.release_key_from_use(key_identifier)
                     app_logger.warning(
                         f"Key {key_identifier} released from use due to timeout. "
-                        f"Last usage: {datetime.fromtimestamp(state.last_usage_time).strftime('%Y-%m-%d %H:%M:%S')}, "
-                        f"Timeout: {self._key_in_use_timeout_seconds}s."
                     )
         except asyncio.CancelledError:
             app_logger.debug(f"Timeout task for key {key_identifier} was cancelled.")
