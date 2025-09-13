@@ -201,15 +201,25 @@ class ApiService(ABC):
                     return
 
             except httpx.HTTPStatusError as e:
-                # Ensure the response body is read before accessing it, especially for streaming responses.
-                if not e.response.is_closed:
-                    await e.response.aread()
+                # Safely get the response text for logging
+                response_text = ""
+                if not self.request_info.stream:
+                    # For non-streaming requests, the body is already read and available.
+                    response_text = e.response.text
+                else:
+                    # For streaming requests, we must read the body first, handling potential errors.
+                    try:
+                        await e.response.aread()
+                        response_text = e.response.text
+                    except (httpx.StreamClosed, httpx.ResponseNotRead):
+                        response_text = "<Streamed response body not available due to connection error>"
+
                 transaction_logger.error(
                     "[Request ID: %s] Error response from %s API with key %s: %s",
                     request_id,
                     self.service_name,
                     key_identifier,
-                    e.response.text,
+                    response_text,
                 )
                 last_exception = e
                 error_type = "other_http_error"
