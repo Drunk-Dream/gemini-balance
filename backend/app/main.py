@@ -20,6 +20,7 @@ from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import setup_app_logger, setup_transaction_logger
 from backend.app.db import migration_manager
 from backend.app.services.key_managers import get_key_manager
+from backend.app.services.request_logs import get_request_log_manager
 
 
 @asynccontextmanager
@@ -29,7 +30,7 @@ async def lifespan(app: FastAPI):
     await migration_manager.run_migrations()
     logger.info("Database migrations completed.")
 
-    key_manager = get_key_manager(settings)
+    key_manager = get_key_manager(settings, get_request_log_manager(settings))
 
     logger.info("Initializing KeyManager...")
     await key_manager.initialize()

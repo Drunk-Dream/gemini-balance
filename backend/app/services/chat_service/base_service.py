@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union, cast
 
 import httpx
-from fastapi import Depends, HTTPException
+from fastapi import HTTPException
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 from starlette.status import (
@@ -19,7 +19,6 @@ from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_ma
 from backend.app.core.config import settings
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
-from backend.app.services.key_managers import get_key_manager
 from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 if TYPE_CHECKING:
@@ -40,12 +39,7 @@ class ApiService(ABC):
     API key management, retry mechanisms, and streaming responses.
     """
 
-    def __init__(
-        self,
-        base_url: str,
-        service_name: str,
-        key_manager: KeyStateManager = Depends(get_key_manager),
-    ):
+    def __init__(self, base_url: str, service_name: str, key_manager: KeyStateManager):
         self.base_url = base_url
         self.service_name = service_name
         self.client = httpx.AsyncClient(

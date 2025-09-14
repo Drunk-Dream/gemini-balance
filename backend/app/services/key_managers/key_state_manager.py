@@ -10,7 +10,7 @@ import pytz
 from pydantic import BaseModel
 
 from backend.app.core.logging import app_logger
-from backend.app.services.request_logs import get_request_log_manager
+from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLog
 
 if TYPE_CHECKING:
@@ -31,7 +31,12 @@ class KeyStatusResponse(BaseModel):
 
 
 class KeyStateManager:
-    def __init__(self, settings: Settings, db_manager: DBManager):
+    def __init__(
+        self,
+        settings: Settings,
+        db_manager: DBManager,
+        request_log_manager: RequestLogManager,
+    ):
         self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
         self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
@@ -44,7 +49,7 @@ class KeyStateManager:
         self._wakeup_event = asyncio.Event()
         self._db_manager = db_manager
         self._timeout_tasks: Dict[str, asyncio.Task] = {}
-        self._request_log_manager = get_request_log_manager(settings)
+        self._request_log_manager = request_log_manager
 
     def _get_key_identifier(self, key: str) -> str:
         """生成一个对日志友好且唯一的密钥标识符"""
