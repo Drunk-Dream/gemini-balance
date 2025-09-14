@@ -116,7 +116,6 @@ class ApiService(ABC):
         """
         last_exception = None
         stream = self.request_info.stream
-        model_id = self.request_info.model_id
         request_id = self.request_info.request_id
         for attempt in range(self.max_retries):
             key_identifier = await key_manager.get_next_key()
@@ -164,8 +163,7 @@ class ApiService(ABC):
                         params=params,
                     ) as response:
                         response.raise_for_status()
-                        await key_manager.mark_key_success(key_identifier, model_id)
-                        # await key_manager.record_usage(key_identifier, model_id)
+                        await key_manager.mark_key_success(key_identifier, self.request_info)
                         logger.info(
                             f"[Request ID: {request_id}] Streaming request with key {key_identifier} succeeded."
                         )
@@ -184,7 +182,7 @@ class ApiService(ABC):
                         params=params,
                     )
                     response.raise_for_status()
-                    await key_manager.mark_key_success(key_identifier, model_id)
+                    await key_manager.mark_key_success(key_identifier, self.request_info)
                     # await key_manager.record_usage(key_identifier, model_id)
                     response_json = response.json()
                     transaction_logger.info(

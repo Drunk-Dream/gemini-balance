@@ -154,9 +154,10 @@ class KeyStateManager:
 
             await self._save_key_state(key_identifier, state)
 
-    async def mark_key_success(self, key_identifier: str, model: str):
+    async def mark_key_success(self, key_identifier: str, request_info: RequestInfo):
         async with self._lock:
             # 取消对应的超时任务
+            model = request_info.model_id
             if key_identifier in self._timeout_tasks:
                 self._timeout_tasks[key_identifier].cancel()
                 del self._timeout_tasks[key_identifier]
