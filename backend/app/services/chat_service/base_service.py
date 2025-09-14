@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union, cast
 
 import httpx
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 from starlette.status import (
@@ -19,7 +19,8 @@ from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_ma
 from backend.app.core.config import settings
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
-from backend.app.services import key_manager
+from backend.app.services.key_managers import get_key_manager
+from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 if TYPE_CHECKING:
     from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
@@ -39,7 +40,12 @@ class ApiService(ABC):
     API key management, retry mechanisms, and streaming responses.
     """
 
-    def __init__(self, base_url: str, service_name: str):
+    def __init__(
+        self,
+        base_url: str,
+        service_name: str,
+        key_manager: KeyStateManager = Depends(get_key_manager),
+    ):
         self.base_url = base_url
         self.service_name = service_name
         self.client = httpx.AsyncClient(
@@ -48,6 +54,7 @@ class ApiService(ABC):
         )
         self.max_retries = settings.MAX_RETRIES
         self.concurrency_manager = concurrency_manager
+        self._key_manager = key_manager
 
     def _handle_exception_response(
         self,
@@ -118,7 +125,7 @@ class ApiService(ABC):
         stream = self.request_info.stream
         request_id = self.request_info.request_id
         for attempt in range(self.max_retries):
-            key_identifier = await key_manager.get_next_key()
+            key_identifier = await self._key_manager.get_next_key()
             if not key_identifier:
                 logger.warning(
                     f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: No available API keys. "
@@ -134,7 +141,7 @@ class ApiService(ABC):
                 f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: Using API key "
                 f"{key_identifier} for {self.service_name}, stream={stream}"
             )
-            api_key = await key_manager.get_key_from_identifier(key_identifier)
+            api_key = await self._key_manager.get_key_from_identifier(key_identifier)
             if not api_key:
                 logger.error(
                     f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: API key {key_identifier} not found."
@@ -163,7 +170,7 @@ class ApiService(ABC):
                         params=params,
                     ) as response:
                         response.raise_for_status()
-                        await key_manager.mark_key_success(
+                        await self._key_manager.mark_key_success(
                             key_identifier, self.request_info
                         )
                         logger.info(
@@ -184,7 +191,7 @@ class ApiService(ABC):
                         params=params,
                     )
                     response.raise_for_status()
-                    await key_manager.mark_key_success(
+                    await self._key_manager.mark_key_success(
                         key_identifier, self.request_info
                     )
                     # await key_manager.record_usage(key_identifier, model_id)
@@ -234,7 +241,7 @@ class ApiService(ABC):
                     f"[Request ID: {request_id}] API Key {key_identifier} failed with status {e.response.status_code}. "
                     f"Deactivating it. Attempt {attempt + 1}/{self.max_retries}."
                 )
-                await key_manager.mark_key_fail(
+                await self._key_manager.mark_key_fail(
                     key_identifier, error_type, self.request_info
                 )
 
@@ -259,7 +266,7 @@ class ApiService(ABC):
                 logger.error(
                     f"[Request ID: {request_id}] Request error with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
-                await key_manager.mark_key_fail(
+                await self._key_manager.mark_key_fail(
                     key_identifier, "request_error", self.request_info
                 )
                 await self._recreate_client()  # Recreate client on request errors
@@ -277,7 +284,7 @@ class ApiService(ABC):
                     f"[Request ID: {request_id}] An unexpected error occurred with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
                 # 标记密钥失败，使用新的错误类型 "unexpected_error"
-                await key_manager.mark_key_fail(
+                await self._key_manager.mark_key_fail(
                     key_identifier, "unexpected_error", self.request_info
                 )
                 # 即使标记失败，也需要抛出异常，因为这是不可恢复的错误

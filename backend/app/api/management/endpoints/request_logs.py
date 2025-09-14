@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/request-logs",
+    "/request_logs",
     response_model=List[RequestLog],
     summary="获取请求日志",
 )

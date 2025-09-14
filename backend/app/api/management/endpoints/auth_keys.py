@@ -9,15 +9,11 @@ from backend.app.api.management.schemas.auth_keys import (
     AuthKeyUpdate,
 )
 from backend.app.core.security import get_current_user
+from backend.app.services.auth_key_manager import get_auth_manager
 from backend.app.services.auth_key_manager.auth_service import AuthService
 
 router = APIRouter()
 security = HTTPBearer()
-
-
-async def get_auth_service() -> AuthService:
-    service = AuthService()
-    return service
 
 
 @router.post(
@@ -25,7 +21,7 @@ async def get_auth_service() -> AuthService:
 )
 async def create_auth_key(
     key_create: AuthKeyCreate,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service: AuthService = Depends(get_auth_manager),
     current_user: bool = Depends(
         get_current_user
     ),  # Protect this endpoint with get_current_user
@@ -44,7 +40,7 @@ async def create_auth_key(
 
 @router.get("/auth_keys", response_model=List[AuthKeyResponse])
 async def get_auth_keys(
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service: AuthService = Depends(get_auth_manager),
     current_user: bool = Depends(
         get_current_user
     ),  # Protect this endpoint with get_current_user
@@ -60,7 +56,7 @@ async def get_auth_keys(
 async def update_auth_key_alias(
     api_key: str,
     key_update: AuthKeyUpdate,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service: AuthService = Depends(get_auth_manager),
     current_user: bool = Depends(
         get_current_user
     ),  # Protect this endpoint with get_current_user
@@ -80,7 +76,7 @@ async def update_auth_key_alias(
 @router.delete("/auth_keys/{api_key}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_auth_key(
     api_key: str,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service: AuthService = Depends(get_auth_manager),
     current_user: bool = Depends(
         get_current_user
     ),  # Protect this endpoint with get_current_user

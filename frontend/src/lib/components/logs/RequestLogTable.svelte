@@ -4,17 +4,11 @@
 	const headers = [
 		{ key: 'request_id', label: '请求 ID' },
 		{ key: 'request_time', label: '请求时间' },
-		{ key: 'response_time', label: '响应时间' },
-		{ key: 'request_duration_ms', label: '耗时 (ms)' },
 		{ key: 'key_identifier', label: '密钥标识符' },
 		{ key: 'auth_key_alias', label: '认证密钥别名' },
 		{ key: 'model_name', label: '模型名称' },
 		{ key: 'prompt_tokens', label: 'Prompt Tokens' },
-		{ key: 'completion_tokens', label: 'Completion Tokens' },
-		{ key: 'total_tokens', label: '总 Tokens' },
-		{ key: 'is_success', label: '成功' },
-		{ key: 'status_code', label: '状态码' },
-		{ key: 'error_message', label: '错误信息' }
+		{ key: 'is_success', label: '成功' }
 	];
 
 	function formatDateTime(isoString: string): string {

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from starlette.responses import StreamingResponse
 
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
+from backend.app.services.auth_key_manager import get_auth_manager
 from backend.app.services.auth_key_manager.auth_service import AuthService
 from backend.app.services.chat_service.gemini_service import GeminiService
 
@@ -12,7 +13,7 @@ router = APIRouter()
 
 async def verify_x_goog_api_key(
     x_goog_api_key: str = Header(...),
-    auth_service: AuthService = Depends(AuthService),
+    auth_service: AuthService = Depends(get_auth_manager),
 ) -> str:
     """
     FastAPI dependency to verify an authentication key from the x-goog-api-key header.

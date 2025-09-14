@@ -1,11 +1,13 @@
-from backend.app.core.config import Settings
+from fastapi import Depends
+
+from backend.app.core.config import Settings, get_settings
 from backend.app.services.request_logs.db_manager import RequestLogDBManager
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.sqlite_manager import SQLiteRequestLogManager
 
 
 def get_request_log_manager(
-    settings_obj: Settings
+    settings_obj: Settings = Depends(get_settings),
 ) -> RequestLogManager:
     """
     根据配置返回正确的 RequestLogManager 实例。

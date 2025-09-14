@@ -15,11 +15,11 @@ from backend.app.api.management.endpoints.request_logs import (
 from backend.app.api.management.endpoints.status import router as status_router
 from backend.app.api.v1.endpoints.chat import router as openai_chat_router
 from backend.app.api.v1beta.endpoints.gemini import router as gemini_router
-from backend.app.core.config import print_non_sensitive_settings
+from backend.app.core.config import print_non_sensitive_settings, settings
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import setup_app_logger, setup_transaction_logger
 from backend.app.db import migration_manager
-from backend.app.services import key_manager
+from backend.app.services.key_managers import get_key_manager
 
 
 @asynccontextmanager
@@ -28,6 +28,8 @@ async def lifespan(app: FastAPI):
     logger.info("Running database migrations...")
     await migration_manager.run_migrations()
     logger.info("Database migrations completed.")
+
+    key_manager = get_key_manager(settings)
 
     logger.info("Initializing KeyManager...")
     await key_manager.initialize()

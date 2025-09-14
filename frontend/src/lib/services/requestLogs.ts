@@ -37,7 +37,7 @@ export async function getRequestLogs(params: GetRequestLogsParams = {}): Promise
 	}
 
 	try {
-		const response = await api.get<RequestLog[]>(`/request-logs?${queryParams.toString()}`);
+		const response = await api.get<RequestLog[]>(`/request_logs?${queryParams.toString()}`);
 		return response || [];
 	} catch (error) {
 		console.error('获取请求日志失败:', error);
