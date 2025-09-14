@@ -7,7 +7,7 @@ from backend.app.core.logging import app_logger
 from backend.app.db.base_migration_manager import BaseMigrationManager
 
 # 定义数据库的当前版本
-CURRENT_DB_VERSION = 2
+CURRENT_DB_VERSION = 4
 
 # 迁移函数字典，键为版本号，值为对应的迁移函数
 MIGRATIONS: Dict[int, Callable[[Any], Awaitable[None]]] = {}
@@ -47,6 +47,18 @@ async def _migration_v3(db: redis.Redis):
 
 
 MIGRATIONS[3] = _migration_v3
+
+
+async def _migration_v4(db: redis.Redis):
+    """
+    迁移到版本 4：Redis 无需模式迁移，仅记录。
+    """
+    app_logger.info(
+        "Running Redis migration to version 4: No schema changes needed for request_logs."
+    )
+
+
+MIGRATIONS[4] = _migration_v4
 
 
 class RedisMigrationManager(BaseMigrationManager):

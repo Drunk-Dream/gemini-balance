@@ -8,7 +8,7 @@ from backend.app.core.logging import app_logger
 from backend.app.db.base_migration_manager import BaseMigrationManager
 
 # 定义数据库的当前版本
-CURRENT_DB_VERSION = 3
+CURRENT_DB_VERSION = 4
 
 # 迁移函数字典，键为版本号，值为对应的迁移函数
 MIGRATIONS: Dict[int, Callable[[aiosqlite.Connection], Awaitable[None]]] = {}
@@ -68,7 +68,9 @@ async def _migration_v3(db: aiosqlite.Connection):
     """
     迁移到版本 3：从 key_states 表中移除 last_usage_date 列。
     """
-    app_logger.info("Running migration to version 3: Removing 'last_usage_date' from 'key_states' table.")
+    app_logger.info(
+        "Running migration to version 3: Removing 'last_usage_date' from 'key_states' table."
+    )
 
     # 1. 将旧表重命名
     await db.execute("ALTER TABLE key_states RENAME TO old_key_states")
@@ -117,6 +119,31 @@ async def _migration_v3(db: aiosqlite.Connection):
 
 
 MIGRATIONS[3] = _migration_v3
+
+
+async def _migration_v4(db: aiosqlite.Connection):
+    """
+    迁移到版本 4：创建 request_logs 表。
+    """
+    app_logger.info("Running migration to version 4: Creating 'request_logs' table.")
+    await db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS request_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id TEXT NOT NULL,
+            request_time REAL NOT NULL,
+            key_identifier TEXT NOT NULL,
+            auth_key_alias TEXT NOT NULL,
+            model_name TEXT NOT NULL,
+            is_success INTEGER NOT NULL
+        )
+        """
+    )
+    await db.commit()
+    app_logger.info("'request_logs' table created or already exists.")
+
+
+MIGRATIONS[4] = _migration_v4
 
 
 class SQLiteMigrationManager(BaseMigrationManager):
