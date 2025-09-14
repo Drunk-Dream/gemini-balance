@@ -103,6 +103,13 @@ class KeyStateManager:
     async def mark_key_fail(
         self, key_identifier: str, error_type: str, request_info: RequestInfo
     ):
+        from datetime import datetime
+
+        import pytz
+
+        from backend.app.services import request_logs_manager
+        from backend.app.services.request_logs.schemas import RequestLog
+
         async with self._lock:
             # 取消对应的超时任务
             if key_identifier in self._timeout_tasks:
@@ -154,7 +161,26 @@ class KeyStateManager:
 
             await self._save_key_state(key_identifier, state)
 
+            # 记录请求日志
+            log_entry = RequestLog(
+                id=None,
+                request_id=request_id,
+                request_time=datetime.now(pytz.utc),
+                key_identifier=key_identifier,
+                auth_key_alias=request_info.auth_key_alias,
+                model_name=request_info.model_id,
+                is_success=False,
+            )
+            await request_logs_manager.record_request_log(log_entry)
+
     async def mark_key_success(self, key_identifier: str, request_info: RequestInfo):
+        from datetime import datetime
+
+        import pytz
+
+        from backend.app.services import request_logs_manager
+        from backend.app.services.request_logs.schemas import RequestLog
+
         async with self._lock:
             # 取消对应的超时任务
             model = request_info.model_id
@@ -181,6 +207,18 @@ class KeyStateManager:
 
             await self._save_key_state(key_identifier, state)
             await self._db_manager.reactivate_key(key_identifier)
+
+            # 记录请求日志
+            log_entry = RequestLog(
+                id=None,
+                request_id=request_info.request_id,
+                request_time=datetime.now(pytz.utc),
+                key_identifier=key_identifier,
+                auth_key_alias=request_info.auth_key_alias,
+                model_name=request_info.model_id,
+                is_success=True,
+            )
+            await request_logs_manager.record_request_log(log_entry)
 
     async def get_key_states(self) -> List[KeyStatusResponse]:
         async with self._lock:
