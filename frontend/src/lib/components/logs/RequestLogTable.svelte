@@ -5,9 +5,8 @@
 		{ key: 'request_id', label: '请求 ID' },
 		{ key: 'request_time', label: '请求时间' },
 		{ key: 'key_identifier', label: '密钥标识符' },
-		{ key: 'auth_key_alias', label: '认证密钥别名' },
+		{ key: 'auth_key_alias', label: '用户' },
 		{ key: 'model_name', label: '模型名称' },
-		{ key: 'prompt_tokens', label: 'Prompt Tokens' },
 		{ key: 'is_success', label: '成功' }
 	];
 
