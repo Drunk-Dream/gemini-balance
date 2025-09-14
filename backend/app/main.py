@@ -9,6 +9,9 @@ from backend.app.api.management.endpoints.auth import router as auth_router
 from backend.app.api.management.endpoints.auth_keys import router as auth_keys_router
 from backend.app.api.management.endpoints.keys import router as keys_router
 from backend.app.api.management.endpoints.logs import router as logs_router
+from backend.app.api.management.endpoints.request_logs import (
+    router as request_logs_router,
+)
 from backend.app.api.management.endpoints.status import router as status_router
 from backend.app.api.v1.endpoints.chat import router as openai_chat_router
 from backend.app.api.v1beta.endpoints.gemini import router as gemini_router
@@ -55,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(status_router, prefix="/api", tags=["Status"])
     app.include_router(auth_keys_router, prefix="/api", tags=["Auth Keys"])
     app.include_router(logs_router, prefix="/api", tags=["Logs"])
+    app.include_router(request_logs_router, prefix="/api", tags=["Request Logs"])
     app.include_router(keys_router, prefix="/api", tags=["Keys"])
 
     frontend_dir = Path("frontend/build")

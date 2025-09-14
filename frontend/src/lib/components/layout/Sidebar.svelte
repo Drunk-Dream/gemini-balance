@@ -10,7 +10,8 @@
     const navLinks = [
         { name: '密钥管理', href: '/' },
         { name: '认证管理', href: '/auth-keys' },
-        { name: '日志查看', href: '/logs' }
+        { name: '应用日志', href: '/logs' },
+        { name: '请求日志', href: '/request-logs' }
     ];
 
     function handleLogout() {

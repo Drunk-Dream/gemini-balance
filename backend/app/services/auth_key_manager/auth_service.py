@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Optional
 
 from backend.app.api.management.schemas.auth_keys import AuthKey
-from backend.app.services import auth_key_manager
+from backend.app.core.config import settings
+from backend.app.services.auth_key_manager import get_auth_db_manager
 
 if TYPE_CHECKING:
     from backend.app.api.management.schemas.auth_keys import AuthKeyCreate
@@ -16,7 +17,7 @@ class AuthService:
     """
 
     def __init__(self):
-        self.db_manager = auth_key_manager
+        self.db_manager = get_auth_db_manager(settings)
 
     async def get_key(self, api_key: str) -> Optional[AuthKey]:
         """Retrieves an authentication key by its API key and increments its call count."""

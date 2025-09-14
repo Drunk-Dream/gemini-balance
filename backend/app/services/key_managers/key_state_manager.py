@@ -10,6 +10,8 @@ import pytz
 from pydantic import BaseModel
 
 from backend.app.core.logging import app_logger
+from backend.app.services.request_logs import get_request_log_manager
+from backend.app.services.request_logs.schemas import RequestLog
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
@@ -42,6 +44,7 @@ class KeyStateManager:
         self._wakeup_event = asyncio.Event()
         self._db_manager = db_manager
         self._timeout_tasks: Dict[str, asyncio.Task] = {}
+        self._request_log_manager = get_request_log_manager(settings)
 
     def _get_key_identifier(self, key: str) -> str:
         """生成一个对日志友好且唯一的密钥标识符"""
@@ -103,12 +106,6 @@ class KeyStateManager:
     async def mark_key_fail(
         self, key_identifier: str, error_type: str, request_info: RequestInfo
     ):
-        from datetime import datetime
-
-        import pytz
-
-        from backend.app.services import request_logs_manager
-        from backend.app.services.request_logs.schemas import RequestLog
 
         async with self._lock:
             # 取消对应的超时任务
@@ -171,15 +168,9 @@ class KeyStateManager:
                 model_name=request_info.model_id,
                 is_success=False,
             )
-            await request_logs_manager.record_request_log(log_entry)
+            await self._request_log_manager.record_request_log(log_entry)
 
     async def mark_key_success(self, key_identifier: str, request_info: RequestInfo):
-        from datetime import datetime
-
-        import pytz
-
-        from backend.app.services import request_logs_manager
-        from backend.app.services.request_logs.schemas import RequestLog
 
         async with self._lock:
             # 取消对应的超时任务
@@ -218,7 +209,7 @@ class KeyStateManager:
                 model_name=request_info.model_id,
                 is_success=True,
             )
-            await request_logs_manager.record_request_log(log_entry)
+            await self._request_log_manager.record_request_log(log_entry)
 
     async def get_key_states(self) -> List[KeyStatusResponse]:
         async with self._lock:
