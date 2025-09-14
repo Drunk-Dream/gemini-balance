@@ -13,29 +13,29 @@ class AuthDBManager(ABC):
     @abstractmethod
     async def get_key(self, api_key: str) -> Optional[AuthKey]:
         """Retrieve an authentication key by its API key."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def create_key(self, auth_key: AuthKey) -> AuthKey:
         """Create a new authentication key."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_all_keys(self) -> List[AuthKey]:
         """Retrieve all authentication keys."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def update_key_alias(self, api_key: str, new_alias: str) -> Optional[AuthKey]:
         """Update the alias of an existing authentication key."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def delete_key(self, api_key: str) -> bool:
         """Delete an authentication key."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def increment_call_count(self, api_key: str):
         """Increment the call count for a given API key."""
-        pass
+        raise NotImplementedError

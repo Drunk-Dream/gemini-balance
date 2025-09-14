@@ -93,7 +93,7 @@ class ApiService(ABC):
         Abstract method to get the specific API endpoint URL.
         Must be implemented by subclasses.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def _prepare_headers(self, api_key: str) -> Dict[str, str]:
@@ -101,7 +101,7 @@ class ApiService(ABC):
         Abstract method to prepare request headers, including API key.
         Must be implemented by subclasses.
         """
-        pass
+        raise NotImplementedError
 
     async def _request_generator(
         self,
@@ -334,7 +334,7 @@ class ApiService(ABC):
         """
         Handles the logic of generating content from the API, including error handling and retrying.
         """
-        pass
+        raise NotImplementedError
 
     async def create_chat_completion(
         self,

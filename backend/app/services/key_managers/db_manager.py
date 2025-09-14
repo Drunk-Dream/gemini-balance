@@ -29,79 +29,79 @@ class DBManager(ABC):
     @abstractmethod
     async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
         """Get the state of a single key."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_key_from_identifier(self, key_identifier: str) -> Optional[str]:
         """Get the raw API key from its identifier."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def save_key_state(self, key_identifier: str, state: "KeyState"):
         """Save the state of a single key."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_all_key_states(self) -> List[KeyState]:
         """Get the states of all keys."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_next_available_key(self) -> Optional[str]:
         """Get the next available key identifier."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def move_to_cooldown(self, key_identifier: str, cool_down_until: float):
         """Move a key to the cooldown queue."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_releasable_keys(self) -> List[str]:
         """Get all keys that have finished their cooldown."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_keys_in_use(self) -> List[str]:
         """Get all keys that are currently in use."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def reactivate_key(self, key_identifier: str):
         """Reactivate a key, moving it back to the available queue."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def release_key_from_use(self, key_identifier: str):
         """Release a key from being in use, setting its is_in_use flag to 0."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def move_to_use(self, key_identifier: str):
         """Mark a key as in use and update its last usage time."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def add_key(self, key_identifier: str, api_key: str):
         """Add a new API key to the database."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def delete_key(self, key_identifier: str):
         """Delete an API key from the database."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def reset_key_state(self, key_identifier: str):
         """Reset the state of a specific API key."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def reset_all_key_states(self):
         """Reset the state of all API keys."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_min_cool_down_until(self) -> Optional[float]:
         """Get the minimum cool_down_until value among all cooled-down keys."""
-        pass
+        raise NotImplementedError
