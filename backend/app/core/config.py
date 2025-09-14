@@ -31,9 +31,6 @@ class Settings(BaseSettings):
     # 数据库配置
     DATABASE_TYPE: str = "sqlite"
     SQLITE_DB: str = "data/sqlite.db"
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
-    REDIS_DB: int = 0
     FORCE_RESET_DATABASE: bool = False
 
     # 认证与安全配置
@@ -48,8 +45,8 @@ class Settings(BaseSettings):
 
     @field_validator("DATABASE_TYPE")
     def validate_database_type(cls, v: str) -> str:
-        if v not in ["redis", "sqlite"]:
-            raise ValueError("DATABASE_TYPE must be 'redis' or 'sqlite'")
+        if v != "sqlite":
+            raise ValueError("DATABASE_TYPE must be 'sqlite'")
         return v
 
 
@@ -74,9 +71,6 @@ async def print_non_sensitive_settings(logger: Logger):
         "DEFAULT_CHECK_COOLED_DOWN_SECONDS": settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS,
         "DATABASE_TYPE": settings.DATABASE_TYPE,
         "SQLITE_DB": settings.SQLITE_DB,
-        "REDIS_HOST": settings.REDIS_HOST,
-        "REDIS_PORT": settings.REDIS_PORT,
-        "REDIS_DB": settings.REDIS_DB,
         "FORCE_RESET_DATABASE": settings.FORCE_RESET_DATABASE,
         "ALGORITHM": settings.ALGORITHM,
         "ACCESS_TOKEN_EXPIRE_MINUTES": settings.ACCESS_TOKEN_EXPIRE_MINUTES,
