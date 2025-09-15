@@ -1,4 +1,30 @@
+import { formatInTimeZone } from 'date-fns-tz';
+
 export function colorizeLog(logLine: string): string {
+	// 首先处理时间戳
+	const timestampRegex = /(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}Z)/;
+	const match = logLine.match(timestampRegex);
+
+	if (match && match[1]) {
+		const utcTimestampStr = match[1];
+		try {
+			// 将时间戳字符串转换为严格的 ISO 8601 格式
+			const compliantTimestampStr = utcTimestampStr.replace(' ', 'T').replace(',', '.');
+			const date = new Date(compliantTimestampStr);
+			// 使用 date-fns-tz 格式化为本地时区
+			const localTimestampStr = formatInTimeZone(
+				date,
+				Intl.DateTimeFormat().resolvedOptions().timeZone,
+				'yyyy-MM-dd HH:mm:ss,SSS'
+			);
+			logLine = logLine.replace(match[0], localTimestampStr);
+		} catch (e) {
+			console.error('Error parsing or formatting timestamp:', e);
+			// 如果解析失败，保留原始时间戳但移除 'Z'
+			logLine = logLine.replace(match[0], match[1].slice(0, -1)); // 移除末尾的 'Z'
+		}
+	}
+
 	const patterns = [
 		{ regex: /(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})/, class: 'text-gray-400' }, // Timestamp
 		{ regex: /\b(INFO)\b/, class: 'font-bold text-emerald-400' }, // Log Level INFO
@@ -13,7 +39,7 @@ export function colorizeLog(logLine: string): string {
 		{ regex: /\b(OpenAI|Gemini)\b/g, class: 'text-purple-400' }, // OpenAI or Gemini keyword
 		{ regex: /\b(gemini-[\w.-]+|gpt-[\w.-]+)\b/g, class: 'text-pink-400' }, // Model name
 		{ regex: /'(.*?)'/g, class: 'text-cyan-400' }, // Quoted strings
-		{ regex: /\b(\w+_error)\b/g, class: 'text-red-300' } // Any word ending with _error // BUG: this is not working
+		{ regex: /\b(\w+_error)\b/g, class: 'text-red-300' } // Any word ending with _error
 	];
 
 	let coloredLogLine = logLine;
