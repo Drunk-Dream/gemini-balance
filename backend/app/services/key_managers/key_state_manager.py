@@ -11,7 +11,6 @@ from pydantic import BaseModel
 from backend.app.core.config import get_settings
 from backend.app.core.logging import app_logger
 from backend.app.services.key_managers.background_tasks import (
-    BackgroundTaskManager,
     get_background_task_manager,
     with_key_manager_lock,
 )
@@ -22,6 +21,7 @@ from backend.app.services.request_logs.schemas import RequestLog
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
     from backend.app.services.chat_service.base_service import RequestInfo
+    from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
     from backend.app.services.key_managers.db_manager import DBManager, KeyState
 
 
