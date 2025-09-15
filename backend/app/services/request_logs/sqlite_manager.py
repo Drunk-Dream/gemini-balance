@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 
 import aiosqlite
 
@@ -114,7 +115,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 RequestLog(
                     id=row["id"],
                     request_id=row["request_id"],
-                    request_time=datetime.fromtimestamp(row["request_time"]),
+                    request_time=datetime.fromtimestamp(row["request_time"], tz=ZoneInfo("UTC")),
                     key_identifier=row["key_identifier"],
                     auth_key_alias=row["auth_key_alias"],
                     model_name=row["model_name"],
