@@ -6,10 +6,13 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 import pytz
+from fastapi import Depends
 from pydantic import BaseModel
 
+from backend.app.core.config import get_settings
 from backend.app.core.logging import app_logger
-from backend.app.services.key_managers import background_tasks
+from backend.app.services.key_managers import background_tasks, get_key_db_manager
+from backend.app.services.request_logs import get_request_log_manager
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLog
 
@@ -33,9 +36,9 @@ class KeyStatusResponse(BaseModel):
 class KeyStateManager:
     def __init__(
         self,
-        settings: Settings,
-        db_manager: DBManager,
-        request_log_manager: RequestLogManager,
+        settings: Settings = Depends(get_settings),
+        db_manager: DBManager = Depends(get_key_db_manager),
+        request_log_manager: RequestLogManager = Depends(get_request_log_manager),
     ):
         self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD

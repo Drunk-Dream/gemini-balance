@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 
 from backend.app.core.security import get_current_user
-from backend.app.services.key_managers import get_key_manager
 from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 router = APIRouter()
@@ -10,7 +9,7 @@ router = APIRouter()
 @router.get("/status/keys", summary="获取所有 API Key 的状态和用量信息")
 async def get_api_key_status(
     current_user: bool = Depends(get_current_user),
-    key_manager: KeyStateManager = Depends(get_key_manager),
+    key_manager: KeyStateManager = Depends(KeyStateManager),
 ):  # 保护此端点
     """
     返回所有配置的 API Key 的详细状态列表，包括：

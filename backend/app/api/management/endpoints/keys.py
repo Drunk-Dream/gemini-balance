@@ -7,7 +7,6 @@ from backend.app.api.management.schemas.keys import (
 )
 from backend.app.core.logging import app_logger
 from backend.app.core.security import get_current_user
-from backend.app.services.key_managers import get_key_manager
 from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 router = APIRouter()
@@ -21,7 +20,7 @@ router = APIRouter()
 async def add_keys(
     request: AddKeyRequest,
     current_user: str = Depends(get_current_user),
-    key_manager: KeyStateManager = Depends(get_key_manager),
+    key_manager: KeyStateManager = Depends(KeyStateManager),
 ):
     """
     Add one or more new API keys.
@@ -50,7 +49,7 @@ async def add_keys(
 async def delete_key(
     key_identifier: str,
     current_user: str = Depends(get_current_user),
-    key_manager: KeyStateManager = Depends(get_key_manager),
+    key_manager: KeyStateManager = Depends(KeyStateManager),
 ):
     """
     Delete a specific API key by its identifier.
@@ -77,7 +76,7 @@ async def delete_key(
 async def reset_single_key_state(
     key_identifier: str,
     current_user: str = Depends(get_current_user),
-    key_manager: KeyStateManager = Depends(get_key_manager),
+    key_manager: KeyStateManager = Depends(KeyStateManager),
 ):
     """
     Reset the state of a specific API key.
@@ -103,7 +102,7 @@ async def reset_single_key_state(
 )
 async def reset_all_keys_state(
     current_user: str = Depends(get_current_user),
-    key_manager: KeyStateManager = Depends(get_key_manager),
+    key_manager: KeyStateManager = Depends(KeyStateManager),
 ):
     """
     Reset the state of all API keys.

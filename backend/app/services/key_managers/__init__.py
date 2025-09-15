@@ -5,23 +5,19 @@ from typing import TYPE_CHECKING
 from fastapi import Depends
 
 from backend.app.core.config import get_settings
-from backend.app.services.key_managers.key_state_manager import KeyStateManager
 from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
-from backend.app.services.request_logs import get_request_log_manager
-from backend.app.services.request_logs.request_log_manager import RequestLogManager
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
     from backend.app.services.key_managers.db_manager import DBManager
 
 
-def get_key_manager(
+def get_key_db_manager(
     settings: Settings = Depends(get_settings),
-    request_log_manager: RequestLogManager = Depends(get_request_log_manager),
-) -> KeyStateManager:
+) -> DBManager:
     db_manager: DBManager
     if settings.DATABASE_TYPE == "sqlite":
         db_manager = SQLiteDBManager(settings)
     else:
         raise ValueError(f"Unsupported key manager type: {settings.DATABASE_TYPE}")
-    return KeyStateManager(settings, db_manager, request_log_manager)
+    return db_manager
