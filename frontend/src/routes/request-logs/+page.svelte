@@ -8,7 +8,7 @@
 	let loading: boolean = $state(true);
 	let error: string | null = $state(null);
 	let currentPage: number = $state(1);
-	const itemsPerPage: number = 25;
+	const itemsPerPage: number = 15;
 	let hasMore: boolean = $state(true); // 用于判断是否有更多页
 
 	async function fetchLogs() {

@@ -19,8 +19,8 @@ from backend.app.core.config import print_non_sensitive_settings, settings
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import setup_app_logger, setup_transaction_logger
 from backend.app.db import migration_manager
-from backend.app.services.key_managers import background_tasks
-from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
+from backend.app.services.key_managers.background_tasks import background_task_manager
+from backend.app.services.key_managers.key_state_manager import get_key_db_manager
 
 
 @asynccontextmanager
@@ -30,24 +30,20 @@ async def lifespan(app: FastAPI):
     await migration_manager.run_migrations()
     logger.info("Database migrations completed.")
 
-    # 根据配置创建 DBManager 实例
-    if settings.DATABASE_TYPE == "sqlite":
-        db_manager = SQLiteDBManager(settings)
-    else:
-        raise ValueError(f"Unsupported key manager type: {settings.DATABASE_TYPE}")
+    db_manager = get_key_db_manager(settings)
 
     logger.info("Initializing KeyManager states...")
-    await background_tasks.initialize_key_states(db_manager)
+    await background_task_manager.initialize_key_states(db_manager)
 
     logger.info("Starting background task for KeyManager...")
-    await background_tasks.start_background_task(
+    await background_task_manager.start_background_task(
         db_manager,
         settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS,
         settings.API_KEY_COOL_DOWN_SECONDS,
     )
     yield
     logger.info("Stopping background task for KeyManager...")
-    background_tasks.stop_background_task()
+    background_task_manager.stop_background_task()
 
 
 def create_app() -> FastAPI:
