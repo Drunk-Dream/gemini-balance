@@ -97,22 +97,24 @@
 		{:else}
 			<RequestLogTable {logs} />
 
-			<div class="mt-4 flex items-center justify-between">
+			<div
+				class="mt-4 flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0"
+			>
 				<button
-					class="rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"
+					class="cursor-pointer rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"
 					onclick={goToPreviousPage}
 					disabled={currentPage === 1}
 				>
 					上一页
 				</button>
 
-				<div class="flex items-center space-x-1">
+				<div class="flex flex-wrap items-center justify-center space-x-1">
 					{#each getPageNumbers() as page}
 						{#if page === '...'}
 							<span class="px-2 py-1">...</span>
 						{:else}
 							<button
-								class="rounded px-3 py-1 {currentPage === page
+								class="cursor-pointer rounded px-3 py-1 {currentPage === page
 									? 'bg-blue-700 text-white'
 									: 'bg-blue-500 text-white'}"
 								onclick={() => goToPage(page as number)}
@@ -123,20 +125,22 @@
 					{/each}
 				</div>
 
-				<div class="flex items-center space-x-2">
-					<span>第 {currentPage} / {totalPages} 页 (共 {totalItems} 条)</span>
+				<div class="flex items-center space-x-2 text-sm md:text-base">
+					<span class="whitespace-nowrap"
+						>第 {currentPage} / {totalPages} 页 (共 {totalItems} 条)</span
+					>
 					<input
 						type="number"
 						min="1"
 						max={totalPages}
 						value={currentPage}
 						onchange={(e) => goToPage(parseInt((e.target as HTMLInputElement).value))}
-						class="w-20 rounded border p-1 text-center"
+						class="w-16 rounded border p-1 text-center text-sm md:w-20 md:text-base"
 					/>
 				</div>
 
 				<button
-					class="rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"
+					class="cursor-pointer rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"
 					onclick={goToNextPage}
 					disabled={currentPage === totalPages}
 				>
