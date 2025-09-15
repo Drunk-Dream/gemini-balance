@@ -5,9 +5,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
+from zoneinfo import ZoneInfo
 
 import aiosqlite
-import pytz  # type: ignore
 
 from backend.app.core.logging import app_logger
 from backend.app.services.key_managers.db_manager import DBManager, KeyState
@@ -241,7 +241,7 @@ class SQLiteDBManager(DBManager):
             await db.commit()
 
     def _row_to_key_state(self, row: aiosqlite.Row) -> KeyState:
-        eastern_tz = pytz.timezone("America/New_York")
+        eastern_tz = ZoneInfo("America/New_York")
         last_usage_date = datetime.fromtimestamp(
             row["last_usage_time"], tz=eastern_tz
         ).strftime("%Y-%m-%d")

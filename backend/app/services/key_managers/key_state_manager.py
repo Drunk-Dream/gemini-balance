@@ -3,8 +3,8 @@ from __future__ import annotations
 import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
-import pytz
 from fastapi import Depends
 from pydantic import BaseModel
 
@@ -152,7 +152,7 @@ class KeyStateManager:
         log_entry = RequestLog(
             id=None,
             request_id=request_id,
-            request_time=datetime.now(pytz.utc),
+            request_time=datetime.now(ZoneInfo("UTC")),
             key_identifier=key_identifier,
             auth_key_alias=request_info.auth_key_alias,
             model_name=request_info.model_id,
@@ -174,7 +174,7 @@ class KeyStateManager:
         state.request_fail_count = 0
         state.last_usage_time = time.time()
         # 使用美国东部时区计算日期
-        eastern_tz = pytz.timezone("America/New_York")
+        eastern_tz = ZoneInfo("America/New_York")
         # 从时间戳获取日期，并格式化为字符串
         current_date = datetime.fromtimestamp(time.time(), tz=eastern_tz).strftime(
             "%Y-%m-%d"
@@ -190,7 +190,7 @@ class KeyStateManager:
         log_entry = RequestLog(
             id=None,
             request_id=request_info.request_id,
-            request_time=datetime.now(pytz.utc),
+            request_time=datetime.now(ZoneInfo("UTC")),
             key_identifier=key_identifier,
             auth_key_alias=request_info.auth_key_alias,
             model_name=request_info.model_id,
@@ -202,7 +202,7 @@ class KeyStateManager:
     async def get_key_states(self) -> List[KeyStatusResponse]:
         states_response = []
         now = time.time()
-        eastern_tz = pytz.timezone("America/New_York")
+        eastern_tz = ZoneInfo("America/New_York")
         current_date = datetime.fromtimestamp(now, tz=eastern_tz).strftime("%Y-%m-%d")
         states = await self._get_all_key_states()
 

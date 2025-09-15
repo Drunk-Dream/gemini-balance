@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import sys
+import time
 from collections import deque
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -14,12 +15,16 @@ APP_LOG_FILE = LOG_DIR / "app.log"
 TRANSACTION_LOG_FILE = LOG_DIR / "transactions.log"
 DEBUG_LOG_FILE = Path(settings.DEBUG_LOG_FILE)
 
-APP_FORMATTER = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+APP_FORMATTER = logging.Formatter("%(asctime)sZ - %(levelname)s - %(message)s")
+APP_FORMATTER.converter = time.gmtime
 CONSOLE_FORMATTER = logging.Formatter("%(levelname)s - %(name)s - %(message)s")
-TRANSACTION_FORMATTER = logging.Formatter("%(asctime)s - %(message)s")
+CONSOLE_FORMATTER.converter = time.gmtime
+TRANSACTION_FORMATTER = logging.Formatter("%(asctime)sZ - %(message)s")
+TRANSACTION_FORMATTER.converter = time.gmtime
 DEBUG_FORMATTER = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    "%(asctime)sZ - %(name)s - %(levelname)s - %(message)s"
 )
+DEBUG_FORMATTER.converter = time.gmtime
 
 # --- Loggers ---
 app_logger = logging.getLogger("app")
