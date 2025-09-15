@@ -2,11 +2,29 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional
 
+from fastapi import Depends
+
 from backend.app.api.management.schemas.auth_keys import AuthKey
-from backend.app.services.auth_key_manager.db_manager import AuthDBManager
+from backend.app.core.config import Settings, get_settings
+from backend.app.services.auth_key_manager.sqlite_manager import SQLiteAuthDBManager
 
 if TYPE_CHECKING:
     from backend.app.api.management.schemas.auth_keys import AuthKeyCreate
+    from backend.app.services.auth_key_manager.db_manager import AuthDBManager
+
+
+def get_auth_db_manager(
+    settings: Settings = Depends(get_settings),
+) -> AuthDBManager:
+    """
+    Returns an instance of SQLiteAuthDBManager.
+    """
+    if settings.DATABASE_TYPE == "sqlite":
+        db_manager = SQLiteAuthDBManager(settings)
+    else:
+        raise ValueError(f"Unsupported database type: {settings.DATABASE_TYPE}")
+
+    return db_manager
 
 
 class AuthService:
@@ -15,7 +33,7 @@ class AuthService:
     Encapsulates business logic for key creation, retrieval, update, and deletion.
     """
 
-    def __init__(self, db_manager: AuthDBManager):
+    def __init__(self, db_manager: AuthDBManager = Depends(get_auth_db_manager)):
         self._db_manager = db_manager
 
     async def get_key(self, api_key: str) -> Optional[AuthKey]:

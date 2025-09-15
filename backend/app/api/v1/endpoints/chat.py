@@ -5,7 +5,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.responses import StreamingResponse
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest
-from backend.app.services.auth_key_manager import get_auth_manager
 from backend.app.services.auth_key_manager.auth_service import AuthService
 from backend.app.services.chat_service.openai_service import OpenAIService
 
@@ -15,7 +14,7 @@ security_scheme = HTTPBearer()
 
 async def verify_bearer_token(
     authorization: HTTPAuthorizationCredentials = Depends(security_scheme),
-    auth_service: AuthService = Depends(get_auth_manager),
+    auth_service: AuthService = Depends(AuthService),
 ) -> str:
     """
     FastAPI dependency to verify an authentication key from the Authorization header (Bearer token).
