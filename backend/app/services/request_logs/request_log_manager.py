@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import Depends
 
 from backend.app.core.config import Settings, get_settings
 from backend.app.services.request_logs.db_manager import RequestLogDBManager
-from backend.app.services.request_logs.schemas import RequestLog
+from backend.app.services.request_logs.schemas import RequestLog, RequestLogsResponse
 from backend.app.services.request_logs.sqlite_manager import SQLiteRequestLogManager
 
 
@@ -48,11 +48,11 @@ class RequestLogManager:
         is_success: Optional[bool] = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[RequestLog]:
+    ) -> RequestLogsResponse:
         """
-        根据过滤条件获取请求日志条目。
+        根据过滤条件获取请求日志条目及其总数。
         """
-        return await self._db_manager.get_request_logs(
+        logs, total = await self._db_manager.get_request_logs_with_count(
             request_time_start=request_time_start,
             request_time_end=request_time_end,
             key_identifier=key_identifier,
@@ -62,3 +62,4 @@ class RequestLogManager:
             limit=limit,
             offset=offset,
         )
+        return RequestLogsResponse(logs=logs, total=total)

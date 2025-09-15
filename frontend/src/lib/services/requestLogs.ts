@@ -1,20 +1,18 @@
 import { api } from '$lib/utils/api';
 
 interface RequestLog {
-	id: string;
-	request_time: string;
-	response_time: string;
-	request_duration_ms: number;
-	key_identifier: string;
-	auth_key_alias: string;
-	model_name: string;
-	prompt_tokens: number;
-	completion_tokens: number;
-	total_tokens: number;
-	is_success: boolean;
-	status_code: number;
-	error_message: string | null;
+	id: number;
 	request_id: string;
+	request_time: string;
+	key_identifier: string;
+	auth_key_alias?: string;
+	model_name?: string;
+	is_success: boolean;
+}
+
+interface RequestLogsResponse {
+	logs: RequestLog[];
+	total: number;
 }
 
 interface GetRequestLogsParams {
@@ -28,7 +26,9 @@ interface GetRequestLogsParams {
 	offset?: number;
 }
 
-export async function getRequestLogs(params: GetRequestLogsParams = {}): Promise<RequestLog[]> {
+export async function getRequestLogs(
+	params: GetRequestLogsParams = {}
+): Promise<RequestLogsResponse> {
 	const queryParams = new URLSearchParams();
 	for (const [key, value] of Object.entries(params)) {
 		if (value !== undefined && value !== null) {
@@ -37,8 +37,11 @@ export async function getRequestLogs(params: GetRequestLogsParams = {}): Promise
 	}
 
 	try {
-		const response = await api.get<RequestLog[]>(`/request_logs?${queryParams.toString()}`);
-		return response || [];
+		const response = await api.get<RequestLogsResponse>(`/request_logs?${queryParams.toString()}`);
+		if (!response) {
+			throw new Error('获取请求日志失败：API 返回空数据');
+		}
+		return response;
 	} catch (error) {
 		console.error('获取请求日志失败:', error);
 		throw error;

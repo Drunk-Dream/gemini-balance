@@ -19,7 +19,7 @@ class RequestLogDBManager(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def get_request_logs(
+    async def get_request_logs_with_count(
         self,
         request_time_start: Optional[datetime] = None,
         request_time_end: Optional[datetime] = None,
@@ -29,9 +29,8 @@ class RequestLogDBManager(abc.ABC):
         is_success: Optional[bool] = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[RequestLog]:
+    ) -> tuple[List[RequestLog], int]:
         """
-        根据过滤条件获取请求日志条目。
-        如果某个参数为 None，则表示该列不作为过滤条件。
+        根据过滤条件获取请求日志条目及其总数。
         """
         raise NotImplementedError

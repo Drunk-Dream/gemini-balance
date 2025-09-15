@@ -1,18 +1,18 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
 from backend.app.core.security import get_current_user
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
-from backend.app.services.request_logs.schemas import RequestLog
+from backend.app.services.request_logs.schemas import RequestLogsResponse
 
 router = APIRouter()
 
 
 @router.get(
     "/request_logs",
-    response_model=List[RequestLog],
+    response_model=RequestLogsResponse,
     summary="获取请求日志",
 )
 async def get_request_logs_endpoint(
@@ -30,9 +30,9 @@ async def get_request_logs_endpoint(
     offset: int = Query(0, ge=0, description="跳过的日志条目数量"),
     current_user: str = Depends(get_current_user),
     request_logs_manager: RequestLogManager = Depends(RequestLogManager),
-) -> List[RequestLog]:
+) -> RequestLogsResponse:
     """
-    根据过滤条件获取请求日志条目。
+    根据过滤条件获取请求日志条目及其总数。
     """
     return await request_logs_manager.get_request_logs(
         request_time_start=request_time_start,

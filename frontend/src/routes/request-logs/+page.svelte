@@ -9,16 +9,18 @@
 	let error: string | null = $state(null);
 	let currentPage: number = $state(1);
 	const itemsPerPage: number = 15;
-	let hasMore: boolean = $state(true); // 用于判断是否有更多页
+	let totalItems: number = $state(0);
+	let totalPages: number = $state(1);
 
 	async function fetchLogs() {
 		loading = true;
 		error = null;
 		try {
 			const offset = (currentPage - 1) * itemsPerPage;
-			const fetchedLogs = await getRequestLogs({ limit: itemsPerPage, offset });
-			logs = fetchedLogs;
-			hasMore = fetchedLogs.length === itemsPerPage; // 如果获取到的数量等于每页数量，说明可能还有更多
+			const response = await getRequestLogs({ limit: itemsPerPage, offset });
+			logs = response.logs;
+			totalItems = response.total;
+			totalPages = Math.ceil(totalItems / itemsPerPage);
 		} catch (e: any) {
 			error = e.message;
 		} finally {
@@ -37,9 +39,48 @@
 	}
 
 	function goToNextPage() {
-		if (hasMore) {
+		if (currentPage < totalPages) {
 			currentPage++;
 		}
+	}
+
+	function goToPage(page: number) {
+		if (page >= 1 && page <= totalPages) {
+			currentPage = page;
+		}
+	}
+
+	function getPageNumbers(): (number | string)[] {
+		const pageNumbers: (number | string)[] = [];
+		const maxPagesToShow = 5; // 显示的页码数量 (例如: 1 ... 4 5 6 ... 10)
+
+		if (totalPages <= maxPagesToShow) {
+			for (let i = 1; i <= totalPages; i++) {
+				pageNumbers.push(i);
+			}
+		} else {
+			const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+			const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+			if (startPage > 1) {
+				pageNumbers.push(1);
+				if (startPage > 2) {
+					pageNumbers.push('...');
+				}
+			}
+
+			for (let i = startPage; i <= endPage; i++) {
+				pageNumbers.push(i);
+			}
+
+			if (endPage < totalPages) {
+				if (endPage < totalPages - 1) {
+					pageNumbers.push('...');
+				}
+				pageNumbers.push(totalPages);
+			}
+		}
+		return pageNumbers;
 	}
 </script>
 
@@ -64,11 +105,40 @@
 				>
 					上一页
 				</button>
-				<span>第 {currentPage} 页</span>
+
+				<div class="flex items-center space-x-1">
+					{#each getPageNumbers() as page}
+						{#if page === '...'}
+							<span class="px-2 py-1">...</span>
+						{:else}
+							<button
+								class="rounded px-3 py-1 {currentPage === page
+									? 'bg-blue-700 text-white'
+									: 'bg-blue-500 text-white'}"
+								onclick={() => goToPage(page as number)}
+							>
+								{page}
+							</button>
+						{/if}
+					{/each}
+				</div>
+
+				<div class="flex items-center space-x-2">
+					<span>第 {currentPage} / {totalPages} 页 (共 {totalItems} 条)</span>
+					<input
+						type="number"
+						min="1"
+						max={totalPages}
+						value={currentPage}
+						onchange={(e) => goToPage(parseInt((e.target as HTMLInputElement).value))}
+						class="w-20 rounded border p-1 text-center"
+					/>
+				</div>
+
 				<button
 					class="rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"
 					onclick={goToNextPage}
-					disabled={!hasMore}
+					disabled={currentPage === totalPages}
 				>
 					下一页
 				</button>

@@ -39,7 +39,43 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             await db.commit()
             app_logger.debug(f"Request log recorded: {log.request_id}")
 
-    async def get_request_logs(
+    def _build_filter_query(
+        self,
+        request_time_start: Optional[datetime] = None,
+        request_time_end: Optional[datetime] = None,
+        key_identifier: Optional[str] = None,
+        auth_key_alias: Optional[str] = None,
+        model_name: Optional[str] = None,
+        is_success: Optional[bool] = None,
+    ) -> tuple[str, list]:
+        """
+        构建 WHERE 子句和参数列表。
+        """
+        query_parts = ["WHERE 1=1"]
+        params = []
+
+        if request_time_start:
+            query_parts.append("AND request_time >= ?")
+            params.append(request_time_start.timestamp())
+        if request_time_end:
+            query_parts.append("AND request_time <= ?")
+            params.append(request_time_end.timestamp())
+        if key_identifier:
+            query_parts.append("AND key_identifier = ?")
+            params.append(key_identifier)
+        if auth_key_alias:
+            query_parts.append("AND auth_key_alias = ?")
+            params.append(auth_key_alias)
+        if model_name:
+            query_parts.append("AND model_name = ?")
+            params.append(model_name)
+        if is_success is not None:
+            query_parts.append("AND is_success = ?")
+            params.append(int(is_success))
+
+        return " ".join(query_parts), params
+
+    async def get_request_logs_with_count(
         self,
         request_time_start: Optional[datetime] = None,
         request_time_end: Optional[datetime] = None,
@@ -49,40 +85,32 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         is_success: Optional[bool] = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[RequestLog]:
+    ) -> tuple[List[RequestLog], int]:
         """
-        根据过滤条件从 SQLite 数据库获取请求日志条目。
+        根据过滤条件从 SQLite 数据库获取请求日志条目及其总数。
         """
-        query = "SELECT * FROM request_logs WHERE 1=1"
-        params = []
-
-        if request_time_start:
-            query += " AND request_time >= ?"
-            params.append(request_time_start.timestamp())
-        if request_time_end:
-            query += " AND request_time <= ?"
-            params.append(request_time_end.timestamp())
-        if key_identifier:
-            query += " AND key_identifier = ?"
-            params.append(key_identifier)
-        if auth_key_alias:
-            query += " AND auth_key_alias = ?"
-            params.append(auth_key_alias)
-        if model_name:
-            query += " AND model_name = ?"
-            params.append(model_name)
-        if is_success is not None:
-            query += " AND is_success = ?"
-            params.append(int(is_success))
-
-        query += " ORDER BY request_time DESC LIMIT ? OFFSET ?"
-        params.extend([limit, offset])
+        filter_query, filter_params = self._build_filter_query(
+            request_time_start,
+            request_time_end,
+            key_identifier,
+            auth_key_alias,
+            model_name,
+            is_success,
+        )
 
         async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row  # 设置行工厂，以便通过名称访问列
-            cursor = await db.execute(query, params)
+            # 获取总数
+            count_query = f"SELECT COUNT(*) FROM request_logs {filter_query}"
+            cursor = await db.execute(count_query, filter_params)
+            result = await cursor.fetchone()
+            total_count = result[0] if result else 0
+            # 获取分页日志
+            logs_query = f"SELECT * FROM request_logs {filter_query} ORDER BY request_time DESC LIMIT ? OFFSET ?"
+            logs_params = filter_params + [limit, offset]
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(logs_query, logs_params)
             rows = await cursor.fetchall()
-            return [
+            logs = [
                 RequestLog(
                     id=row["id"],
                     request_id=row["request_id"],
@@ -94,3 +122,4 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 )
                 for row in rows
             ]
+            return logs, total_count
