@@ -4,12 +4,12 @@ import asyncio
 import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List, Optional
-from venv import logger
 
 import pytz
 from pydantic import BaseModel
 
 from backend.app.core.logging import app_logger
+from backend.app.services.key_managers import background_tasks
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLog
 
@@ -41,14 +41,7 @@ class KeyStateManager:
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
         self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
         self._key_in_use_timeout_seconds = settings.KEY_IN_USE_TIMEOUT_SECONDS
-        self._default_check_cooled_down_seconds = (
-            settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS
-        )
-        self._lock = asyncio.Lock()
-        self._background_task: Optional[asyncio.Task] = None
-        self._wakeup_event = asyncio.Event()
         self._db_manager = db_manager
-        self._timeout_tasks: Dict[str, asyncio.Task] = {}
         self._request_log_manager = request_log_manager
 
     def _get_key_identifier(self, key: str) -> str:
@@ -70,53 +63,31 @@ class KeyStateManager:
     async def _save_key_state(self, key_identifier: str, state: KeyState):
         await self._db_manager.save_key_state(key_identifier, state)
 
-    async def _timeout_release_key(self, key_identifier: str):
-        """
-        在指定超时后释放密钥，并增加失败计数。
-        """
-        try:
-            await asyncio.sleep(self._key_in_use_timeout_seconds)
-            async with self._lock:
-                state = await self._get_key_state(key_identifier)
-                if state and state.is_in_use:  # 再次检查密钥是否仍在使用中
-                    state.request_fail_count += 1
-                    await self._save_key_state(key_identifier, state)
-                    await self._db_manager.release_key_from_use(key_identifier)
-                    app_logger.warning(
-                        f"Key {key_identifier} released from use due to timeout. "
-                    )
-        except asyncio.CancelledError:
-            app_logger.debug(f"Timeout task for key {key_identifier} was cancelled.")
-        finally:
-            # 无论任务是否完成或取消，都从字典中移除
-            if key_identifier in self._timeout_tasks:
-                del self._timeout_tasks[key_identifier]
-
-    async def initialize(self):
-        async with self._lock:
-            keys_in_use = await self._db_manager.get_keys_in_use()
-            for key in keys_in_use:
-                logger.warning(f"Releasing {key} from use due to initialization.")
-                await self._db_manager.release_key_from_use(key)
-
     async def get_next_key(self) -> Optional[str]:
         key_identifier = await self._db_manager.get_next_available_key()
         if key_identifier:
             await self._db_manager.move_to_use(key_identifier)
             # 启动一个定时任务，在超时后自动释放密钥
-            task = asyncio.create_task(self._timeout_release_key(key_identifier))
-            self._timeout_tasks[key_identifier] = task
+            task = asyncio.create_task(
+                background_tasks.timeout_release_key(
+                    key_identifier,
+                    self._db_manager,
+                    self._key_in_use_timeout_seconds,
+                    self._api_key_failure_threshold,
+                )
+            )
+            background_tasks.timeout_tasks[key_identifier] = task
         return key_identifier
 
     async def mark_key_fail(
         self, key_identifier: str, error_type: str, request_info: RequestInfo
     ):
 
-        async with self._lock:
+        async with background_tasks.key_manager_lock:
             # 取消对应的超时任务
-            if key_identifier in self._timeout_tasks:
-                self._timeout_tasks[key_identifier].cancel()
-                del self._timeout_tasks[key_identifier]
+            if key_identifier in background_tasks.timeout_tasks:
+                background_tasks.timeout_tasks[key_identifier].cancel()
+                del background_tasks.timeout_tasks[key_identifier]
 
             request_id = request_info.request_id
             state = await self._get_key_state(key_identifier)
@@ -149,7 +120,7 @@ class KeyStateManager:
                 await self._db_manager.move_to_cooldown(
                     key_identifier, state.cool_down_until
                 )
-                self._wakeup_event.set()
+                background_tasks.wakeup_event.set()
                 app_logger.warning(
                     f"[Request ID: {request_id}] Key {key_identifier} cooled down for "
                     f"{state.current_cool_down_seconds:.2f}s due to {error_type}."
@@ -177,12 +148,12 @@ class KeyStateManager:
 
     async def mark_key_success(self, key_identifier: str, request_info: RequestInfo):
 
-        async with self._lock:
+        async with background_tasks.key_manager_lock:
             # 取消对应的超时任务
             model = request_info.model_id
-            if key_identifier in self._timeout_tasks:
-                self._timeout_tasks[key_identifier].cancel()
-                del self._timeout_tasks[key_identifier]
+            if key_identifier in background_tasks.timeout_tasks:
+                background_tasks.timeout_tasks[key_identifier].cancel()
+                del background_tasks.timeout_tasks[key_identifier]
 
             state = await self._get_key_state(key_identifier)
             if not state:
@@ -217,7 +188,7 @@ class KeyStateManager:
             await self._request_log_manager.record_request_log(log_entry)
 
     async def get_key_states(self) -> List[KeyStatusResponse]:
-        async with self._lock:
+        async with background_tasks.key_manager_lock:
             states_response = []
             now = time.time()
             eastern_tz = pytz.timezone("America/New_York")
@@ -232,12 +203,12 @@ class KeyStateManager:
                 if state.last_usage_time:
                     if state.last_usage_date != current_date:
                         state.usage_today = {}
-                        await self._save_key_state(
+                        await self._db_manager.save_key_state(
                             key_identifier, state
                         )  # 保存更新后的状态
                 else:  # 如果 last_usage_time 不存在，也重置 usage_today
                     state.usage_today = {}
-                    await self._save_key_state(
+                    await self._db_manager.save_key_state(
                         key_identifier, state
                     )  # 保存更新后的状态
 
@@ -266,67 +237,22 @@ class KeyStateManager:
 
     async def add_key(self, api_key: str) -> str:
         key_identifier = self._get_key_identifier(api_key)
-        async with self._lock:
+        async with background_tasks.key_manager_lock:
             await self._db_manager.add_key(key_identifier, api_key)
             app_logger.info(f"Added new API key: {key_identifier}")
             return key_identifier
 
     async def delete_key(self, key_identifier: str):
-        async with self._lock:
+        async with background_tasks.key_manager_lock:
             await self._db_manager.delete_key(key_identifier)
             app_logger.info(f"Deleted API key: {key_identifier}")
 
     async def reset_key_state(self, key_identifier: str):
-        async with self._lock:
+        async with background_tasks.key_manager_lock:
             await self._db_manager.reset_key_state(key_identifier)
             app_logger.info(f"Reset state for API key: {key_identifier}")
 
     async def reset_all_key_states(self):
-        async with self._lock:
+        async with background_tasks.key_manager_lock:
             await self._db_manager.reset_all_key_states()
             app_logger.info("Reset state for all API keys.")
-
-    async def _release_cooled_down_keys(self):
-        while True:
-            try:
-                releasable_keys = await self._db_manager.get_releasable_keys()
-                for key_identifier in releasable_keys:
-                    async with self._lock:
-                        state = await self._get_key_state(key_identifier)
-                        if state and state.cool_down_until <= time.time():
-                            state.cool_down_until = 0.0
-                            state.request_fail_count = 0
-                            await self._save_key_state(key_identifier, state)
-                            await self._db_manager.reactivate_key(key_identifier)
-                            app_logger.info(f"API key {key_identifier} reactivated.")
-
-                # 获取下一个最近的冷却到期时间戳
-                min_cool_down_until = await self._db_manager.get_min_cool_down_until()
-
-                wait_time = self._default_check_cooled_down_seconds
-                if min_cool_down_until:
-                    now = time.time()
-                    # 计算需要等待的秒数，确保不为负
-                    calculated_wait = max(0, min_cool_down_until - now)
-                    wait_time = calculated_wait
-
-                self._wakeup_event.clear()
-                # 使用计算出的时间或被事件唤醒
-                await asyncio.wait_for(self._wakeup_event.wait(), timeout=wait_time)
-            except asyncio.TimeoutError:
-                # 超时是预期的行为，表示我们等待到了下一个检查点
-                pass
-            except asyncio.CancelledError:
-                # 任务被取消，正常退出
-                break
-
-    async def start_background_task(self):
-        if self._background_task is None:
-            self._background_task = asyncio.create_task(
-                self._release_cooled_down_keys()
-            )
-
-    def stop_background_task(self):
-        if self._background_task:
-            self._background_task.cancel()
-            self._background_task = None

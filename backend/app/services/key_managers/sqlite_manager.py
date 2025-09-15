@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio  # 导入 asyncio
 import json
 import time
 from datetime import datetime
@@ -23,7 +22,6 @@ class SQLiteDBManager(DBManager):
         self.sqlite_db = Path(settings.SQLITE_DB)
         if not self.sqlite_db.parent.exists():
             self.sqlite_db.parent.mkdir(parents=True, exist_ok=True)
-        self._lock = asyncio.Lock()  # 初始化异步锁
 
     async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
         async with aiosqlite.connect(self.sqlite_db) as db:
@@ -80,26 +78,25 @@ class SQLiteDBManager(DBManager):
             return [self._row_to_key_state(row) for row in rows]
 
     async def get_next_available_key(self) -> Optional[str]:
-        async with self._lock:  # 使用异步锁确保并发安全
-            async with aiosqlite.connect(self.sqlite_db) as db:
-                try:
-                    cursor = await db.execute(
-                        """
-                        SELECT key_identifier FROM key_states
-                        WHERE is_in_use = 0 AND is_cooled_down = 0
-                        ORDER BY last_usage_time ASC
-                        LIMIT 1
-                        """
-                    )
-                    row = await cursor.fetchone()
-                    if not row:
-                        return None
-                    key_identifier = row[0]
-                    return key_identifier
-                except Exception as e:
-                    app_logger.error(f"Error getting next available key: {e}")
-                    await db.rollback()
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            try:
+                cursor = await db.execute(
+                    """
+                    SELECT key_identifier FROM key_states
+                    WHERE is_in_use = 0 AND is_cooled_down = 0
+                    ORDER BY last_usage_time ASC
+                    LIMIT 1
+                    """
+                )
+                row = await cursor.fetchone()
+                if not row:
                     return None
+                key_identifier = row[0]
+                return key_identifier
+            except Exception as e:
+                app_logger.error(f"Error getting next available key: {e}")
+                await db.rollback()
+                return None
 
     async def move_to_use(self, key_identifier: str):
         """Mark a key as in use and update its last usage time in SQLite."""

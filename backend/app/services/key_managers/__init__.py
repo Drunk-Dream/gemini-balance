@@ -12,12 +12,14 @@ from backend.app.services.request_logs.request_log_manager import RequestLogMana
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
+    from backend.app.services.key_managers.db_manager import DBManager
 
 
 def get_key_manager(
     settings: Settings = Depends(get_settings),
     request_log_manager: RequestLogManager = Depends(get_request_log_manager),
 ) -> KeyStateManager:
+    db_manager: DBManager
     if settings.DATABASE_TYPE == "sqlite":
         db_manager = SQLiteDBManager(settings)
     else:
