@@ -11,7 +11,8 @@ from pydantic import BaseModel
 
 from backend.app.core.config import get_settings
 from backend.app.core.logging import app_logger
-from backend.app.services.key_managers import background_tasks, get_key_db_manager
+from backend.app.services.key_managers import background_tasks
+from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
 from backend.app.services.request_logs import get_request_log_manager
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLog
@@ -31,6 +32,17 @@ class KeyStatusResponse(BaseModel):
     cool_down_entry_count: int
     current_cool_down_seconds: int
     is_in_use: bool  # 新增字段
+
+
+def get_key_db_manager(
+    settings: Settings = Depends(get_settings),
+) -> DBManager:
+    db_manager: DBManager
+    if settings.DATABASE_TYPE == "sqlite":
+        db_manager = SQLiteDBManager(settings)
+    else:
+        raise ValueError(f"Unsupported key manager type: {settings.DATABASE_TYPE}")
+    return db_manager
 
 
 class KeyStateManager:
