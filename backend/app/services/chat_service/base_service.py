@@ -39,7 +39,12 @@ class ApiService(ABC):
     API key management, retry mechanisms, and streaming responses.
     """
 
-    def __init__(self, base_url: str, service_name: str, key_manager: KeyStateManager):
+    def __init__(
+        self,
+        base_url: str,
+        service_name: str,
+        key_manager: KeyStateManager,
+    ):
         self.base_url = base_url
         self.service_name = service_name
         self.client = httpx.AsyncClient(

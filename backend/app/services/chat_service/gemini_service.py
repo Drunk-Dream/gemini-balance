@@ -1,16 +1,21 @@
 from typing import Any, Dict, Union
 
+from fastapi import Depends
 from starlette.responses import StreamingResponse
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
-from backend.app.core.config import Settings
+from backend.app.core.config import Settings, get_settings
 from backend.app.services.chat_service.base_service import ApiService
 from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 
 class GeminiService(ApiService):
-    def __init__(self, settings: Settings, key_manager: KeyStateManager):
+    def __init__(
+        self,
+        settings: Settings = Depends(get_settings),
+        key_manager: KeyStateManager = Depends(KeyStateManager),
+    ):
         super().__init__(
             base_url=settings.GEMINI_API_BASE_URL,
             service_name="Gemini API",

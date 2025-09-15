@@ -7,7 +7,6 @@ from starlette.responses import StreamingResponse
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest
 from backend.app.services.auth_key_manager import get_auth_manager
 from backend.app.services.auth_key_manager.auth_service import AuthService
-from backend.app.services.chat_service import get_chat_service
 from backend.app.services.chat_service.openai_service import OpenAIService
 
 router = APIRouter()
@@ -46,7 +45,7 @@ async def verify_bearer_token(
 )
 async def create_chat_completion_endpoint(
     request: ChatCompletionRequest,
-    openai_service: OpenAIService = Depends(get_chat_service),
+    openai_service: OpenAIService = Depends(OpenAIService),
     auth_key_alias: str = Depends(verify_bearer_token),
 ) -> Union[Dict[str, Any], StreamingResponse, HTTPException]:
     stream = bool(request.stream)
