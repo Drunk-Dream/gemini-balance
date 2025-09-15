@@ -1,8 +1,25 @@
 from datetime import datetime
 from typing import List, Optional
 
+from fastapi import Depends
+
+from backend.app.core.config import Settings, get_settings
 from backend.app.services.request_logs.db_manager import RequestLogDBManager
 from backend.app.services.request_logs.schemas import RequestLog
+from backend.app.services.request_logs.sqlite_manager import SQLiteRequestLogManager
+
+
+def get_request_log_db_manager(
+    settings_obj: Settings = Depends(get_settings),
+) -> RequestLogDBManager:
+    """
+    根据配置返回正确的 RequestLogDBManager 实例。
+    """
+    if settings_obj.DATABASE_TYPE == "sqlite":
+        db_manager: RequestLogDBManager = SQLiteRequestLogManager(settings_obj)
+    else:
+        raise ValueError(f"Unsupported database type: {settings_obj.DATABASE_TYPE}")
+    return db_manager
 
 
 class RequestLogManager:
@@ -10,7 +27,9 @@ class RequestLogManager:
     请求日志的主管理类，它将使用 RequestLogDBManager 的具体实现。
     """
 
-    def __init__(self, db_manager: RequestLogDBManager):
+    def __init__(
+        self, db_manager: RequestLogDBManager = Depends(get_request_log_db_manager)
+    ):
         self._db_manager = db_manager
 
     async def record_request_log(self, log: RequestLog) -> None:

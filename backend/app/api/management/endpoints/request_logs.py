@@ -4,7 +4,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 
 from backend.app.core.security import get_current_user
-from backend.app.services.request_logs import get_request_log_manager
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLog
 
@@ -30,7 +29,7 @@ async def get_request_logs_endpoint(
     limit: int = Query(100, ge=1, le=1000, description="返回的日志条目数量限制"),
     offset: int = Query(0, ge=0, description="跳过的日志条目数量"),
     current_user: str = Depends(get_current_user),
-    request_logs_manager: RequestLogManager = Depends(get_request_log_manager),
+    request_logs_manager: RequestLogManager = Depends(RequestLogManager),
 ) -> List[RequestLog]:
     """
     根据过滤条件获取请求日志条目。

@@ -13,7 +13,6 @@ from backend.app.core.config import get_settings
 from backend.app.core.logging import app_logger
 from backend.app.services.key_managers import background_tasks
 from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
-from backend.app.services.request_logs import get_request_log_manager
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLog
 
@@ -50,7 +49,7 @@ class KeyStateManager:
         self,
         settings: Settings = Depends(get_settings),
         db_manager: DBManager = Depends(get_key_db_manager),
-        request_log_manager: RequestLogManager = Depends(get_request_log_manager),
+        request_log_manager: RequestLogManager = Depends(RequestLogManager),
     ):
         self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
