@@ -66,6 +66,11 @@ async def update_auth_key_alias(
         get_current_user
     ),  # Protect this endpoint with get_current_user
 ):
+    existing_keys = await auth_service.get_keys()
+    if any(key.alias == key_update.alias for key in existing_keys):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Alias already exists."
+        )
     updated_key = await auth_service.update_key_alias(api_key, key_update.alias)
     if not updated_key:
         raise HTTPException(
