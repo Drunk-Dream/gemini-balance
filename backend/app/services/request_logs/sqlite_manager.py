@@ -1,5 +1,6 @@
-from datetime import datetime
-from typing import List, Optional
+from collections import defaultdict
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import aiosqlite
@@ -124,7 +125,9 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 RequestLog(
                     id=row["id"],
                     request_id=row["request_id"],
-                    request_time=datetime.fromtimestamp(row["request_time"], tz=ZoneInfo("UTC")),
+                    request_time=datetime.fromtimestamp(
+                        row["request_time"], tz=ZoneInfo("UTC")
+                    ),
                     key_identifier=row["key_identifier"],
                     auth_key_alias=row["auth_key_alias"],
                     model_name=row["model_name"],
@@ -133,3 +136,69 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 for row in rows
             ]
             return logs, total_count
+
+    async def get_daily_model_usage_stats(
+        self, timezone_str: str
+    ) -> Dict[str, Dict[str, int]]:
+        """
+        获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数。
+        """
+        try:
+            target_timezone = ZoneInfo(timezone_str)
+        except Exception:
+            app_logger.error(f"Invalid timezone string: {timezone_str}")
+            return {}
+
+        # 获取当前日期在目标时区下的0点和24点
+        now_in_tz = datetime.now(target_timezone)
+        start_of_day_in_tz = now_in_tz.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        end_of_day_in_tz = (
+            start_of_day_in_tz + timedelta(days=1) - timedelta(microseconds=1)
+        )
+
+        # 转换为 UTC 时间戳，因为数据库存储的是 UTC 时间戳
+        start_timestamp_utc = start_of_day_in_tz.astimezone(ZoneInfo("UTC")).timestamp()
+        end_timestamp_utc = end_of_day_in_tz.astimezone(ZoneInfo("UTC")).timestamp()
+
+        app_logger.debug(
+            f"Fetching daily stats for timezone {timezone_str}: "
+            f"UTC start={start_timestamp_utc}, UTC end={end_timestamp_utc}"
+        )
+
+        query = """
+            SELECT
+                key_identifier,
+                model_name,
+                COUNT(*) as usage_count
+            FROM
+                request_logs
+            WHERE
+                is_success = 1 AND
+                request_time >= ? AND
+                request_time <= ?
+            GROUP BY
+                key_identifier,
+                model_name
+            ORDER BY
+                key_identifier,
+                model_name
+        """
+        params = [start_timestamp_utc, end_timestamp_utc]
+
+        stats: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, params)
+            rows = await cursor.fetchall()
+
+            for row in rows:
+                key_identifier = row["key_identifier"]
+                model_name = row["model_name"]
+                usage_count = row["usage_count"]
+                stats[key_identifier][model_name] = usage_count
+
+        # 将 defaultdict 转换为普通的 dict
+        return {k: dict(v) for k, v in stats.items()}

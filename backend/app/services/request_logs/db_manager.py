@@ -34,3 +34,10 @@ class RequestLogDBManager(abc.ABC):
         根据过滤条件获取请求日志条目及其总数。
         """
         raise NotImplementedError
+
+    @abc.abstractmethod
+    async def get_daily_model_usage_stats(self, timezone_str: str) -> dict[str, dict[str, int]]:
+        """
+        获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数。
+        """
+        raise NotImplementedError
