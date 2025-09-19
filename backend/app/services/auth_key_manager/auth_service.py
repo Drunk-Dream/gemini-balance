@@ -39,8 +39,6 @@ class AuthService:
     async def get_key(self, api_key: str) -> Optional[AuthKey]:
         """Retrieves an authentication key by its API key and increments its call count."""
         key = await self._db_manager.get_key(api_key)
-        if key:
-            await self._db_manager.increment_call_count(api_key)
         return key
 
     async def create_key(self, key_create: AuthKeyCreate) -> AuthKey:

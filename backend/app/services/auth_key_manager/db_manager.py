@@ -34,8 +34,3 @@ class AuthDBManager(ABC):
     async def delete_key(self, api_key: str) -> bool:
         """Delete an authentication key."""
         raise NotImplementedError
-
-    @abstractmethod
-    async def increment_call_count(self, api_key: str):
-        """Increment the call count for a given API key."""
-        raise NotImplementedError

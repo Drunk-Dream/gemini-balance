@@ -43,27 +43,12 @@ async function request<T>(
 		}
 
 		if (!response.ok) {
-			try {
-				const errorData = await response.json();
-				let errorMessage = 'An unknown error occurred';
-				if (errorData.detail) {
-					if (typeof errorData.detail === 'string') {
-						errorMessage = errorData.detail;
-					} else if (Array.isArray(errorData.detail)) {
-						// Format FastAPI validation errors
-						errorMessage = errorData.detail
-							.map((err: { msg: string; loc: string[] }) => `${err.msg} (location: ${err.loc.join(' > ')})`)
-							.join('; ');
-					} else {
-						// Handle other structured errors
-						errorMessage = JSON.stringify(errorData.detail);
-					}
-				}
-				throw new Error(errorMessage);
-			} catch { // If response is not valid JSON, use the response text as the error message
-				const errorText = await response.text();
-				throw new Error(errorText || 'An unknown error occurred');
+			const errorData = await response.json();
+			let errorMessage = 'An unknown error occurred';
+			if (errorData.detail) {
+				errorMessage = errorData.detail;
 			}
+			throw new Error(errorMessage);
 		}
 
 		// 新增：如果响应是 "No Content"，我们不能调用 .json()，直接返回 null

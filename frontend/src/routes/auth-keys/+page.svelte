@@ -54,8 +54,12 @@
 			newAlias = '';
 			successMessage = `密钥 "${newKey.alias}" 创建成功！API Key: ${newKey.api_key}`;
 		} catch (error) {
+			if (error instanceof Error) {
+				errorMessage = error.message;
+			} else {
+				errorMessage = '网络错误或服务器无响应。';
+			}
 			console.error('Error creating auth key:', error);
-			errorMessage = '网络错误或服务器无响应。';
 		}
 	}
 
@@ -86,8 +90,12 @@
 			editingAlias = '';
 			successMessage = `密钥 "${updatedKey.alias}" 更新成功！`;
 		} catch (error) {
-			console.error('Error updating auth key:', error);
-			errorMessage = '网络错误或服务器无响应。';
+			if (error instanceof Error) {
+				errorMessage = error.message;
+			} else {
+				errorMessage = '网络错误或服务器无响应。';
+			}
+			console.error('Error updating auth key:', errorMessage);
 		}
 	}
 
