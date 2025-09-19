@@ -1,7 +1,6 @@
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -13,10 +12,6 @@ class KeyState(BaseModel):
     request_fail_count: int = 0
     cool_down_entry_count: int = 0
     current_cool_down_seconds: int
-    usage_today: Dict[str, int] = Field(default_factory=dict)
-    last_usage_date: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d")
-    )
     last_usage_time: float = Field(default_factory=lambda: time.time())
     is_in_use: bool = False  # 新增字段，指示key是否在使用中
 

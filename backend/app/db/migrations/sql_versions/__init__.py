@@ -7,7 +7,6 @@ key_states:
     request_fail_count INTEGER,
     cool_down_entry_count INTEGER,
     current_cool_down_seconds INTEGER,
-    usage_today TEXT,
     last_usage_time REAL,
     is_in_use INTEGER DEFAULT 0,
     is_cooled_down INTEGER DEFAULT 0

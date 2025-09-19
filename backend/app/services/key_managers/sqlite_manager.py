@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import json
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
-from zoneinfo import ZoneInfo
 
 import aiosqlite
 
@@ -27,7 +24,6 @@ class SQLiteDBManager(DBManager):
         request_fail_count INTEGER,
         cool_down_entry_count INTEGER,
         current_cool_down_seconds INTEGER,
-        usage_today TEXT,
         last_usage_time REAL,
         is_in_use INTEGER DEFAULT 0,
         is_cooled_down INTEGER DEFAULT 0
@@ -70,7 +66,6 @@ class SQLiteDBManager(DBManager):
                     request_fail_count = ?,
                     cool_down_entry_count = ?,
                     current_cool_down_seconds = ?,
-                    usage_today = ?,
                     last_usage_time = ?
                 WHERE key_identifier = ?
                 """,
@@ -80,7 +75,6 @@ class SQLiteDBManager(DBManager):
                     state.request_fail_count,
                     state.cool_down_entry_count,
                     state.current_cool_down_seconds,
-                    json.dumps(state.usage_today),
                     state.last_usage_time,
                     key_identifier,
                 ),
@@ -166,8 +160,8 @@ class SQLiteDBManager(DBManager):
                 INSERT INTO key_states (
                     key_identifier, api_key, cool_down_until, request_fail_count,
                     cool_down_entry_count, current_cool_down_seconds,
-                    usage_today, last_usage_time
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    last_usage_time
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     key_identifier,
@@ -176,7 +170,6 @@ class SQLiteDBManager(DBManager):
                     0,
                     0,
                     self.settings.API_KEY_COOL_DOWN_SECONDS,
-                    "{}",
                     time.time(),
                 ),
             )
@@ -200,7 +193,6 @@ class SQLiteDBManager(DBManager):
                     request_fail_count = ?,
                     cool_down_entry_count = ?,
                     current_cool_down_seconds = ?,
-                    usage_today = ?,
                     last_usage_time = ?,
                     is_in_use = ?,
                     is_cooled_down = ?
@@ -211,7 +203,6 @@ class SQLiteDBManager(DBManager):
                     0,
                     0,
                     self.settings.API_KEY_COOL_DOWN_SECONDS,
-                    "{}",
                     time.time(),
                     0,  # is_in_use 重置为 0
                     0,
@@ -230,7 +221,6 @@ class SQLiteDBManager(DBManager):
                     request_fail_count = ?,
                     cool_down_entry_count = ?,
                     current_cool_down_seconds = ?,
-                    usage_today = ?,
                     last_usage_time = ?,
                     is_in_use = ?,
                     is_cooled_down = ?
@@ -240,7 +230,6 @@ class SQLiteDBManager(DBManager):
                     0,
                     0,
                     self.settings.API_KEY_COOL_DOWN_SECONDS,
-                    "{}",
                     time.time(),
                     0,  # is_in_use 重置为 0
                     0,
@@ -258,10 +247,6 @@ class SQLiteDBManager(DBManager):
             await db.commit()
 
     def _row_to_key_state(self, row: aiosqlite.Row) -> KeyState:
-        eastern_tz = ZoneInfo("America/New_York")
-        last_usage_date = datetime.fromtimestamp(
-            row["last_usage_time"], tz=eastern_tz
-        ).strftime("%Y-%m-%d")
         return KeyState(
             key_identifier=row["key_identifier"],
             api_key=row["api_key"],
@@ -269,8 +254,6 @@ class SQLiteDBManager(DBManager):
             request_fail_count=row["request_fail_count"],
             cool_down_entry_count=row["cool_down_entry_count"],
             current_cool_down_seconds=row["current_cool_down_seconds"],
-            usage_today=json.loads(row["usage_today"]),
-            last_usage_date=last_usage_date,
             last_usage_time=row["last_usage_time"],
             is_in_use=bool(row["is_in_use"]),
         )

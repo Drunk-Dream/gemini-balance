@@ -163,7 +163,6 @@ class KeyStateManager:
     @with_key_manager_lock
     async def mark_key_success(self, key_identifier: str, request_info: RequestInfo):
         # 取消对应的超时任务
-        model = request_info.model_id
         self._background_task_manager.cancel_timeout_task(key_identifier)
 
         state = await self._get_key_state(key_identifier)
@@ -173,15 +172,6 @@ class KeyStateManager:
         state.current_cool_down_seconds = self._initial_cool_down_seconds
         state.request_fail_count = 0
         state.last_usage_time = time.time()
-        # 使用美国东部时区计算日期
-        eastern_tz = ZoneInfo("America/New_York")
-        # 从时间戳获取日期，并格式化为字符串
-        current_date = datetime.fromtimestamp(time.time(), tz=eastern_tz).strftime(
-            "%Y-%m-%d"
-        )
-        if state.last_usage_date != current_date:
-            state.usage_today = {}
-        state.usage_today[model] = state.usage_today.get(model, 0) + 1
 
         await self._save_key_state(key_identifier, state)
         await self._db_manager.reactivate_key(key_identifier)
@@ -202,25 +192,14 @@ class KeyStateManager:
     async def get_key_states(self) -> List[KeyStatusResponse]:
         states_response = []
         now = time.time()
-        eastern_tz = ZoneInfo("America/New_York")
-        current_date = datetime.fromtimestamp(now, tz=eastern_tz).strftime("%Y-%m-%d")
+        # 获取当天的模型使用统计
+        daily_usage_stats = (
+            await self._request_log_manager.get_daily_model_usage_stats()
+        )
         states = await self._get_all_key_states()
 
         for state in states:
             key_identifier = state.key_identifier
-            # 检查是否跨天，如果跨天则重置 daily_usage
-            if state.last_usage_time:
-                if state.last_usage_date != current_date:
-                    state.usage_today = {}
-                    await self._db_manager.save_key_state(
-                        key_identifier, state
-                    )  # 保存更新后的状态
-            else:  # 如果 last_usage_time 不存在，也重置 usage_today
-                state.usage_today = {}
-                await self._db_manager.save_key_state(
-                    key_identifier, state
-                )  # 保存更新后的状态
-
             cool_down_remaining = max(0, state.cool_down_until - now)
 
             if state.is_in_use:
@@ -230,16 +209,19 @@ class KeyStateManager:
             else:
                 status = "active"
 
+            # 从统计数据中获取当前 key_identifier 的 daily_usage，如果不存在则为空字典
+            key_daily_usage = daily_usage_stats.get(key_identifier, {})
+
             states_response.append(
                 KeyStatusResponse(
                     key_identifier=key_identifier,
                     status=status,
                     cool_down_seconds_remaining=round(cool_down_remaining, 2),
-                    daily_usage=state.usage_today,
+                    daily_usage=key_daily_usage,
                     failure_count=state.request_fail_count,
                     cool_down_entry_count=state.cool_down_entry_count,
                     current_cool_down_seconds=state.current_cool_down_seconds,
-                    is_in_use=state.is_in_use,  # 新增字段
+                    is_in_use=state.is_in_use,
                 )
             )
         return states_response
