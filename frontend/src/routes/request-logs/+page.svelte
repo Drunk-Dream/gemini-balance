@@ -2,8 +2,9 @@
 	import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
 	import Notification from '$lib/components/common/Notification.svelte';
 	import Pagination from '$lib/components/common/Pagination.svelte';
+	import RequestLogFilters from '$lib/components/logs/RequestLogFilters.svelte';
 	import RequestLogTable from '$lib/components/logs/RequestLogTable.svelte';
-	import { getRequestLogs } from '$lib/services/requestLogs';
+	import { getRequestLogs, type GetRequestLogsParams } from '$lib/services/requestLogs';
 
 	let logs: any[] = $state([]);
 	let loading: boolean = $state(true);
@@ -12,6 +13,8 @@
 	const itemsPerPage: number = 15;
 	let totalItems: number = $state(0);
 	let totalPages: number = $state(1);
+
+	let filters = $state<GetRequestLogsParams>({});
 
 	function goToPreviousPage() {
 		if (currentPage > 1) {
@@ -36,7 +39,23 @@
 		error = null;
 		try {
 			const offset = (currentPage - 1) * itemsPerPage;
-			const response = await getRequestLogs({ limit: itemsPerPage, offset });
+
+			// 预处理筛选参数，防止将空字符串传递给 API
+			const processedFilters: GetRequestLogsParams = { ...filters };
+			if (processedFilters.request_time_start === '') {
+				processedFilters.request_time_start = undefined;
+			}
+			if (processedFilters.request_time_end === '') {
+				processedFilters.request_time_end = undefined;
+			}
+
+			const params: GetRequestLogsParams = {
+				limit: itemsPerPage,
+				offset,
+				...processedFilters
+			};
+
+			const response = await getRequestLogs(params);
 			logs = response.logs;
 			totalItems = response.total;
 			totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -47,6 +66,16 @@
 		}
 	}
 
+	function applyFilters(newFilters: GetRequestLogsParams) {
+		currentPage = 1;
+		filters = newFilters;
+	}
+
+	function resetFilters() {
+		currentPage = 1;
+		filters = {};
+	}
+
 	$effect(() => {
 		fetchLogs();
 	});
@@ -55,6 +84,8 @@
 <AuthGuard>
 	<div class="container mx-auto p-4">
 		<h1 class="mb-4 text-2xl font-bold">请求日志</h1>
+
+		<RequestLogFilters apply={applyFilters} reset={resetFilters} />
 
 		<Notification message={error} type="error" autoHide={false} />
 

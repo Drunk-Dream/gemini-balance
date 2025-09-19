@@ -15,7 +15,7 @@ interface RequestLogsResponse {
 	total: number;
 }
 
-interface GetRequestLogsParams {
+export interface GetRequestLogsParams {
 	request_time_start?: string;
 	request_time_end?: string;
 	key_identifier?: string;
