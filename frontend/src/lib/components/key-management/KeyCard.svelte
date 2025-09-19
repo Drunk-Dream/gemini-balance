@@ -61,11 +61,11 @@
 		<div class="text-sm text-gray-900">{@html formatDailyUsage(keyStatus.daily_usage)}</div>
 	</div>
 	<div class="mb-2 flex items-center justify-between">
-		<h3 class="text-md font-semibold text-gray-800">失败次数:</h3>
+		<h3 class="text-md font-semibold text-gray-800">连续失败次数:</h3>
 		<p class="text-sm text-gray-900">{keyStatus.failure_count}</p>
 	</div>
 	<div class="mb-2 flex items-center justify-between">
-		<h3 class="text-md font-semibold text-gray-800">进入冷却次数:</h3>
+		<h3 class="text-md font-semibold text-gray-800">连续冷却次数:</h3>
 		<p class="text-sm text-gray-900">{keyStatus.cool_down_entry_count}</p>
 	</div>
 	<div class="flex items-center justify-between">
