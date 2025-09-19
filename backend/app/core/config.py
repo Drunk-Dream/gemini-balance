@@ -43,7 +43,8 @@ class Settings(BaseSettings):
     MAX_CONCURRENT_REQUESTS: int = 3
     CONCURRENCY_TIMEOUT_SECONDS: float = 60.0
 
-    @field_validator("DATABASE_TYPE")
+    @classmethod
+    @field_validator("DATABASE_TYPE", mode="after")
     def validate_database_type(cls, v: str) -> str:
         if v != "sqlite":
             raise ValueError("DATABASE_TYPE must be 'sqlite'")
