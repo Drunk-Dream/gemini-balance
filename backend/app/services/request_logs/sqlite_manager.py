@@ -202,3 +202,31 @@ class SQLiteRequestLogManager(RequestLogDBManager):
 
         # 将 defaultdict 转换为普通的 dict
         return {k: dict(v) for k, v in stats.items()}
+
+    async def get_auth_key_usage_stats(self) -> Dict[str, int]:
+        """
+        获取所有日志记录，并根据 auth_key_alias 进行分组，统计每个 auth_key_alias 的唯一请求数。
+        """
+        query = """
+            SELECT
+                auth_key_alias,
+                COUNT(DISTINCT request_id) as request_count
+            FROM
+                request_logs
+            GROUP BY
+                auth_key_alias
+            ORDER BY
+                auth_key_alias
+        """
+        stats: Dict[str, int] = {}
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query)
+            rows = await cursor.fetchall()
+
+            for row in rows:
+                auth_key_alias = row["auth_key_alias"]
+                request_count = row["request_count"]
+                stats[auth_key_alias] = request_count
+        return stats

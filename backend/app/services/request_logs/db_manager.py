@@ -19,6 +19,13 @@ class RequestLogDBManager(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    async def get_auth_key_usage_stats(self) -> dict[str, int]:
+        """
+        获取所有日志记录，并根据 auth_key_alias 进行分组，统计每个 auth_key_alias 的唯一请求数。
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
     async def get_request_logs_with_count(
         self,
         request_time_start: Optional[datetime] = None,

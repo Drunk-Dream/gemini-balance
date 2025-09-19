@@ -69,3 +69,9 @@ class RequestLogManager:
         获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数。
         """
         return await self._db_manager.get_daily_model_usage_stats(timezone_str)
+
+    async def get_auth_key_usage_stats(self) -> Dict[str, int]:
+        """
+        获取所有日志记录，并根据 auth_key_alias 进行分组，统计每个 auth_key_alias 的唯一请求数。
+        """
+        return await self._db_manager.get_auth_key_usage_stats()
