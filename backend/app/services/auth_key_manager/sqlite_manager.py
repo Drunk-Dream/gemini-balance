@@ -12,7 +12,15 @@ if TYPE_CHECKING:
 
 
 class SQLiteAuthDBManager(AuthDBManager):
-    """SQLite implementation of the AuthDBManager for authentication key storage."""
+    """
+    SQLite implementation of the AuthDBManager for authentication key storage.
+
+    auth_keys:
+        api_key TEXT PRIMARY KEY,
+        alias TEXT NOT NULL,
+        call_count INTEGER DEFAULT 0
+
+    """
 
     def __init__(self, settings: Settings):
         self.db_path = settings.SQLITE_DB

@@ -13,6 +13,15 @@ from backend.app.services.request_logs.schemas import RequestLog
 class SQLiteRequestLogManager(RequestLogDBManager):
     """
     使用 aiosqlite 实现的请求日志数据库管理器。
+
+    request_logs:
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_id TEXT NOT NULL,
+        request_time REAL NOT NULL,
+        key_identifier TEXT NOT NULL,
+        auth_key_alias TEXT NOT NULL,
+        model_name TEXT NOT NULL,
+        is_success INTEGER NOT NULL
     """
 
     def __init__(self, settings: Settings):

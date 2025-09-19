@@ -16,10 +16,10 @@ CURRENT_DB_VERSION = 0  # 初始设置为 0，将在加载迁移时更新
 
 def _load_migrations():
     """
-    动态加载 'migrations/versions' 目录下的所有迁移脚本。
+    动态加载 'migrations/sql_versions' 目录下的所有迁移脚本。
     """
     global CURRENT_DB_VERSION
-    migrations_dir = Path(__file__).parent / "migrations" / "versions"
+    migrations_dir = Path(__file__).parent / "migrations" / "sql_versions"
     if not migrations_dir.exists():
         app_logger.warning(f"Migrations directory not found: {migrations_dir}")
         return
@@ -34,7 +34,7 @@ def _load_migrations():
             continue
 
         version = int(match.group(1))
-        module_name = f"migrations.versions.{migration_file.stem}"
+        module_name = f"migrations.sql_versions.{migration_file.stem}"
 
         spec = importlib.util.spec_from_file_location(module_name, migration_file)
         if spec and spec.loader:

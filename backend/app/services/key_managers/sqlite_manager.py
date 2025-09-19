@@ -17,6 +17,23 @@ if TYPE_CHECKING:
 
 
 class SQLiteDBManager(DBManager):
+    """
+    请求 keys 数据库管理器
+
+    key_states:
+        key_identifier TEXT PRIMARY KEY,
+        api_key TEXT NOT NULL,
+        cool_down_until REAL,
+        request_fail_count INTEGER,
+        cool_down_entry_count INTEGER,
+        current_cool_down_seconds INTEGER,
+        usage_today TEXT,
+        last_usage_time REAL,
+        is_in_use INTEGER DEFAULT 0,
+        is_cooled_down INTEGER DEFAULT 0
+
+    """
+
     def __init__(self, settings: Settings):
         self.settings = settings
         self.sqlite_db = Path(settings.SQLITE_DB)
