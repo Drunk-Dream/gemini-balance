@@ -10,6 +10,7 @@ from backend.app.api.management.schemas.auth_keys import (
 )
 from backend.app.core.security import get_current_user
 from backend.app.services.auth_key_manager.auth_service import AuthService
+from backend.app.services.request_logs.request_log_manager import RequestLogManager
 
 router = APIRouter()
 security = HTTPBearer()
@@ -32,21 +33,25 @@ async def create_auth_key(
         )
 
     new_key = await auth_service.create_key(key_create)
-    return AuthKeyResponse(
-        api_key=new_key.api_key, alias=new_key.alias, call_count=new_key.call_count
-    )
+    return AuthKeyResponse(api_key=new_key.api_key, alias=new_key.alias, call_count=0)
 
 
 @router.get("/auth_keys", response_model=List[AuthKeyResponse])
 async def get_auth_keys(
     auth_service: AuthService = Depends(AuthService),
+    request_log_manager: RequestLogManager = Depends(RequestLogManager),
     current_user: bool = Depends(
         get_current_user
     ),  # Protect this endpoint with get_current_user
 ):
     keys = await auth_service.get_keys()
+    auth_key_usage_state = await request_log_manager.get_auth_key_usage_stats()
     return [
-        AuthKeyResponse(api_key=key.api_key, alias=key.alias, call_count=key.call_count)
+        AuthKeyResponse(
+            api_key=key.api_key,
+            alias=key.alias,
+            call_count=auth_key_usage_state.get(key.alias, 0),
+        )
         for key in keys
     ]
 
@@ -56,6 +61,7 @@ async def update_auth_key_alias(
     api_key: str,
     key_update: AuthKeyUpdate,
     auth_service: AuthService = Depends(AuthService),
+    request_log_manager: RequestLogManager = Depends(RequestLogManager),
     current_user: bool = Depends(
         get_current_user
     ),  # Protect this endpoint with get_current_user
@@ -65,10 +71,11 @@ async def update_auth_key_alias(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Auth key not found."
         )
+    auth_key_usage_state = await request_log_manager.get_auth_key_usage_stats()
     return AuthKeyResponse(
         api_key=updated_key.api_key,
         alias=updated_key.alias,
-        call_count=updated_key.call_count,
+        call_count=auth_key_usage_state.get(updated_key.alias, 0),
     )
 
 

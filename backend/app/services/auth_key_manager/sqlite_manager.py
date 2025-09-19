@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, List, Optional
 
 import aiosqlite
 
-from backend.app.api.management.schemas.auth_keys import AuthKey
 from backend.app.services.auth_key_manager.db_manager import AuthDBManager
+from backend.app.services.auth_key_manager.schemas import AuthKey
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
@@ -33,14 +33,14 @@ class SQLiteAuthDBManager(AuthDBManager):
             )
             row = await cursor.fetchone()
             if row:
-                return AuthKey(api_key=row[0], alias=row[1], call_count=row[2])
+                return AuthKey(api_key=row[0], alias=row[1])
             return None
 
     async def create_key(self, auth_key: AuthKey) -> AuthKey:
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 "INSERT INTO auth_keys (api_key, alias, call_count) VALUES (?, ?, ?)",
-                (auth_key.api_key, auth_key.alias, auth_key.call_count),
+                (auth_key.api_key, auth_key.alias),
             )
             await db.commit()
             return auth_key
@@ -53,7 +53,7 @@ class SQLiteAuthDBManager(AuthDBManager):
             )
             rows = await cursor.fetchall()
             for row in rows:
-                keys.append(AuthKey(api_key=row[0], alias=row[1], call_count=row[2]))
+                keys.append(AuthKey(api_key=row[0], alias=row[1]))
         return keys
 
     async def update_key_alias(self, api_key: str, new_alias: str) -> Optional[AuthKey]:

@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
-    from backend.app.api.management.schemas.auth_keys import AuthKey
+    from backend.app.services.auth_key_manager.schemas import AuthKey
 
 
 class AuthDBManager(ABC):

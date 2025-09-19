@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, List, Optional
 
 from fastapi import Depends
 
-from backend.app.api.management.schemas.auth_keys import AuthKey
 from backend.app.core.config import Settings, get_settings
+from backend.app.services.auth_key_manager.schemas import AuthKey
 from backend.app.services.auth_key_manager.sqlite_manager import SQLiteAuthDBManager
 
 if TYPE_CHECKING:
