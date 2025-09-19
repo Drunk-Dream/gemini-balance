@@ -4,7 +4,11 @@
 	import Pagination from '$lib/components/common/Pagination.svelte';
 	import RequestLogFilters from '$lib/components/logs/RequestLogFilters.svelte';
 	import RequestLogTable from '$lib/components/logs/RequestLogTable.svelte';
-	import { getRequestLogs, type GetRequestLogsParams } from '$lib/services/requestLogs';
+	import {
+		formatToLocalDateTimeString,
+		getRequestLogs,
+		type GetRequestLogsParams
+	} from '$lib/services/requestLogs';
 
 	let logs: any[] = $state([]);
 	let loading: boolean = $state(true);
@@ -14,7 +18,16 @@
 	let totalItems: number = $state(0);
 	let totalPages: number = $state(1);
 
-	let filters = $state<GetRequestLogsParams>({});
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+
+	const endOfDay = new Date();
+	endOfDay.setHours(23, 59, 59, 999);
+
+	let filters = $state<GetRequestLogsParams>({
+		request_time_start: formatToLocalDateTimeString(today),
+		request_time_end: formatToLocalDateTimeString(endOfDay)
+	});
 
 	function goToPreviousPage() {
 		if (currentPage > 1) {
@@ -71,13 +84,8 @@
 		filters = newFilters;
 	}
 
-	function resetFilters() {
-		currentPage = 1;
-		filters = {};
-	}
-
 	$effect(() => {
-		fetchLogs();
+		if (filters.request_time_start && filters.request_time_end) fetchLogs();
 	});
 </script>
 
@@ -85,7 +93,7 @@
 	<div class="container mx-auto p-4">
 		<h1 class="mb-4 text-2xl font-bold">请求日志</h1>
 
-		<RequestLogFilters apply={applyFilters} reset={resetFilters} />
+		<RequestLogFilters apply={applyFilters} />
 
 		<Notification message={error} type="error" autoHide={false} />
 
