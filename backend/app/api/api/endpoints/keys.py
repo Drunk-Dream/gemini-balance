@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.app.api.management.schemas.keys import (
+from backend.app.api.api.schemas.keys import (
     AddKeyRequest,
     BulkKeyOperationResponse,
     KeyOperationResponse,

@@ -36,7 +36,7 @@ class RequestInfo(BaseModel):
 class ApiService(ABC):
     """
     Base class for API services, handling common logic like HTTP client,
-    API key management, retry mechanisms, and streaming responses.
+    API key api, retry mechanisms, and streaming responses.
     """
 
     def __init__(

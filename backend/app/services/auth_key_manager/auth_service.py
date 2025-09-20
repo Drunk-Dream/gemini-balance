@@ -9,7 +9,7 @@ from backend.app.services.auth_key_manager.schemas import AuthKey
 from backend.app.services.auth_key_manager.sqlite_manager import SQLiteAuthDBManager
 
 if TYPE_CHECKING:
-    from backend.app.api.management.schemas.auth_keys import AuthKeyCreate
+    from backend.app.api.api.schemas.auth_keys import AuthKeyCreate
     from backend.app.services.auth_key_manager.db_manager import AuthDBManager
 
 

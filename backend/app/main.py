@@ -5,14 +5,12 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.app.api.management.endpoints.auth import router as auth_router
-from backend.app.api.management.endpoints.auth_keys import router as auth_keys_router
-from backend.app.api.management.endpoints.keys import router as keys_router
-from backend.app.api.management.endpoints.logs import router as logs_router
-from backend.app.api.management.endpoints.request_logs import (
-    router as request_logs_router,
-)
-from backend.app.api.management.endpoints.status import router as status_router
+from backend.app.api.api.endpoints.auth import router as auth_router
+from backend.app.api.api.endpoints.auth_keys import router as auth_keys_router
+from backend.app.api.api.endpoints.keys import router as keys_router
+from backend.app.api.api.endpoints.logs import router as logs_router
+from backend.app.api.api.endpoints.request_logs import router as request_logs_router
+from backend.app.api.api.endpoints.status import router as status_router
 from backend.app.api.v1.endpoints.chat import router as openai_chat_router
 from backend.app.api.v1beta.endpoints.gemini import router as gemini_router
 from backend.app.core.config import print_non_sensitive_settings, settings
