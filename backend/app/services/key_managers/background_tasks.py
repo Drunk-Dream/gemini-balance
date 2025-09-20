@@ -53,6 +53,7 @@ class BackgroundTaskManager:
         后台任务，定期检查并释放冷却中的密钥。
         """
         while True:
+            app_logger.debug("Background task for releasing cooled down keys started.")
             try:
                 releasable_keys = await db_manager.get_releasable_keys()
                 for key_identifier in releasable_keys:
