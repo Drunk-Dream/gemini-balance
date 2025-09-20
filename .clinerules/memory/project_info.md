@@ -13,9 +13,10 @@
   - **服务级密钥池**: 集中管理用于请求上游大模型 API 的一组密钥，实现密钥轮询、冷却和状态持久化，减少客户端直接暴露密钥的风险。
 - **灵活性**: 支持流式响应，满足不同应用场景的需求。
 - **可观测性**:
-  - **用户级 API 密钥调用次数跟踪**: 实时追踪每个用户 API 密钥的使用情况。
+  - **用户级 API 密钥调用次数跟踪**: 实时追踪每个用户 API 密钥的使用情况，现在通过聚合请求日志动态计算，更准确、可审计。
   - **服务密钥池使用状态可视化**: 提供密钥是否“使用中”的实时状态，优化密钥调度。
   - **请求级 ID 追踪**: 为每个请求分配唯一 ID，贯穿日志系统，提升问题排查效率。
+  - **请求日志管理与前端筛选**: 提供详细的请求日志管理界面和筛选功能，使用户能够更好地监控和分析 API 使用情况。
 
 ## 核心系统架构
 
@@ -26,17 +27,19 @@
   - **认证端点 (`/management/auth`)**: 提供基于 JWT 的用户登录功能。
   - **用户密钥管理端点 (`/management/auth_keys`)**: 允许认证用户对自己的 API 密钥进行增删改查 (CRUD) 操作。
   - **服务密钥池管理端点 (`/management/keys`)**: 允许认证用户管理后端的服务密钥池。
+  - **请求日志管理端点 (`/management/request_logs`)**: 提供查询和检索详细请求日志的功能。
   - **API 代理端点 (`/v1/chat`)**: 负责接收和验证客户端请求，并转发至相应的服务层。
 - **服务层**:
-  - **`auth_key_manager`**: 封装用户级 API 密钥的业务逻辑，支持 SQLite 和 Redis 作为后端，并扩展了完整的 CRUD 操作。
+  - **`auth_key_manager`**: 封装用户级 API 密钥的业务逻辑，支持 SQLite 作为后端，并扩展了完整的 CRUD 操作。
   - **`chat_service`**: 包含 `GeminiService` 和 `OpenAIService`，继承自通用的 `ApiService` 基类，负责处理对 Google Gemini 和 OpenAI API 的请求转发、函数调用和流式响应。引入了 HTTP 客户端自动重建机制和请求级上下文对象 `RequestInfo` 以增强韧性。
+  - **`request_log_manager`**: 负责统一记录所有 API 请求，并提供使用情况统计。
 - **认证与授权层**:
   - **JWT 认证**: 使用 `python-jose` 和 `passlib` 实现基于密码的登录认证和 JWT 令牌的生成与验证。
   - **依赖注入**: 通过 FastAPI 的 `Depends` 机制，对需要授权的 API 端点强制执行 JWT 令牌验证。
 - **密钥管理层 (服务密钥池)**: 高度模块化和可插拔的**服务密钥池**管理系统，位于 `backend/app/services/key_managers/`。
-  - **`KeyStateManager`**: 负责核心的 API 密钥状态管理逻辑，包括密钥的获取、归还、冷却、指数退避和失败计数。
-  - **`DBManager` (抽象基类)** 与具体实现 (`RedisDBManager`, `SQLiteDBManager`): 为 `KeyStateManager` 提供 Redis 或 **异步 SQLite (`aiosqlite`)** 的持久化后端，实现了逻辑与存储的解耦。
-- **数据库迁移系统**: 引入了基于 `BaseMigrationManager` 的可插拔数据库迁移系统，支持在应用启动时自动处理 Redis 和 SQLite 的版本化 schema 变更。
+  - **`KeyStateManager`**: 负责核心的 API 密钥状态管理逻辑，包括密钥的获取、归还、冷却、指数退避和失败计数。新增了**动态冷却检查间隔**和**处理卡死密钥的超时机制**，以提升系统的韧性。
+  - **`DBManager` (抽象基类)** 与具体实现 (`SQLiteDBManager`): 为 `KeyStateManager` 提供**异步 SQLite (`aiosqlite`)** 的持久化后端，实现了逻辑与存储的解耦。项目已**移除 Redis 支持**，全面转向并标准化使用 SQLite。
+- **数据库迁移系统**: 引入了基于 `BaseMigrationManager` 的**动态、可版本化**的数据库迁移系统，支持在应用启动时自动处理 SQLite 的版本化 schema 变更。
 - **核心配置层**: 使用 `pydantic-settings` 统一管理应用配置和日志设置。引入了多项可配置参数，如 `REQUEST_TIMEOUT_SECONDS` 和 `CONCURRENCY_TIMEOUT_SECONDS`。
 - **日志管理**: 引入了结构化的日志系统，包含主应用日志、事务日志和可选的调试日志，并为每个请求分配唯一 ID。
 - **并发管理**: 通过 `ConcurrencyManager` (基于 `asyncio.Semaphore`) 对发往外部 API 的并发请求数进行限制，防止服务过载。
@@ -49,7 +52,7 @@
 - **认证**: **`python-jose[cryptography]`**, **`passlib[bcrypt]`**
 - **HTTP 客户端**: httpx
 - **数据验证**: Pydantic
-- **数据持久化**: Redis, SQLite
+- **数据持久化**: SQLite
 - **容器化**: Docker, Docker Compose
 - **测试**: pytest, pytest-asyncio
 - **依赖管理**: uv
@@ -61,7 +64,7 @@
 - **JWT (JSON Web Token) 认证**: 提供无状态、可扩展的用户认证机制。
 - **依赖注入**: FastAPI 内置机制，用于管理服务、配置和安全依赖。
 - **异步编程**: 全面利用 `async/await` 和 `aiosqlite` 处理 I/O 密集型操作。
-- **可插拔的持久化与迁移**: 允许通过配置在 Redis 和 SQLite 之间无缝切换存储后端，并自动处理数据库迁移。
+- **可插拔的持久化与迁移**: 允许通过配置在 SQLite 之间无缝切换存储后端，并自动处理数据库迁移。
 - **容器化部署**: 通过 Docker 和 Docker Compose 实现应用的快速部署和环境一致性。
 - **前后端一体化部署**: 前端静态文件由后端 FastAPI 托管。
 - **请求级上下文**: 使用 `RequestInfo` 对象封装请求元数据，简化服务间参数传递。
