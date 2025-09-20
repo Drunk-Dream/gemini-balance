@@ -23,6 +23,8 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         auth_key_alias TEXT NOT NULL,
         model_name TEXT NOT NULL,
         is_success INTEGER NOT NULL
+        FOREIGN KEY (key_identifier) REFERENCES key_states(key_identifier) ON DELETE CASCADE,
+        FOREIGN KEY (auth_key_alias) REFERENCES auth_keys(alias) ON DELETE CASCADE ON UPDATE CASCADE
     """
 
     def __init__(self, settings: Settings):

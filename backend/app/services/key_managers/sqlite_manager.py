@@ -178,6 +178,7 @@ class SQLiteDBManager(DBManager):
 
     async def delete_key(self, key_identifier: str):
         async with aiosqlite.connect(self.sqlite_db) as db:
+            await db.execute("PRAGMA foreign_keys=ON;")
             await db.execute(
                 "DELETE FROM key_states WHERE key_identifier = ?", (key_identifier,)
             )

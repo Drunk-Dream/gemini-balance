@@ -17,7 +17,7 @@ class SQLiteAuthDBManager(AuthDBManager):
 
     auth_keys:
         api_key TEXT PRIMARY KEY,
-        alias TEXT NOT NULL,
+        alias TEXT NOT NULL UNIQUE
 
     """
 
@@ -55,6 +55,7 @@ class SQLiteAuthDBManager(AuthDBManager):
 
     async def update_key_alias(self, api_key: str, new_alias: str) -> Optional[AuthKey]:
         async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA foreign_keys=ON;")
             cursor = await db.execute(
                 "UPDATE auth_keys SET alias = ? WHERE api_key = ?", (new_alias, api_key)
             )
@@ -65,6 +66,7 @@ class SQLiteAuthDBManager(AuthDBManager):
 
     async def delete_key(self, api_key: str) -> bool:
         async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA foreign_keys=ON;")
             cursor = await db.execute(
                 "DELETE FROM auth_keys WHERE api_key = ?", (api_key,)
             )
