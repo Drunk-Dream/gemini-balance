@@ -63,8 +63,8 @@ gemini-balance/
     ```
 3.  **启动服务**
     `bash
-    docker-compose up -d --build
-    `
+docker-compose up -d --build
+`
     服务将在 `http://localhost:8090` 启动。
 
 ### 2. 本地运行 (开发环境)
@@ -117,7 +117,7 @@ API 分为 `api` (管理) 和 `v1`,`v1beta` (转发) 两个版本。所有管理
 
 ### API 代理 (`/v1beta`)
 
-- **POST** `/chat/completions`
+- **POST** `/models/{model_id}:streamGenerateContent` | `/models/{model_id}:generateContent`
   - **描述**: 代理符合 Gemini 格式的请求，并根据请求内容自动转发至 Gemini 。
 
 ### 状态与日志 (`/api`)

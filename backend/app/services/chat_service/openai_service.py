@@ -71,6 +71,12 @@ class OpenAIService(ApiService):
         if hasattr(request_data, "seed") and request_data.seed is not None:
             del request_data.seed
 
+        if stream:
+            if request_data.stream_options is None:
+                request_data.stream_options = {"include_usage": True}
+            else:
+                request_data.stream_options["include_usage"] = True
+
         params = {"alt": "sse"} if stream else {"alt": "json"}
 
         response = await self._send_request(
