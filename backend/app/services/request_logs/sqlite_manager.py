@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 import aiosqlite
@@ -241,3 +241,26 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 request_count = row["request_count"]
                 stats[auth_key_alias] = request_count
         return stats
+
+    async def get_request_time_range(self) -> Optional[Tuple[datetime, datetime]]:
+        """
+        获取数据库中记录的最小和最大请求时间。
+        """
+        query = """
+            SELECT
+                MIN(request_time) as min_time,
+                MAX(request_time) as max_time
+            FROM
+                request_logs
+        """
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query)
+            row = await cursor.fetchone()
+
+            if row:
+                min_time = datetime.fromtimestamp(row["min_time"], tz=ZoneInfo("UTC"))
+                max_time = datetime.fromtimestamp(row["max_time"], tz=ZoneInfo("UTC"))
+                return min_time, max_time
+
+            return None

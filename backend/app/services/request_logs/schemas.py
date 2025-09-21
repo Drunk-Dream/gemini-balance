@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
@@ -27,4 +27,5 @@ class RequestLogsResponse(BaseModel):
     """
 
     logs: List[RequestLog]
+    request_time_range: Optional[Tuple[datetime, datetime]] = None
     total: int

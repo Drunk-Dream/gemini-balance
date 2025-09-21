@@ -24,6 +24,8 @@
 	const endOfDay = new Date();
 	endOfDay.setHours(23, 59, 59, 999);
 
+	let request_time_range = $state<[Date, Date]>([today, endOfDay]);
+
 	let filters = $state<GetRequestLogsParams>({
 		request_time_start: formatToLocalDateTimeString(today),
 		request_time_end: formatToLocalDateTimeString(endOfDay)
@@ -55,12 +57,6 @@
 
 			// 预处理筛选参数，防止将空字符串传递给 API
 			const processedFilters: GetRequestLogsParams = { ...filters };
-			if (processedFilters.request_time_start === '') {
-				processedFilters.request_time_start = undefined;
-			}
-			if (processedFilters.request_time_end === '') {
-				processedFilters.request_time_end = undefined;
-			}
 
 			const params: GetRequestLogsParams = {
 				limit: itemsPerPage,
@@ -72,6 +68,12 @@
 			logs = response.logs;
 			totalItems = response.total;
 			totalPages = Math.ceil(totalItems / itemsPerPage);
+			if (response.request_time_range) {
+				request_time_range = [
+					new Date(response.request_time_range[0]),
+					new Date(response.request_time_range[1])
+				];
+			}
 		} catch (e: any) {
 			error = e.message;
 		} finally {
@@ -79,13 +81,16 @@
 		}
 	}
 
-	function applyFilters(newFilters: GetRequestLogsParams) {
-		currentPage = 1;
-		filters = newFilters;
-	}
-
+	// 当 filters 变化时，重置 currentPage 为 1
 	$effect(() => {
-		if (filters.request_time_start && filters.request_time_end) fetchLogs();
+		currentPage = 1;
+	});
+
+	// 当 filters 或 currentPage 变化时，获取日志
+	$effect(() => {
+		if (filters.request_time_start && filters.request_time_end) {
+			fetchLogs();
+		}
 	});
 </script>
 
@@ -93,7 +98,7 @@
 	<div class="container mx-auto p-4">
 		<h1 class="mb-4 text-2xl font-bold">请求日志</h1>
 
-		<RequestLogFilters apply={applyFilters} />
+		<RequestLogFilters bind:filters {request_time_range} />
 
 		<Notification message={error} type="error" autoHide={false} />
 

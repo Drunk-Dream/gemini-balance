@@ -1,6 +1,6 @@
 import abc
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from backend.app.services.request_logs.schemas import RequestLog
 
@@ -43,8 +43,19 @@ class RequestLogDBManager(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def get_daily_model_usage_stats(self, timezone_str: str) -> dict[str, dict[str, int]]:
+    async def get_daily_model_usage_stats(
+        self, timezone_str: str
+    ) -> dict[str, dict[str, int]]:
         """
         获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数。
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def get_request_time_range(
+        self,
+    ) -> Optional[Tuple[datetime, datetime]]:
+        """
+        获取请求日志记录的时间范围。
         """
         raise NotImplementedError

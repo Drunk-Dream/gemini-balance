@@ -4,32 +4,17 @@
 		formatToLocalDateTimeString
 	} from '$lib/services/requestLogs';
 
-	let { apply } = $props<{
-		apply: (filters: GetRequestLogsParams) => void;
+	let { filters = $bindable(), request_time_range } = $props<{
+		filters: GetRequestLogsParams;
+		request_time_range: [Date, Date];
 	}>();
 
-	const today = new Date();
-	today.setHours(0, 0, 0, 0);
-
-	const endOfDay = new Date();
-	endOfDay.setHours(23, 59, 59, 999);
-
-	let filters = $state<GetRequestLogsParams>({
-		request_time_start: formatToLocalDateTimeString(today),
-		request_time_end: formatToLocalDateTimeString(endOfDay)
-	});
-
-	// 设置请求开始时间的默认值为当天0点，结束时间为当天24点
-	function applyFilters() {
-		const filtersToApply = { ...filters };
-		if (filtersToApply.request_time_start) {
-			filtersToApply.request_time_start = new Date(filtersToApply.request_time_start).toISOString();
-		}
-		if (filtersToApply.request_time_end) {
-			filtersToApply.request_time_end = new Date(filtersToApply.request_time_end).toISOString();
-		}
-		apply(filtersToApply);
-	}
+	let min_request_time = $derived<string>(
+		formatToLocalDateTimeString(new Date(request_time_range[0]))
+	);
+	let max_request_time = $derived<string>(
+		formatToLocalDateTimeString(new Date(request_time_range[1]))
+	);
 
 	function resetFilters() {
 		const today = new Date();
@@ -40,16 +25,16 @@
 		endOfDay.setHours(23, 59, 59, 999);
 		const endOfToday = formatToLocalDateTimeString(endOfDay);
 
-		filters = {
-			request_time_start: startOfDay,
-			request_time_end: endOfToday,
-			key_identifier: undefined,
-			auth_key_alias: undefined,
-			model_name: undefined,
-			is_success: undefined
-		};
-		applyFilters();
+		filters.request_time_start = startOfDay;
+		filters.request_time_end = endOfToday;
+		filters.key_identifier = undefined;
+		filters.auth_key_alias = undefined;
+		filters.model_name = undefined;
+		filters.is_success = undefined;
 	}
+
+	// 由于父组件使用 bind:filters 进行双向绑定，applyFilters 函数不再需要
+	// 筛选的逻辑将由父组件的 $effect 触发
 </script>
 
 <div class="mb-4 rounded-lg bg-white p-4 shadow">
@@ -61,6 +46,8 @@
 			<input
 				type="datetime-local"
 				id="request_time_start"
+				min={min_request_time}
+				max={max_request_time}
 				class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
 				bind:value={filters.request_time_start}
 			/>
@@ -72,6 +59,8 @@
 			<input
 				type="datetime-local"
 				id="request_time_end"
+				min={min_request_time}
+				max={max_request_time}
 				class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
 				bind:value={filters.request_time_end}
 			/>
@@ -131,13 +120,6 @@
 			class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
 		>
 			重置
-		</button>
-		<button
-			onclick={applyFilters}
-			class="rounded-md border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
-			disabled={!filters.request_time_start || !filters.request_time_end}
-		>
-			应用筛选
 		</button>
 	</div>
 </div>

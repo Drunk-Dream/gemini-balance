@@ -13,11 +13,12 @@ interface RequestLog {
 interface RequestLogsResponse {
 	logs: RequestLog[];
 	total: number;
+	request_time_range: [string, string] | null;
 }
 
 export interface GetRequestLogsParams {
-	request_time_start?: string;
-	request_time_end?: string;
+	request_time_start: string;
+	request_time_end: string;
 	key_identifier?: string;
 	auth_key_alias?: string;
 	model_name?: string;
@@ -26,9 +27,7 @@ export interface GetRequestLogsParams {
 	offset?: number;
 }
 
-export async function getRequestLogs(
-	params: GetRequestLogsParams = {}
-): Promise<RequestLogsResponse> {
+export async function getRequestLogs(params: GetRequestLogsParams): Promise<RequestLogsResponse> {
 	const queryParams = new URLSearchParams();
 	for (const [key, value] of Object.entries(params)) {
 		if (value !== undefined && value !== null) {
