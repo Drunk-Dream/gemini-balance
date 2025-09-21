@@ -31,6 +31,10 @@
 		request_time_end: formatToLocalDateTimeString(endOfDay)
 	});
 
+	// 用于存储 filters 的上一个状态，以便检测 filters 是否真正发生变化
+	let previousFilters: GetRequestLogsParams | null = null;
+	let previousPage: number = 0;
+
 	function goToPreviousPage() {
 		if (currentPage > 1) {
 			currentPage--;
@@ -81,14 +85,23 @@
 		}
 	}
 
-	// 当 filters 变化时，重置 currentPage 为 1
-	$effect(() => {
-		currentPage = 1;
-	});
-
 	// 当 filters 或 currentPage 变化时，获取日志
 	$effect(() => {
-		if (filters.request_time_start && filters.request_time_end) {
+		// 检查 filters 是否发生变化（不包括 currentPage 的变化）
+		// 这里使用 JSON.stringify 进行浅比较，对于 filters 这种简单对象通常足够
+		// 如果 filters 包含嵌套对象，需要更复杂的深比较逻辑
+		const filtersChanged = JSON.stringify(filters) !== JSON.stringify(previousFilters ?? {});
+		if (filtersChanged) {
+			previousFilters = { ...filters }; // 更新 previousFilters
+			currentPage = 1; // 筛选条件变化时，重置页码为 1
+		}
+
+		const pageChanged = currentPage !== previousPage;
+		if (pageChanged) {
+			previousPage = currentPage; // 更新 previousPage
+		}
+
+		if ((filtersChanged || pageChanged) && filters.request_time_start && filters.request_time_end) {
 			fetchLogs();
 		}
 	});
