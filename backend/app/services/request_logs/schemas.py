@@ -16,6 +16,9 @@ class RequestLog(BaseModel):
     auth_key_alias: Optional[str] = None
     model_name: Optional[str] = None
     is_success: bool
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
 
 
 class RequestLogsResponse(BaseModel):

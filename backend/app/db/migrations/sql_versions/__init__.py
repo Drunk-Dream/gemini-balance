@@ -24,7 +24,10 @@ request_logs:
     key_identifier TEXT NOT NULL,
     auth_key_alias TEXT NOT NULL,
     model_name TEXT NOT NULL,
-    is_success INTEGER NOT NULL
+    is_success INTEGER NOT NULL,
+    prompt_tokens INTEGER,
+    completion_tokens INTEGER,
+    total_tokens INTEGER,
     FOREIGN KEY (key_identifier) REFERENCES key_states(key_identifier) ON DELETE CASCADE,
     FOREIGN KEY (auth_key_alias) REFERENCES auth_keys(alias) ON DELETE CASCADE ON UPDATE CASCADE
 """

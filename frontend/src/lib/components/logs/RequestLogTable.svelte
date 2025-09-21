@@ -7,6 +7,7 @@
 		{ key: 'key_identifier', label: '密钥标识符' },
 		{ key: 'auth_key_alias', label: '用户' },
 		{ key: 'model_name', label: '模型名称' },
+		{ key: 'token_usage', label: 'Token 使用情况' },
 		{ key: 'is_success', label: '成功' }
 	];
 
@@ -36,7 +37,7 @@
 				<tr>
 					{#each headers as header}
 						<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-							{#if header.key === 'request_time' || header.key === 'response_time'}
+							{#if header.key === 'request_time'}
 								{formatDateTime(log[header.key])}
 							{:else if header.key === 'is_success'}
 								<span
@@ -48,6 +49,13 @@
 								>
 									{log[header.key] ? '是' : '否'}
 								</span>
+							{:else if header.key === 'token_usage'}
+								{#if log.prompt_tokens !== null || log.completion_tokens !== null || log.total_tokens !== null}
+									{log.prompt_tokens || '0'}->{log.completion_tokens || '0'}({log.total_tokens ||
+										'0'})
+								{:else}
+									-
+								{/if}
 							{:else}
 								{log[header.key] || '-'}
 							{/if}

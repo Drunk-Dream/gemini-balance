@@ -185,6 +185,9 @@ class KeyStateManager:
             auth_key_alias=request_info.auth_key_alias,
             model_name=request_info.model_id,
             is_success=True,
+            prompt_tokens=request_info.prompt_tokens,
+            completion_tokens=request_info.completion_tokens,
+            total_tokens=request_info.total_tokens
         )
         await self._request_log_manager.record_request_log(log_entry)
 

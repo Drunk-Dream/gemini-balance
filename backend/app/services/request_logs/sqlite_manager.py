@@ -23,6 +23,9 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         auth_key_alias TEXT NOT NULL,
         model_name TEXT NOT NULL,
         is_success INTEGER NOT NULL
+        prompt_tokens INTEGER,
+        completion_tokens INTEGER,
+        total_tokens INTEGER,
         FOREIGN KEY (key_identifier) REFERENCES key_states(key_identifier) ON DELETE CASCADE,
         FOREIGN KEY (auth_key_alias) REFERENCES auth_keys(alias) ON DELETE CASCADE ON UPDATE CASCADE
     """
@@ -37,8 +40,8 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """
-                INSERT INTO request_logs (request_id, request_time, key_identifier, auth_key_alias, model_name, is_success)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO request_logs (request_id, request_time, key_identifier, auth_key_alias, model_name, is_success, prompt_tokens, completion_tokens, total_tokens)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     log.request_id,
@@ -47,6 +50,9 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                     log.auth_key_alias,
                     log.model_name,
                     int(log.is_success),  # 存储布尔值为整数 0 或 1
+                    log.prompt_tokens,
+                    log.completion_tokens,
+                    log.total_tokens,
                 ),
             )
             await db.commit()
@@ -134,6 +140,9 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                     auth_key_alias=row["auth_key_alias"],
                     model_name=row["model_name"],
                     is_success=bool(row["is_success"]),
+                    prompt_tokens=row["prompt_tokens"],
+                    completion_tokens=row["completion_tokens"],
+                    total_tokens=row["total_tokens"],
                 )
                 for row in rows
             ]
