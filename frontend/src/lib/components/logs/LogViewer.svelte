@@ -2,16 +2,16 @@
 	// 导入 Notification 组件
 	import Notification from '$lib/components/common/Notification.svelte';
 	import { colorizeLog } from '$lib/utils/logUtils';
-	import { onMount } from 'svelte';
+	import { tick } from 'svelte';
 
 	let { logs, errorMessage }: { logs: string[]; errorMessage: string | null } = $props();
 
 	let logContainer: HTMLElement;
-	let autoScroll = true;
 	let showScrollToBottomButton = $state(false);
+	let autoScroll = $state(true); // New state to control auto-scrolling
 
 	function scrollToBottom() {
-		if (logContainer && autoScroll) {
+		if (logContainer) {
 			logContainer.scrollTop = logContainer.scrollHeight;
 		}
 	}
@@ -19,6 +19,7 @@
 	function forceScrollToBottom() {
 		if (logContainer) {
 			logContainer.scrollTop = logContainer.scrollHeight;
+			showScrollToBottomButton = false; // Hide button after manual scroll
 			autoScroll = true; // Re-enable auto-scroll after manual scroll
 		}
 	}
@@ -26,24 +27,33 @@
 	function handleScroll() {
 		if (logContainer) {
 			const { scrollTop, scrollHeight, clientHeight } = logContainer;
-			if (scrollHeight - scrollTop <= clientHeight + 50) {
-				autoScroll = true;
-				showScrollToBottomButton = false;
-			} else {
+			// Show scroll to bottom button if not at the very bottom
+			showScrollToBottomButton = scrollHeight - scrollTop > clientHeight + 50;
+
+			// Disable auto-scroll if user scrolls up
+			if (scrollHeight - scrollTop > clientHeight + 100) { // A bit more buffer to disable auto-scroll
 				autoScroll = false;
-				showScrollToBottomButton = true;
+			} else if (scrollHeight - scrollTop <= clientHeight + 50) { // Re-enable if user scrolls back to bottom
+				autoScroll = true;
 			}
 		}
 	}
 
-	onMount(() => {
-		// Initial scroll to bottom
-		scrollToBottom();
-	});
-
-	// React to log changes
+	// React to log changes and scroll AFTER DOM updates
 	$effect(() => {
-		scrollToBottom();
+		// By accessing `logs`, we ensure this effect re-runs whenever the logs change.
+		logs;
+
+		// We need to wait for the DOM to update after `logs` changes.
+		// Using an async IIFE because $effect must be synchronous.
+		(async () => {
+			await tick(); // Ensure DOM is updated with new logs before scrolling
+
+			// Only scroll if autoScroll is enabled
+			if (autoScroll) {
+				scrollToBottom();
+			}
+		})();
 	});
 </script>
 
