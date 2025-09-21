@@ -6,7 +6,7 @@ from starlette.responses import StreamingResponse
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.core.config import Settings, get_settings
-from backend.app.services.chat_service.base_service import ApiService
+from backend.app.services.chat_service.base_service import ApiService, RequestInfo
 from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 
@@ -28,6 +28,19 @@ class GeminiService(ApiService):
 
     def _prepare_headers(self, api_key: str) -> Dict[str, str]:
         return {"Content-Type": "application/json", "x-goog-api-key": api_key}
+
+    def _extract_and_update_token_counts(
+        self, response_data: Dict[str, Any], request_info: RequestInfo
+    ) -> None:
+        """
+        从 Gemini API 响应中提取 token 计数并更新 RequestInfo。
+        """
+        usage_metadata = response_data.get("usageMetadata")
+        if usage_metadata:
+            request_info.prompt_tokens = usage_metadata.get("promptTokenCount")
+            request_info.completion_tokens = usage_metadata.get("candidatesTokenCount")
+            request_info.total_tokens = usage_metadata.get("totalTokenCount")
+            self.request_info = request_info
 
     async def _generate_content(
         self,

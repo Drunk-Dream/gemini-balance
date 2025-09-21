@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 import secrets
 from abc import ABC, abstractmethod
@@ -31,6 +32,9 @@ class RequestInfo(BaseModel):
     model_id: str
     auth_key_alias: str = "anonymous"
     stream: bool
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
 
 
 class ApiService(ABC):
@@ -109,6 +113,16 @@ class ApiService(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def _extract_and_update_token_counts(
+        self, response_data: Dict[str, Any], request_info: RequestInfo
+    ) -> None:
+        """
+        Abstract method to extract token counts from the API response and update RequestInfo.
+        Must be implemented by subclasses.
+        """
+        raise NotImplementedError
+
     async def _request_generator(
         self,
         method: str,
@@ -169,17 +183,78 @@ class ApiService(ABC):
                         params=params,
                     ) as response:
                         response.raise_for_status()
-                        await self._key_manager.mark_key_success(
-                            key_identifier, self.request_info
-                        )
-                        logger.info(
-                            f"[Request ID: {request_id}] Streaming request with key {key_identifier} succeeded."
-                        )
+                        # 用于流式响应的完成标志
+                        stream_finished = False
+                        full_response_content = ""
+
                         async for text_chunk in response.aiter_text():
                             transaction_logger.info(
                                 f"[Request ID: {request_id}] Stream chunk: {text_chunk}"
                             )
+                            full_response_content += text_chunk
                             yield text_chunk
+
+                            # 尝试解析 chunk，检查完成标志和 token 计数
+                            try:
+                                # 移除 "data: " 前缀并解析 JSON
+                                if text_chunk.startswith("data: "):
+                                    json_str = text_chunk[len("data: ") :].strip()
+                                    if json_str == "[DONE]":
+                                        continue
+                                    chunk_data = json.loads(json_str)
+
+                                    if self.service_name == "Gemini API":
+                                        if any(
+                                            candidate.get("finishReason") == "STOP"
+                                            for candidate in chunk_data.get(
+                                                "candidates", []
+                                            )
+                                        ):
+                                            stream_finished = True
+                                            self._extract_and_update_token_counts(
+                                                chunk_data, self.request_info
+                                            )
+                                    elif self.service_name == "OpenAI API":
+                                        if any(
+                                            choice.get("finish_reason") == "stop"
+                                            for choice in chunk_data.get("choices", [])
+                                        ):
+                                            stream_finished = True
+                                            self._extract_and_update_token_counts(
+                                                chunk_data, self.request_info
+                                            )
+                            except json.JSONDecodeError:
+                                logger.warning(
+                                    f"[Request ID: {request_id}] Could not decode JSON from stream chunk"
+                                )
+                                transaction_logger.warning(
+                                    f"[Request ID: {request_id}] Could not decode JSON from stream chunk: {text_chunk}"
+                                )
+                                # 如果无法解析，继续处理下一个 chunk
+                                continue
+
+                        if not stream_finished:
+                            logger.error(
+                                f"[Request ID: {request_id}] Streaming request finished without a STOP signal. "
+                            )
+                            transaction_logger.error(
+                                f"[Request ID: {request_id}] Streaming request finished without a STOP signal. "
+                                f"Full response: {full_response_content}"
+                            )
+                            raise HTTPException(
+                                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Streaming request finished without a STOP signal.",
+                            )
+
+                        await self._key_manager.mark_key_success(
+                            key_identifier, self.request_info
+                        )
+                        logger.info(
+                            f"[Request ID: {request_id}] Streaming request with key {key_identifier} succeeded. "
+                            f"Tokens: prompt={self.request_info.prompt_tokens}, "
+                            f"completion={self.request_info.completion_tokens}, "
+                            f"total={self.request_info.total_tokens}"
+                        )
                         return
                 else:
                     response = await self.client.request(
@@ -190,11 +265,14 @@ class ApiService(ABC):
                         params=params,
                     )
                     response.raise_for_status()
+                    response_json = response.json()
+
+                    self._extract_and_update_token_counts(
+                        response_json, self.request_info
+                    )
                     await self._key_manager.mark_key_success(
                         key_identifier, self.request_info
                     )
-                    # await key_manager.record_usage(key_identifier, model_id)
-                    response_json = response.json()
                     transaction_logger.info(
                         "[Request ID: %s] Response from %s API with key %s: %s",
                         request_id,
@@ -203,7 +281,10 @@ class ApiService(ABC):
                         response_json,
                     )
                     logger.info(
-                        f"[Request ID: {request_id}] Request with key {key_identifier} succeeded."
+                        f"[Request ID: {request_id}] Request with key {key_identifier} succeeded. "
+                        f"Tokens: prompt={self.request_info.prompt_tokens}, "
+                        f"completion={self.request_info.completion_tokens}, "
+                        f"total={self.request_info.total_tokens}"
                     )
                     yield response_json
                     return

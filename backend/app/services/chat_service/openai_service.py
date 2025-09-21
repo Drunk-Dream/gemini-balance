@@ -6,7 +6,7 @@ from starlette.responses import StreamingResponse
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.core.config import Settings, get_settings
-from backend.app.services.chat_service.base_service import ApiService
+from backend.app.services.chat_service.base_service import ApiService, RequestInfo
 from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 
@@ -90,3 +90,16 @@ class OpenAIService(ApiService):
         if stream and isinstance(response, StreamingResponse):
             response.media_type = "text/event-stream"
         return response
+
+    def _extract_and_update_token_counts(
+        self, response_data: Dict[str, Any], request_info: RequestInfo
+    ) -> None:
+        """
+        从 OpenAI API 响应中提取 token 计数并更新 RequestInfo。
+        """
+        usage = response_data.get("usage")
+        if usage:
+            request_info.prompt_tokens = usage.get("prompt_tokens")
+            request_info.completion_tokens = usage.get("completion_tokens")
+            request_info.total_tokens = usage.get("total_tokens")
+            self.request_info = request_info
