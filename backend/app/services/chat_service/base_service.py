@@ -20,11 +20,11 @@ from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_ma
 from backend.app.core.config import settings
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
-from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 if TYPE_CHECKING:
     from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
     from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
+    from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 
 class RequestInfo(BaseModel):
@@ -138,7 +138,7 @@ class ApiService(ABC):
         stream = self.request_info.stream
         request_id = self.request_info.request_id
         for attempt in range(self.max_retries):
-            key_identifier = await self._key_manager.get_next_key()
+            key_identifier = await self._key_manager.get_next_key(self.request_info)
             if not key_identifier:
                 logger.warning(
                     f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: No available API keys. "

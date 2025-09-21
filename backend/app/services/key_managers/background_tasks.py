@@ -16,7 +16,9 @@ from typing import (
 from backend.app.core.logging import app_logger
 
 if TYPE_CHECKING:
+    from backend.app.services.chat_service.base_service import RequestInfo
     from backend.app.services.key_managers.db_manager import DBManager
+    from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
@@ -94,27 +96,18 @@ class BackgroundTaskManager:
     async def _timeout_release_key(
         self,
         key_identifier: str,
-        db_manager: DBManager,
         key_in_use_timeout_seconds: int,
-        api_key_failure_threshold: int,
+        request_info: RequestInfo,
+        key_manager: KeyStateManager,
     ):
         """
         在指定超时后释放密钥，并增加失败计数。
         """
         try:
             await asyncio.sleep(key_in_use_timeout_seconds)
-            async with self.key_manager_lock:
-                state = await db_manager.get_key_state(key_identifier)
-                if state and state.is_in_use:
-                    state.request_fail_count += 1
-                    if state.request_fail_count >= api_key_failure_threshold:
-                        pass
-                    await db_manager.save_key_state(key_identifier, state)
-                    await db_manager.release_key_from_use(key_identifier)
-                    app_logger.warning(
-                        f"Key {key_identifier} released from use due to timeout. "
-                        f"Failure count increased to {state.request_fail_count}."
-                    )
+            await key_manager.mark_key_fail(
+                key_identifier, "use_timeout_error", request_info
+            )
         except asyncio.CancelledError:
             app_logger.debug(f"Timeout task for key {key_identifier} was cancelled.")
         except Exception as e:
@@ -126,9 +119,9 @@ class BackgroundTaskManager:
     def create_timeout_task(
         self,
         key_identifier: str,
-        db_manager: DBManager,
         key_in_use_timeout_seconds: int,
-        api_key_failure_threshold: int,
+        request_info: RequestInfo,
+        key_manager: KeyStateManager,
     ):
         """
         创建并启动一个用于超时释放密钥的任务。
@@ -139,9 +132,9 @@ class BackgroundTaskManager:
         task = asyncio.create_task(
             self._timeout_release_key(
                 key_identifier,
-                db_manager,
                 key_in_use_timeout_seconds,
-                api_key_failure_threshold,
+                request_info,
+                key_manager,
             )
         )
         self.timeout_tasks[key_identifier] = task

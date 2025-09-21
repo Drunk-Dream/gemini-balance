@@ -83,16 +83,13 @@ class KeyStateManager:
     async def _save_key_state(self, key_identifier: str, state: KeyState):
         await self._db_manager.save_key_state(key_identifier, state)
 
-    async def get_next_key(self) -> Optional[str]:
+    async def get_next_key(self, request_info: RequestInfo) -> Optional[str]:
         key_identifier = await self._db_manager.get_next_available_key()
         if key_identifier:
             await self._db_manager.move_to_use(key_identifier)
             # 启动一个定时任务，在超时后自动释放密钥
             self._background_task_manager.create_timeout_task(
-                key_identifier,
-                self._db_manager,
-                self._key_in_use_timeout_seconds,
-                self._api_key_failure_threshold,
+                key_identifier, self._key_in_use_timeout_seconds, request_info, self
             )
         return key_identifier
 
@@ -118,10 +115,10 @@ class KeyStateManager:
             "unexpected_error",
         ]:
             should_cool_down = True
-        elif error_type in ["other_http_error", "request_error"]:
+        elif error_type in ["other_http_error", "request_error", "use_timeout_error"]:
             if state.request_fail_count >= self._api_key_failure_threshold:
                 should_cool_down = True
-                error_type = "max_failures_error"
+                error_type += " & max_failures_error"
 
         if should_cool_down:
             state.cool_down_entry_count += 1
@@ -187,7 +184,7 @@ class KeyStateManager:
             is_success=True,
             prompt_tokens=request_info.prompt_tokens,
             completion_tokens=request_info.completion_tokens,
-            total_tokens=request_info.total_tokens
+            total_tokens=request_info.total_tokens,
         )
         await self._request_log_manager.record_request_log(log_entry)
 
