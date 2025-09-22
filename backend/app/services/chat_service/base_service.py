@@ -19,6 +19,7 @@ from starlette.status import (
 
 from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_manager
 from backend.app.core.config import settings
+from backend.app.core.errors import StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
 
@@ -134,6 +135,132 @@ class ApiService(ABC):
         """
         raise NotImplementedError
 
+    async def _handle_stream_request_logic(
+        self,
+        key_identifier: str,
+        method: str,
+        url: str,
+        request_data: GeminiRequest | OpenAIRequest,
+        headers: Dict[str, str],
+        params: Dict[str, str],
+    ) -> AsyncGenerator[str, None]:
+        """
+        Handles the streaming request logic, including SSE connection, token counting,
+        and error handling for streaming responses.
+        """
+        request_id = self.request_info.request_id
+        full_response_content = ""
+        async with httpx_sse.aconnect_sse(
+            self.client,
+            method,
+            url,
+            json=request_data.model_dump(by_alias=True, exclude_unset=True),
+            headers=headers,
+            params=params,
+        ) as event_source:
+            event_source.response.raise_for_status()
+            stream_finished = False
+
+            async for sse in event_source.aiter_sse():
+                transaction_logger.info(
+                    f"[Request ID: {request_id}] SSE event: {sse.event}, data: {sse.data}"
+                )
+                full_response_content += sse.data
+                yield f"data: {sse.data}\n\n"
+
+                if sse.data == "[DONE]":
+                    continue
+
+                try:
+                    chunk_data = json.loads(sse.data)
+                    stream_finished = self._extract_and_update_token_counts_from_stream(
+                        chunk_data, self.request_info
+                    )
+                except json.JSONDecodeError:
+                    logger.warning(
+                        f"[Request ID: {request_id}] Could not decode JSON from SSE data"
+                    )
+                    continue
+
+            if not stream_finished:
+                logger.error(
+                    f"[Request ID: {request_id}] Streaming request finished without a STOP signal. "
+                )
+                transaction_logger.error(
+                    f"[Request ID: {request_id}] Streaming request finished without a STOP signal. "
+                    f"Full response: {full_response_content}"
+                )
+                # Yield an error message to the client before returning
+                # yield 'data: {{"error": "Streaming request finished without a STOP signal."}}\n\n'
+                raise StreamingCompletionError(
+                    f"Streaming request finished without a STOP signal. Full response: {full_response_content}"
+                )
+
+        await self._key_manager.mark_key_success(
+            key_identifier,
+            self.request_info.request_id,
+            self.request_info.auth_key_alias,
+            self.request_info.model_id,
+            self.request_info.prompt_tokens,
+            self.request_info.completion_tokens,
+            self.request_info.total_tokens,
+        )
+        logger.info(
+            f"[Request ID: {request_id}] Streaming request with key {key_identifier} succeeded. "
+            f"Tokens: prompt={self.request_info.prompt_tokens}, "
+            f"completion={self.request_info.completion_tokens}, "
+            f"total={self.request_info.total_tokens}"
+        )
+
+    async def _handle_non_stream_request_logic(
+        self,
+        key_identifier: str,
+        method: str,
+        url: str,
+        request_data: GeminiRequest | OpenAIRequest,
+        headers: Dict[str, str],
+        params: Dict[str, str],
+    ) -> Dict[str, Any]:
+        """
+        Handles the non-streaming request logic, including HTTP request, token counting,
+        and error handling for non-streaming responses.
+        """
+        request_id = self.request_info.request_id
+        response = await self.client.request(
+            method,
+            url,
+            json=request_data.model_dump(by_alias=True, exclude_unset=True),
+            headers=headers,
+            params=params,
+        )
+        response.raise_for_status()
+        response_json = response.json()
+
+        self._extract_and_update_token_counts(response_json, self.request_info)
+        await self._key_manager.mark_key_success(
+            key_identifier,
+            self.request_info.request_id,
+            self.request_info.auth_key_alias,
+            self.request_info.model_id,
+            self.request_info.prompt_tokens,
+            self.request_info.completion_tokens,
+            self.request_info.total_tokens,
+        )
+        transaction_logger.info(
+            "[Request ID: %s] Response from %s API with key %s: %s",
+            request_id,
+            self.service_name,
+            key_identifier,
+            response_json,
+        )
+        logger.info(
+            f"[Request ID: {request_id}] Request with key {key_identifier} succeeded. "
+            f"Tokens: prompt={self.request_info.prompt_tokens}, "
+            f"completion={self.request_info.completion_tokens}, "
+            f"total={self.request_info.total_tokens}"
+        )
+        return response_json
+
     async def _request_generator(
         self,
         method: str,
@@ -188,109 +315,30 @@ class ApiService(ABC):
                 )
 
                 if stream:
-                    async with httpx_sse.aconnect_sse(
-                        self.client,
-                        method,
-                        url,
-                        json=request_data.model_dump(by_alias=True, exclude_unset=True),
-                        headers=headers,
-                        params=params,
-                    ) as event_source:
-                        event_source.response.raise_for_status()
-                        stream_finished = False
-                        full_response_content = ""
-
-                        async for sse in event_source.aiter_sse():
-                            transaction_logger.info(
-                                f"[Request ID: {request_id}] SSE event: {sse.event}, data: {sse.data}"
-                            )
-                            full_response_content += sse.data
-                            yield f"data: {sse.data}\n\n"
-
-                            if sse.data == "[DONE]":
-                                continue
-
-                            try:
-                                chunk_data = json.loads(sse.data)
-                                stream_finished = (
-                                    self._extract_and_update_token_counts_from_stream(
-                                        chunk_data, self.request_info
-                                    )
-                                )
-                            except json.JSONDecodeError:
-                                logger.warning(
-                                    f"[Request ID: {request_id}] Could not decode JSON from SSE data"
-                                )
-                                continue
-
-                        if not stream_finished:
-                            logger.error(
-                                f"[Request ID: {request_id}] Streaming request finished without a STOP signal. "
-                            )
-                            transaction_logger.error(
-                                f"[Request ID: {request_id}] Streaming request finished without a STOP signal. "
-                                f"Full response: {full_response_content}"
-                            )
-                            raise HTTPException(
-                                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                                detail="Streaming request finished without a STOP signal.",
-                            )
-
-                        await self._key_manager.mark_key_success(
-                            key_identifier,
-                            self.request_info.request_id,
-                            self.request_info.auth_key_alias,
-                            self.request_info.model_id,
-                            self.request_info.prompt_tokens,
-                            self.request_info.completion_tokens,
-                            self.request_info.total_tokens,
-                        )
-                        logger.info(
-                            f"[Request ID: {request_id}] Streaming request with key {key_identifier} succeeded. "
-                            f"Tokens: prompt={self.request_info.prompt_tokens}, "
-                            f"completion={self.request_info.completion_tokens}, "
-                            f"total={self.request_info.total_tokens}"
-                        )
-                        return
+                    async for chunk in self._handle_stream_request_logic(
+                        key_identifier, method, url, request_data, headers, params
+                    ):
+                        yield chunk
+                    return
                 else:
-                    response = await self.client.request(
-                        method,
-                        url,
-                        json=request_data.model_dump(by_alias=True, exclude_unset=True),
-                        headers=headers,
-                        params=params,
+                    response_data = await self._handle_non_stream_request_logic(
+                        key_identifier, method, url, request_data, headers, params
                     )
-                    response.raise_for_status()
-                    response_json = response.json()
-
-                    self._extract_and_update_token_counts(
-                        response_json, self.request_info
-                    )
-                    await self._key_manager.mark_key_success(
-                        key_identifier,
-                        self.request_info.request_id,
-                        self.request_info.auth_key_alias,
-                        self.request_info.model_id,
-                        self.request_info.prompt_tokens,
-                        self.request_info.completion_tokens,
-                        self.request_info.total_tokens,
-                    )
-                    transaction_logger.info(
-                        "[Request ID: %s] Response from %s API with key %s: %s",
-                        request_id,
-                        self.service_name,
-                        key_identifier,
-                        response_json,
-                    )
-                    logger.info(
-                        f"[Request ID: {request_id}] Request with key {key_identifier} succeeded. "
-                        f"Tokens: prompt={self.request_info.prompt_tokens}, "
-                        f"completion={self.request_info.completion_tokens}, "
-                        f"total={self.request_info.total_tokens}"
-                    )
-                    yield response_json
+                    yield response_data
                     return
 
+            except StreamingCompletionError as e:
+                last_exception = e
+                logger.error(
+                    f"[Request ID: {request_id}] Streaming completion error: {e}. Deactivating and retrying..."
+                )
+                await self._key_manager.mark_key_fail(
+                    key_identifier,
+                    "streaming_completion_error",
+                    self.request_info.request_id,
+                    self.request_info.auth_key_alias,
+                )
+                continue
             except httpx.HTTPStatusError as e:
                 # Safely get the response text for logging
                 response_text = ""
@@ -340,13 +388,6 @@ class ApiService(ABC):
                     await asyncio.sleep(wait_time)
                 continue
             except httpx.RequestError as e:
-                transaction_logger.error(
-                    "[Request ID: %s] Request error from %s API with key %s: %s",
-                    request_id,
-                    self.service_name,
-                    key_identifier,
-                    e,
-                )
                 last_exception = e
                 logger.error(
                     f"[Request ID: {request_id}] Request error with key {key_identifier}: {e}. Deactivating and retrying..."
@@ -360,18 +401,10 @@ class ApiService(ABC):
                 await self._recreate_client()  # Recreate client on request errors
                 continue
             except Exception as e:
-                transaction_logger.error(
-                    "[Request ID: %s] Unexpected error from %s API with key %s: %s",
-                    request_id,
-                    self.service_name,
-                    key_identifier,
-                    e,
-                )
                 last_exception = e
                 logger.critical(
                     f"[Request ID: {request_id}] An unexpected error occurred with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
-                # 标记密钥失败，使用新的错误类型 "unexpected_error"
                 await self._key_manager.mark_key_fail(
                     key_identifier,
                     "unexpected_error",
@@ -389,13 +422,21 @@ class ApiService(ABC):
             )
             if isinstance(last_exception, HTTPException):
                 raise last_exception
+            if not stream:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"All API request attempts failed. Last error: {str(last_exception)}",
+                )
+            else:
+                yield f'data: {{"error": {str(last_exception)}}}\n\n'
+                return
+        if not stream:
             raise HTTPException(
-                status_code=500,
-                detail=f"All API request attempts failed. Last error: {str(last_exception)}",
+                status_code=500, detail="No API keys were available or processed."
             )
-        raise HTTPException(
-            status_code=500, detail="No API keys were available or processed."
-        )
+        else:
+            yield 'data: {"error": "No API keys were available or processed."}\n\n'
+            return
 
     async def _send_request(
         self,

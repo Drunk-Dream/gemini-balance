@@ -121,7 +121,12 @@ class KeyStateManager:
             "unexpected_error",
         ]:
             should_cool_down = True
-        elif error_type in ["other_http_error", "request_error", "use_timeout_error"]:
+        elif error_type in [
+            "other_http_error",
+            "request_error",
+            "use_timeout_error",
+            "streaming_completion_error",
+        ]:
             if state.request_fail_count >= self._api_key_failure_threshold:
                 should_cool_down = True
                 error_type += " & max_failures_error"
