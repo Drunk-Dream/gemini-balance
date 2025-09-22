@@ -105,7 +105,8 @@ class KeyStateManager:
         auth_key_alias: Optional[str],
     ):
         # 取消对应的超时任务
-        self._background_task_manager.cancel_timeout_task(key_identifier)
+        if error_type != "use_timeout_error":
+            self._background_task_manager.cancel_timeout_task(key_identifier)
 
         state = await self._get_key_state(key_identifier)
         if not state:

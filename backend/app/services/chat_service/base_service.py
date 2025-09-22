@@ -342,17 +342,21 @@ class ApiService(ABC):
             except httpx.HTTPStatusError as e:
                 # Safely get the response text for logging
                 response_text = ""
-                if not self.request_info.stream:
-                    # For non-streaming requests, the body is already read and available.
+                try:
                     response_text = e.response.text
-                else:
-                    # For streaming requests, we must read the body first, handling potential errors.
+                except httpx.ResponseNotRead:
+                    # If the response body hasn't been read, try to read it.
                     try:
                         await e.response.aread()
                         response_text = e.response.text
-                    except (httpx.StreamClosed, httpx.ResponseNotRead):
+                    except httpx.StreamClosed:
                         response_text = "<Streamed response body not available due to connection error>"
+                except Exception:
+                    # Catch any other unexpected errors during text access
+                    response_text = "<Error reading response body>"
 
+                if not response_text:
+                    response_text = "<Response body not available>"
                 transaction_logger.error(
                     "[Request ID: %s] Error response from %s API with key %s: %s",
                     request_id,
@@ -412,9 +416,13 @@ class ApiService(ABC):
                     self.request_info.auth_key_alias,
                 )
                 # 即使标记失败，也需要抛出异常，因为这是不可恢复的错误
-                raise HTTPException(
-                    status_code=500, detail=f"An unexpected error occurred: {e}"
-                )
+                if not stream:
+                    raise HTTPException(
+                        status_code=500, detail=f"An unexpected error occurred: {e}"
+                    )
+                else:
+                    yield f'data: {{"error": {{"code": 500, "message": "An unexpected error occurred: {e}", "status": "error"}}}}\n\n'
+                    return
 
         if last_exception:
             logger.critical(
@@ -428,14 +436,14 @@ class ApiService(ABC):
                     detail=f"All API request attempts failed. Last error: {str(last_exception)}",
                 )
             else:
-                yield f'data: {{"error": {str(last_exception)}}}\n\n'
+                yield f'data: {{"error": {{"code": 500, "message": "All API request attempts failed. Last error: {str(last_exception)}", "status": "error"}}}}\n\n'
                 return
         if not stream:
             raise HTTPException(
                 status_code=500, detail="No API keys were available or processed."
             )
         else:
-            yield 'data: {"error": "No API keys were available or processed."}\n\n'
+            yield 'data: {{"error": {{"code": 500, "message": "No API keys were available or processed.", "status": "error"}}}}\n\n'
             return
 
     async def _send_request(
