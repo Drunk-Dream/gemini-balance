@@ -9,7 +9,9 @@ from fastapi import Depends
 from pydantic import BaseModel
 
 from backend.app.core.config import get_settings
+from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
+from backend.app.services.chat_service.base_service import RequestInfo
 from backend.app.services.key_managers.background_tasks import (
     get_background_task_manager,
     with_key_manager_lock,
@@ -82,7 +84,7 @@ class KeyStateManager:
     async def _save_key_state(self, key_identifier: str, state: KeyState):
         await self._db_manager.save_key_state(key_identifier, state)
 
-    async def get_next_key(self, request_id: str, auth_key_alias: str) -> Optional[str]:
+    async def get_next_key(self, request_info: RequestInfo) -> Optional[str]:
         key_identifier = await self._db_manager.get_next_available_key()
         if key_identifier:
             await self._db_manager.move_to_use(key_identifier)
@@ -90,24 +92,20 @@ class KeyStateManager:
             self._background_task_manager.create_timeout_task(
                 key_identifier,
                 self._key_in_use_timeout_seconds,
-                request_id,
-                auth_key_alias,
+                request_info,
                 self,
             )
         return key_identifier
 
     @with_key_manager_lock
     async def mark_key_fail(
-        self,
-        key_identifier: str,
-        error_type: str,
-        request_id: str,
-        auth_key_alias: Optional[str],
+        self, key_identifier: str, error_type: ErrorType, request_info: RequestInfo
     ):
         # 取消对应的超时任务
-        if error_type != "use_timeout_error":
+        if error_type != ErrorType.USE_TIMEOUT_ERROR:
             self._background_task_manager.cancel_timeout_task(key_identifier)
 
+        error_type_str = error_type.value
         state = await self._get_key_state(key_identifier)
         if not state:
             return
@@ -115,22 +113,14 @@ class KeyStateManager:
         state.request_fail_count += 1
         state.last_usage_time = time.time()
 
-        should_cool_down = False
-        if error_type in [
-            "auth_error",
-            "rate_limit_error",
-            "unexpected_error",
-        ]:
+        should_cool_down = error_type.should_cool_down
+
+        if (
+            not should_cool_down
+            and state.request_fail_count >= self._api_key_failure_threshold
+        ):
             should_cool_down = True
-        elif error_type in [
-            "other_http_error",
-            "request_error",
-            "use_timeout_error",
-            "streaming_completion_error",
-        ]:
-            if state.request_fail_count >= self._api_key_failure_threshold:
-                should_cool_down = True
-                error_type += " & max_failures_error"
+            error_type_str += " & max_failures_error"  # 保持原始字符串，以便日志记录
 
         if should_cool_down:
             state.cool_down_entry_count += 1
@@ -145,14 +135,14 @@ class KeyStateManager:
             )
             self._background_task_manager.wakeup_event.set()
             app_logger.warning(
-                f"[Request ID: {request_id}] Key {key_identifier} cooled down for "
-                f"{state.current_cool_down_seconds:.2f}s due to {error_type}."
+                f"[Request ID: {request_info.request_id}] Key {key_identifier} cooled down for "
+                f"{state.current_cool_down_seconds:.2f}s due to {error_type_str}."
             )
         else:  # 如果不需要冷却，则释放密钥
             await self._db_manager.release_key_from_use(key_identifier)
             app_logger.info(
-                f"[Request ID: {request_id}] Key {key_identifier} released from "
-                f"use after {error_type} without cooldown."
+                f"[Request ID: {request_info.request_id}] Key {key_identifier} released from "
+                f"use after {error_type_str} without cooldown."
             )
 
         await self._save_key_state(key_identifier, state)
@@ -160,11 +150,11 @@ class KeyStateManager:
         # 记录请求日志
         log_entry = RequestLog(
             id=None,
-            request_id=request_id,
+            request_id=request_info.request_id,
             request_time=datetime.now(ZoneInfo("UTC")),
             key_identifier=key_identifier,
-            auth_key_alias=auth_key_alias,
-            model_name="unknown",  # model_id is not passed, use "unknown" or retrieve from state if possible
+            auth_key_alias=request_info.auth_key_alias,
+            model_name=request_info.model_id,
             is_success=False,
         )
         await self._request_log_manager.record_request_log(log_entry)

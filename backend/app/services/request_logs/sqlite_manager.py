@@ -56,7 +56,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 ),
             )
             await db.commit()
-            app_logger.debug(f"Request log recorded: {log.request_id}")
+            app_logger.debug(f"Request log id: {log.request_id}")
 
     def _build_filter_query(
         self,

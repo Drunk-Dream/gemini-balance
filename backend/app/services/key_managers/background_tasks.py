@@ -13,9 +13,11 @@ from typing import (
     TypeVar,
 )
 
+from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
 
 if TYPE_CHECKING:
+    from backend.app.services.chat_service.base_service import RequestInfo
     from backend.app.services.key_managers.db_manager import DBManager
     from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
@@ -96,8 +98,7 @@ class BackgroundTaskManager:
         self,
         key_identifier: str,
         key_in_use_timeout_seconds: int,
-        request_id: str,
-        auth_key_alias: Optional[str],
+        request_info: RequestInfo,
         key_manager: KeyStateManager,
     ):
         """
@@ -106,7 +107,7 @@ class BackgroundTaskManager:
         try:
             await asyncio.sleep(key_in_use_timeout_seconds)
             await key_manager.mark_key_fail(
-                key_identifier, "use_timeout_error", request_id, auth_key_alias
+                key_identifier, ErrorType.USE_TIMEOUT_ERROR, request_info
             )
         except asyncio.CancelledError:
             app_logger.debug(f"Timeout task for key {key_identifier} was cancelled.")
@@ -120,8 +121,7 @@ class BackgroundTaskManager:
         self,
         key_identifier: str,
         key_in_use_timeout_seconds: int,
-        request_id: str,
-        auth_key_alias: Optional[str],
+        request_info: RequestInfo,
         key_manager: KeyStateManager,
     ):
         """
@@ -134,8 +134,7 @@ class BackgroundTaskManager:
             self._timeout_release_key(
                 key_identifier,
                 key_in_use_timeout_seconds,
-                request_id,
-                auth_key_alias,
+                request_info,
                 key_manager,
             )
         )

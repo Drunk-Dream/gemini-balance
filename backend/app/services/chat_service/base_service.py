@@ -19,7 +19,7 @@ from starlette.status import (
 
 from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_manager
 from backend.app.core.config import settings
-from backend.app.core.errors import StreamingCompletionError
+from backend.app.core.errors import ErrorType, StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
 
@@ -276,9 +276,7 @@ class ApiService(ABC):
         stream = self.request_info.stream
         request_id = self.request_info.request_id
         for attempt in range(self.max_retries):
-            key_identifier = await self._key_manager.get_next_key(
-                self.request_info.request_id, self.request_info.auth_key_alias
-            )
+            key_identifier = await self._key_manager.get_next_key(self.request_info)
             if not key_identifier:
                 logger.warning(
                     f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: No available API keys. "
@@ -334,9 +332,8 @@ class ApiService(ABC):
                 )
                 await self._key_manager.mark_key_fail(
                     key_identifier,
-                    "streaming_completion_error",
-                    self.request_info.request_id,
-                    self.request_info.auth_key_alias,
+                    ErrorType.STREAMING_COMPLETION_ERROR,
+                    self.request_info,
                 )
                 yield 'data: {{"error": {{"code": 500, "message": "Streaming completion error", "status": "error"}}}}\n\n'
                 return
@@ -366,11 +363,11 @@ class ApiService(ABC):
                     response_text,
                 )
                 last_exception = e
-                error_type = "other_http_error"
+                error_type = ErrorType.OTHER_HTTP_ERROR
                 if e.response.status_code in [401, 403]:
-                    error_type = "auth_error"
+                    error_type = ErrorType.AUTH_ERROR
                 elif e.response.status_code == 429:
-                    error_type = "rate_limit_error"
+                    error_type = ErrorType.RATE_LIMIT_ERROR
 
                 logger.warning(
                     f"[Request ID: {request_id}] API Key {key_identifier} failed with status {e.response.status_code}. "
@@ -379,8 +376,7 @@ class ApiService(ABC):
                 await self._key_manager.mark_key_fail(
                     key_identifier,
                     error_type,
-                    self.request_info.request_id,
-                    self.request_info.auth_key_alias,
+                    self.request_info,
                 )
 
                 if e.response.status_code == 429:
@@ -399,9 +395,8 @@ class ApiService(ABC):
                 )
                 await self._key_manager.mark_key_fail(
                     key_identifier,
-                    "request_error",
-                    self.request_info.request_id,
-                    self.request_info.auth_key_alias,
+                    ErrorType.REQUEST_ERROR,
+                    self.request_info,
                 )
                 await self._recreate_client()  # Recreate client on request errors
                 continue
@@ -412,9 +407,8 @@ class ApiService(ABC):
                 )
                 await self._key_manager.mark_key_fail(
                     key_identifier,
-                    "unexpected_error",
-                    self.request_info.request_id,
-                    self.request_info.auth_key_alias,
+                    ErrorType.UNEXPECTED_ERROR,
+                    self.request_info,
                 )
                 # 即使标记失败，也需要抛出异常，因为这是不可恢复的错误
                 raise HTTPException(
