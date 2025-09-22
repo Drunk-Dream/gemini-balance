@@ -338,7 +338,8 @@ class ApiService(ABC):
                     self.request_info.request_id,
                     self.request_info.auth_key_alias,
                 )
-                continue
+                yield 'data: {{"error": {{"code": 500, "message": "Streaming completion error", "status": "error"}}}}\n\n'
+                return
             except httpx.HTTPStatusError as e:
                 # Safely get the response text for logging
                 response_text = ""
@@ -416,13 +417,9 @@ class ApiService(ABC):
                     self.request_info.auth_key_alias,
                 )
                 # 即使标记失败，也需要抛出异常，因为这是不可恢复的错误
-                if not stream:
-                    raise HTTPException(
-                        status_code=500, detail=f"An unexpected error occurred: {e}"
-                    )
-                else:
-                    yield f'data: {{"error": {{"code": 500, "message": "An unexpected error occurred: {e}", "status": "error"}}}}\n\n'
-                    return
+                raise HTTPException(
+                    status_code=500, detail=f"An unexpected error occurred: {e}"
+                )
 
         if last_exception:
             logger.critical(
@@ -430,21 +427,13 @@ class ApiService(ABC):
             )
             if isinstance(last_exception, HTTPException):
                 raise last_exception
-            if not stream:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"All API request attempts failed. Last error: {str(last_exception)}",
-                )
-            else:
-                yield f'data: {{"error": {{"code": 500, "message": "All API request attempts failed. Last error: {str(last_exception)}", "status": "error"}}}}\n\n'
-                return
-        if not stream:
             raise HTTPException(
-                status_code=500, detail="No API keys were available or processed."
+                status_code=500,
+                detail=f"All API request attempts failed. Last error: {str(last_exception)}",
             )
-        else:
-            yield 'data: {{"error": {{"code": 500, "message": "No API keys were available or processed.", "status": "error"}}}}\n\n'
-            return
+        raise HTTPException(
+            status_code=500, detail="No API keys were available or processed."
+        )
 
     async def _send_request(
         self,
