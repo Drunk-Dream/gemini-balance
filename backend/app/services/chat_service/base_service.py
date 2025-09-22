@@ -125,7 +125,7 @@ class ApiService(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _extract_and_update_token_counts_from_stream(
+    def _extract_and_update_token_counts_from_stream(
         self, chunk_data: Dict[str, Any], request_info: RequestInfo
     ) -> bool:
         """
@@ -205,13 +205,14 @@ class ApiService(ABC):
                             yield f"data: {sse.data}\n\n"
 
                             if sse.data == "[DONE]":
-                                stream_finished = True
                                 continue
 
                             try:
                                 chunk_data = json.loads(sse.data)
-                                await self._extract_and_update_token_counts_from_stream(
-                                    chunk_data, self.request_info
+                                stream_finished = (
+                                    self._extract_and_update_token_counts_from_stream(
+                                        chunk_data, self.request_info
+                                    )
                                 )
                             except json.JSONDecodeError:
                                 logger.warning(
