@@ -42,6 +42,20 @@ class GeminiService(ApiService):
             request_info.total_tokens = usage_metadata.get("totalTokenCount")
             self.request_info = request_info
 
+    def _extract_and_update_token_counts_from_stream(
+        self, chunk_data: Dict[str, Any], request_info: RequestInfo
+    ) -> bool:
+        """
+        从 Gemini API 流式响应中提取 token 计数并更新 RequestInfo。
+        """
+        if any(
+            candidate.get("finishReason") == "STOP"
+            for candidate in chunk_data.get("candidates", [])
+        ):
+            self._extract_and_update_token_counts(chunk_data, request_info)
+            return True
+        return False
+
     async def _generate_content(
         self,
         request_data: GeminiRequest | OpenAIRequest,

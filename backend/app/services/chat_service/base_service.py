@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union, cast
 
 import httpx
+import httpx_sse
 from fastapi import HTTPException
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
@@ -123,6 +124,16 @@ class ApiService(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    async def _extract_and_update_token_counts_from_stream(
+        self, chunk_data: Dict[str, Any], request_info: RequestInfo
+    ) -> bool:
+        """
+        Abstract method to extract token counts from the API response stream and update RequestInfo.
+        Must be implemented by subclasses.
+        """
+        raise NotImplementedError
+
     async def _request_generator(
         self,
         method: str,
@@ -175,62 +186,37 @@ class ApiService(ABC):
                 )
 
                 if stream:
-                    async with self.client.stream(
+                    async with httpx_sse.aconnect_sse(
+                        self.client,
                         method,
                         url,
                         json=request_data.model_dump(by_alias=True, exclude_unset=True),
                         headers=headers,
                         params=params,
-                    ) as response:
-                        response.raise_for_status()
-                        # 用于流式响应的完成标志
+                    ) as event_source:
                         stream_finished = False
                         full_response_content = ""
 
-                        async for text_chunk in response.aiter_text():
+                        async for sse in event_source.aiter_sse():
                             transaction_logger.info(
-                                f"[Request ID: {request_id}] Stream chunk: {text_chunk}"
+                                f"[Request ID: {request_id}] SSE event: {sse.event}, data: {sse.data}"
                             )
-                            full_response_content += text_chunk
-                            yield text_chunk
+                            full_response_content += sse.data
+                            yield f"data: {sse.data}\n\n"
 
-                            # 尝试解析 chunk，检查完成标志和 token 计数
+                            if sse.data == "[DONE]":
+                                stream_finished = True
+                                continue
+
                             try:
-                                # 移除 "data: " 前缀并解析 JSON
-                                if text_chunk.startswith("data: "):
-                                    json_str = text_chunk[len("data: ") :].strip()
-                                    if json_str == "[DONE]":
-                                        continue
-                                    chunk_data = json.loads(json_str)
-
-                                    if self.service_name == "Gemini API":
-                                        if any(
-                                            candidate.get("finishReason") == "STOP"
-                                            for candidate in chunk_data.get(
-                                                "candidates", []
-                                            )
-                                        ):
-                                            stream_finished = True
-                                            self._extract_and_update_token_counts(
-                                                chunk_data, self.request_info
-                                            )
-                                    elif self.service_name == "OpenAI API":
-                                        if any(
-                                            choice.get("finish_reason") == "stop"
-                                            for choice in chunk_data.get("choices", [])
-                                        ):
-                                            stream_finished = True
-                                            self._extract_and_update_token_counts(
-                                                chunk_data, self.request_info
-                                            )
+                                chunk_data = json.loads(sse.data)
+                                await self._extract_and_update_token_counts_from_stream(
+                                    chunk_data, self.request_info
+                                )
                             except json.JSONDecodeError:
                                 logger.warning(
-                                    f"[Request ID: {request_id}] Could not decode JSON from stream chunk"
+                                    f"[Request ID: {request_id}] Could not decode JSON from SSE data"
                                 )
-                                transaction_logger.warning(
-                                    f"[Request ID: {request_id}] Could not decode JSON from stream chunk: {text_chunk}"
-                                )
-                                # 如果无法解析，继续处理下一个 chunk
                                 continue
 
                         if not stream_finished:

@@ -103,3 +103,17 @@ class OpenAIService(ApiService):
             request_info.completion_tokens = usage.get("completion_tokens")
             request_info.total_tokens = usage.get("total_tokens")
             self.request_info = request_info
+
+    def _extract_and_update_token_counts_from_stream(
+        self, chunk_data: Dict[str, Any], request_info: RequestInfo
+    ) -> bool:
+        """
+        从 OpenAI API 流式响应中提取 token 计数并更新 RequestInfo。
+        """
+        if any(
+            choice.get("finish_reason") == "stop"
+            for choice in chunk_data.get("choices", [])
+        ):
+            self._extract_and_update_token_counts(chunk_data, request_info)
+            return True
+        return False
