@@ -20,7 +20,6 @@ from backend.app.services.request_logs.schemas import RequestLog
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
-    from backend.app.services.chat_service.base_service import RequestInfo
     from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
     from backend.app.services.key_managers.db_manager import DBManager, KeyState
 
@@ -83,24 +82,31 @@ class KeyStateManager:
     async def _save_key_state(self, key_identifier: str, state: KeyState):
         await self._db_manager.save_key_state(key_identifier, state)
 
-    async def get_next_key(self, request_info: RequestInfo) -> Optional[str]:
+    async def get_next_key(self, request_id: str, auth_key_alias: str) -> Optional[str]:
         key_identifier = await self._db_manager.get_next_available_key()
         if key_identifier:
             await self._db_manager.move_to_use(key_identifier)
             # 启动一个定时任务，在超时后自动释放密钥
             self._background_task_manager.create_timeout_task(
-                key_identifier, self._key_in_use_timeout_seconds, request_info, self
+                key_identifier,
+                self._key_in_use_timeout_seconds,
+                request_id,
+                auth_key_alias,
+                self,
             )
         return key_identifier
 
     @with_key_manager_lock
     async def mark_key_fail(
-        self, key_identifier: str, error_type: str, request_info: RequestInfo
+        self,
+        key_identifier: str,
+        error_type: str,
+        request_id: str,
+        auth_key_alias: Optional[str],
     ):
         # 取消对应的超时任务
         self._background_task_manager.cancel_timeout_task(key_identifier)
 
-        request_id = request_info.request_id
         state = await self._get_key_state(key_identifier)
         if not state:
             return
@@ -151,14 +157,23 @@ class KeyStateManager:
             request_id=request_id,
             request_time=datetime.now(ZoneInfo("UTC")),
             key_identifier=key_identifier,
-            auth_key_alias=request_info.auth_key_alias,
-            model_name=request_info.model_id,
+            auth_key_alias=auth_key_alias,
+            model_name="unknown",  # model_id is not passed, use "unknown" or retrieve from state if possible
             is_success=False,
         )
         await self._request_log_manager.record_request_log(log_entry)
 
     @with_key_manager_lock
-    async def mark_key_success(self, key_identifier: str, request_info: RequestInfo):
+    async def mark_key_success(
+        self,
+        key_identifier: str,
+        request_id: str,
+        auth_key_alias: Optional[str],
+        model_id: str,
+        prompt_tokens: Optional[int] = None,
+        completion_tokens: Optional[int] = None,
+        total_tokens: Optional[int] = None,
+    ):
         # 取消对应的超时任务
         self._background_task_manager.cancel_timeout_task(key_identifier)
 
@@ -176,15 +191,15 @@ class KeyStateManager:
         # 记录请求日志
         log_entry = RequestLog(
             id=None,
-            request_id=request_info.request_id,
+            request_id=request_id,
             request_time=datetime.now(ZoneInfo("UTC")),
             key_identifier=key_identifier,
-            auth_key_alias=request_info.auth_key_alias,
-            model_name=request_info.model_id,
+            auth_key_alias=auth_key_alias,
+            model_name=model_id,
             is_success=True,
-            prompt_tokens=request_info.prompt_tokens,
-            completion_tokens=request_info.completion_tokens,
-            total_tokens=request_info.total_tokens,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
         )
         await self._request_log_manager.record_request_log(log_entry)
 

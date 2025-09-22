@@ -149,7 +149,9 @@ class ApiService(ABC):
         stream = self.request_info.stream
         request_id = self.request_info.request_id
         for attempt in range(self.max_retries):
-            key_identifier = await self._key_manager.get_next_key(self.request_info)
+            key_identifier = await self._key_manager.get_next_key(
+                self.request_info.request_id, self.request_info.auth_key_alias
+            )
             if not key_identifier:
                 logger.warning(
                     f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: No available API keys. "
@@ -194,6 +196,7 @@ class ApiService(ABC):
                         headers=headers,
                         params=params,
                     ) as event_source:
+                        event_source.response.raise_for_status()
                         stream_finished = False
                         full_response_content = ""
 
@@ -234,7 +237,13 @@ class ApiService(ABC):
                             )
 
                         await self._key_manager.mark_key_success(
-                            key_identifier, self.request_info
+                            key_identifier,
+                            self.request_info.request_id,
+                            self.request_info.auth_key_alias,
+                            self.request_info.model_id,
+                            self.request_info.prompt_tokens,
+                            self.request_info.completion_tokens,
+                            self.request_info.total_tokens,
                         )
                         logger.info(
                             f"[Request ID: {request_id}] Streaming request with key {key_identifier} succeeded. "
@@ -258,7 +267,13 @@ class ApiService(ABC):
                         response_json, self.request_info
                     )
                     await self._key_manager.mark_key_success(
-                        key_identifier, self.request_info
+                        key_identifier,
+                        self.request_info.request_id,
+                        self.request_info.auth_key_alias,
+                        self.request_info.model_id,
+                        self.request_info.prompt_tokens,
+                        self.request_info.completion_tokens,
+                        self.request_info.total_tokens,
                     )
                     transaction_logger.info(
                         "[Request ID: %s] Response from %s API with key %s: %s",
@@ -309,7 +324,10 @@ class ApiService(ABC):
                     f"Deactivating it. Attempt {attempt + 1}/{self.max_retries}."
                 )
                 await self._key_manager.mark_key_fail(
-                    key_identifier, error_type, self.request_info
+                    key_identifier,
+                    error_type,
+                    self.request_info.request_id,
+                    self.request_info.auth_key_alias,
                 )
 
                 if e.response.status_code == 429:
@@ -334,7 +352,10 @@ class ApiService(ABC):
                     f"[Request ID: {request_id}] Request error with key {key_identifier}: {e}. Deactivating and retrying..."
                 )
                 await self._key_manager.mark_key_fail(
-                    key_identifier, "request_error", self.request_info
+                    key_identifier,
+                    "request_error",
+                    self.request_info.request_id,
+                    self.request_info.auth_key_alias,
                 )
                 await self._recreate_client()  # Recreate client on request errors
                 continue
@@ -352,7 +373,10 @@ class ApiService(ABC):
                 )
                 # 标记密钥失败，使用新的错误类型 "unexpected_error"
                 await self._key_manager.mark_key_fail(
-                    key_identifier, "unexpected_error", self.request_info
+                    key_identifier,
+                    "unexpected_error",
+                    self.request_info.request_id,
+                    self.request_info.auth_key_alias,
                 )
                 # 即使标记失败，也需要抛出异常，因为这是不可恢复的错误
                 raise HTTPException(
