@@ -50,7 +50,6 @@ class BackgroundTaskManager:
         self,
         db_manager: DBManager,
         default_check_cooled_down_seconds: int,
-        initial_cool_down_seconds: int,
     ):
         """
         后台任务，定期检查并释放冷却中的密钥。
@@ -65,7 +64,6 @@ class BackgroundTaskManager:
                         if state and state.cool_down_until <= time.time():
                             state.cool_down_until = 0.0
                             state.request_fail_count = 0
-                            state.current_cool_down_seconds = initial_cool_down_seconds
                             await db_manager.save_key_state(key_identifier, state)
                             await db_manager.reactivate_key(key_identifier)
                             app_logger.info(f"API key {key_identifier} reactivated.")
@@ -164,7 +162,6 @@ class BackgroundTaskManager:
         self,
         db_manager: DBManager,
         default_check_cooled_down_seconds: int,
-        initial_cool_down_seconds: int,
     ):
         """
         启动后台任务，用于定期释放冷却中的密钥。
@@ -175,7 +172,6 @@ class BackgroundTaskManager:
                 self._release_cooled_down_keys(
                     db_manager,
                     default_check_cooled_down_seconds,
-                    initial_cool_down_seconds,
                 )
             )
 

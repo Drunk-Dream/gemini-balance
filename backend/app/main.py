@@ -37,7 +37,6 @@ async def lifespan(app: FastAPI):
     await background_task_manager.start_background_task(
         db_manager,
         settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS,
-        settings.API_KEY_COOL_DOWN_SECONDS,
     )
     yield
     logger.info("Stopping background task for KeyManager...")
