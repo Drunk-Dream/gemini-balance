@@ -65,7 +65,6 @@ class BackgroundTaskManager:
                         if state and state.cool_down_until <= time.time():
                             state.cool_down_until = 0.0
                             state.request_fail_count = 0
-                            state.cool_down_entry_count = 0
                             state.current_cool_down_seconds = initial_cool_down_seconds
                             await db_manager.save_key_state(key_identifier, state)
                             await db_manager.reactivate_key(key_identifier)
