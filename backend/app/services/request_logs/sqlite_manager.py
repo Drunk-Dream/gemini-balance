@@ -26,6 +26,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         prompt_tokens INTEGER,
         completion_tokens INTEGER,
         total_tokens INTEGER,
+        error_type TEXT,
         FOREIGN KEY (key_identifier) REFERENCES key_states(key_identifier) ON DELETE CASCADE,
         FOREIGN KEY (auth_key_alias) REFERENCES auth_keys(alias) ON DELETE CASCADE ON UPDATE CASCADE
     """
@@ -40,8 +41,14 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """
-                INSERT INTO request_logs (request_id, request_time, key_identifier, auth_key_alias, model_name, is_success, prompt_tokens, completion_tokens, total_tokens)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO request_logs (
+                    request_id, request_time, key_identifier, auth_key_alias,
+                    model_name, is_success, prompt_tokens, completion_tokens,
+                    total_tokens, error_type
+                )
+                VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
                 """,
                 (
                     log.request_id,
@@ -53,6 +60,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                     log.prompt_tokens,
                     log.completion_tokens,
                     log.total_tokens,
+                    log.error_type,
                 ),
             )
             await db.commit()
@@ -143,6 +151,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                     prompt_tokens=row["prompt_tokens"],
                     completion_tokens=row["completion_tokens"],
                     total_tokens=row["total_tokens"],
+                    error_type=row["error_type"],
                 )
                 for row in rows
             ]

@@ -156,6 +156,7 @@ class KeyStateManager:
             auth_key_alias=request_info.auth_key_alias,
             model_name=request_info.model_id,
             is_success=False,
+            error_type=error_type_str,
         )
         await self._request_log_manager.record_request_log(log_entry)
 

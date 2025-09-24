@@ -14,7 +14,8 @@
 		{ key: 'auth_key_alias', label: '用户' },
 		{ key: 'model_name', label: '模型名称' },
 		{ key: 'token_usage', label: 'Token 使用情况' },
-		{ key: 'is_success', label: '成功' }
+		{ key: 'is_success', label: '成功' },
+		{ key: 'error_type', label: '错误类型' },
 	];
 
 	function formatDateTime(isoString: string): string {
