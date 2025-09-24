@@ -7,8 +7,8 @@ export interface RequestLog {
 	request_id: string;
 	request_time: string;
 	key_identifier: string;
-	auth_key_alias?: string;
-	model_name?: string;
+	auth_key_alias: string;
+	model_name: string;
 	is_success: boolean;
 	prompt_tokens?: number;
 	completion_tokens?: number;
@@ -19,6 +19,9 @@ export interface RequestLog {
 interface RequestLogsResponse {
 	logs: RequestLog[];
 	total: number;
+	key_identifiers?: string[];
+	auth_key_aliases?: string[];
+	model_names?: string[];
 	request_time_range: [string, string] | null;
 }
 

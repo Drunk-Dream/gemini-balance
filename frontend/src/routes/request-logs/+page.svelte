@@ -18,6 +18,11 @@
 	const itemsPerPage: number = 15;
 	let totalItems: number = $state(0);
 	let totalPages: number = $state(1);
+	let filter_choices: {
+		key_identifiers?: string[];
+		auth_key_aliases?: string[];
+		model_names?: string[];
+	} = $state({});
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
@@ -76,6 +81,11 @@
 			logs = response.logs;
 			totalItems = response.total;
 			totalPages = Math.ceil(totalItems / itemsPerPage);
+			filter_choices = {
+				key_identifiers: response.key_identifiers,
+				auth_key_aliases: response.auth_key_aliases,
+				model_names: response.model_names
+			}
 			if (response.request_time_range) {
 				request_time_range = [
 					new Date(response.request_time_range[0]),
@@ -113,7 +123,7 @@
 	<div class="container mx-auto p-4">
 		<h1 class="mb-4 text-2xl font-bold">请求日志</h1>
 
-		<RequestLogFilters bind:filters {request_time_range} />
+		<RequestLogFilters bind:filters {request_time_range} {filter_choices} />
 
 		<Notification message={error} type="error" autoHide={false} />
 

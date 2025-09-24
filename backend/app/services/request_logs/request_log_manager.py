@@ -63,9 +63,15 @@ class RequestLogManager:
             offset=offset,
         )
         request_time_range = await self._db_manager.get_request_time_range()
+        key_identifiers, auth_key_aliases, model_names = (
+            await self._db_manager.get_distinct_values_for_filters()
+        )
         return RequestLogsResponse(
             logs=logs,
             total=total,
+            key_identifiers=key_identifiers,
+            auth_key_aliases=auth_key_aliases,
+            model_names=model_names,
             request_time_range=request_time_range,
         )
 

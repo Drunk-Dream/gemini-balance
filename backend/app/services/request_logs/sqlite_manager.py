@@ -273,3 +273,34 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 return min_time, max_time
 
             return None
+
+    async def get_distinct_values_for_filters(
+        self,
+    ) -> Tuple[List[str], List[str], List[str]]:
+        """
+        获取 key_identifier, auth_key_alias, model_name 列的所有不重复值。
+        """
+        key_identifiers: List[str] = []
+        auth_key_aliases: List[str] = []
+        model_names: List[str] = []
+
+        async with aiosqlite.connect(self.db_path) as db:
+            # 获取不重复的 key_identifier
+            cursor = await db.execute(
+                "SELECT DISTINCT key_identifier FROM request_logs ORDER BY key_identifier"
+            )
+            key_identifiers = [row[0] for row in await cursor.fetchall()]
+
+            # 获取不重复的 auth_key_alias
+            cursor = await db.execute(
+                "SELECT DISTINCT auth_key_alias FROM request_logs ORDER BY auth_key_alias"
+            )
+            auth_key_aliases = [row[0] for row in await cursor.fetchall()]
+
+            # 获取不重复的 model_name
+            cursor = await db.execute(
+                "SELECT DISTINCT model_name FROM request_logs ORDER BY model_name"
+            )
+            model_names = [row[0] for row in await cursor.fetchall()]
+
+        return key_identifiers, auth_key_aliases, model_names

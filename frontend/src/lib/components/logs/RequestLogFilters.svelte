@@ -6,10 +6,16 @@
 
 	let {
 		filters = $bindable(),
-		request_time_range
+		request_time_range,
+		filter_choices
 	}: {
 		filters: GetRequestLogsParams;
 		request_time_range: [Date, Date];
+		filter_choices: {
+			key_identifiers?: string[];
+			auth_key_aliases?: string[];
+			model_names?: string[];
+		};
 	} = $props();
 
 	let min_request_time = $derived<string>(
@@ -69,38 +75,46 @@
 			/>
 		</div>
 		<div>
-			<label for="key_identifier" class="mb-1 block text-sm font-medium text-gray-700"
-				>密钥标识符</label
-			>
-			<input
-				type="text"
-				id="key_identifier"
+			<span class="mb-1 block text-sm font-medium text-gray-700">密钥标识符</span>
+			<select
 				class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
 				bind:value={filters.key_identifier}
-				placeholder="输入密钥标识符"
-			/>
+			>
+				<option value={undefined}>全部</option>
+				{#if filter_choices.key_identifiers && filter_choices.key_identifiers.length > 0}
+					{#each filter_choices.key_identifiers as choice}
+						<option value={choice}>{choice}</option>
+					{/each}
+				{/if}
+			</select>
 		</div>
 		<div>
-			<label for="auth_key_alias" class="mb-1 block text-sm font-medium text-gray-700"
-				>用户 (认证密钥别名)</label
-			>
-			<input
-				type="text"
-				id="auth_key_alias"
+			<span class="mb-1 block text-sm font-medium text-gray-700">用户 (认证密钥别名)</span>
+			<select
 				class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
 				bind:value={filters.auth_key_alias}
-				placeholder="输入用户别名"
-			/>
+			>
+				<option value={undefined}>全部</option>
+				{#if filter_choices.auth_key_aliases && filter_choices.auth_key_aliases.length > 0}
+					{#each filter_choices.auth_key_aliases as choice}
+						<option value={choice}>{choice}</option>
+					{/each}
+				{/if}
+			</select>
 		</div>
 		<div>
-			<label for="model_name" class="mb-1 block text-sm font-medium text-gray-700">模型名称</label>
-			<input
-				type="text"
-				id="model_name"
+			<span class="mb-1 block text-sm font-medium text-gray-700">模型名称</span>
+			<select
 				class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
 				bind:value={filters.model_name}
-				placeholder="输入模型名称"
-			/>
+			>
+				<option value={undefined}>全部</option>
+				{#if filter_choices.model_names && filter_choices.model_names.length > 0}
+					{#each filter_choices.model_names as choice}
+						<option value={choice}>{choice}</option>
+					{/each}
+				{/if}
+			</select>
 		</div>
 		<div>
 			<label for="is_success" class="mb-1 block text-sm font-medium text-gray-700"
