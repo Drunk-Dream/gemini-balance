@@ -4,19 +4,11 @@
 	import AddKeyForm from '$lib/components/key-management/AddKeyForm.svelte';
 	import KeyList from '$lib/components/key-management/KeyList.svelte';
 	import KeyManagementHeader from '$lib/components/key-management/KeyManagementHeader.svelte';
+	import KeyStatusSummary from '$lib/components/key-management/KeyStatusSummary.svelte';
+	import type { KeyStatus } from '$lib/types/key-management';
 // 导入 Notification 组件
 	import { api } from '$lib/utils/api';
 	import { onMount } from 'svelte';
-
-	interface KeyStatus {
-		key_identifier: string;
-		status: string;
-		cool_down_seconds_remaining: number;
-		daily_usage: { [model: string]: number };
-		failure_count: number;
-		cool_down_entry_count: number;
-		current_cool_down_seconds: number;
-	}
 
 	let keyStatuses: KeyStatus[] = $state([]);
 	let errorMessage: string | null = $state(null);
@@ -136,6 +128,7 @@
 		{#if errorMessage}
 			<Notification message={errorMessage} type="error" />
 		{:else}
+			<KeyStatusSummary {keyStatuses} />
 			<KeyList {keyStatuses} {resetKey} {deleteKey} />
 		{/if}
 	</div>
