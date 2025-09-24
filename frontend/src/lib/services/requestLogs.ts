@@ -1,6 +1,8 @@
 import { api } from '$lib/utils/api';
+import { TZDate } from '@date-fns/tz';
+import { format } from 'date-fns';
 
-interface RequestLog {
+export interface RequestLog {
 	id: number;
 	request_id: string;
 	request_time: string;
@@ -8,6 +10,9 @@ interface RequestLog {
 	auth_key_alias?: string;
 	model_name?: string;
 	is_success: boolean;
+	prompt_tokens?: number;
+	completion_tokens?: number;
+	total_tokens?: number;
 }
 
 interface RequestLogsResponse {
@@ -49,10 +54,5 @@ export async function getRequestLogs(params: GetRequestLogsParams): Promise<Requ
 
 // 辅助函数：将 Date 对象格式化为 YYYY-MM-DDTHH:mm 格式的本地时间字符串
 export function formatToLocalDateTimeString(date: Date): string {
-	const year = date.getFullYear();
-	const month = (date.getMonth() + 1).toString().padStart(2, '0');
-	const day = date.getDate().toString().padStart(2, '0');
-	const hours = date.getHours().toString().padStart(2, '0');
-	const minutes = date.getMinutes().toString().padStart(2, '0');
-	return `${year}-${month}-${day}T${hours}:${minutes}`;
+	return format(new TZDate(date), "yyyy-MM-dd'T'HH:mm");
 }

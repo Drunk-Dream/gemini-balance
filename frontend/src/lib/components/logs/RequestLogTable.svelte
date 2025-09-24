@@ -1,5 +1,11 @@
 <script lang="ts">
-	export let logs: any[];
+	import type { RequestLog } from '$lib/services/requestLogs';
+
+	let {
+		logs
+	}: {
+		logs: RequestLog[];
+	} = $props();
 
 	const headers = [
 		{ key: 'request_id', label: '请求 ID' },
@@ -57,7 +63,7 @@
 									-
 								{/if}
 							{:else}
-								{log[header.key] || '-'}
+								{log[header.key as keyof RequestLog] || '-'}
 							{/if}
 						</td>
 					{/each}

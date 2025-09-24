@@ -1,12 +1,19 @@
 <script lang="ts">
-	let { currentPage, totalPages, totalItems, goToPreviousPage, goToNextPage, goToPage } = $props<{
+	let {
+		currentPage,
+		totalPages,
+		totalItems,
+		goToPreviousPage,
+		goToNextPage,
+		goToPage
+	}: {
 		currentPage: number;
 		totalPages: number;
 		totalItems: number;
 		goToPreviousPage: () => void;
 		goToNextPage: () => void;
 		goToPage: (page: number) => void;
-	}>();
+	} = $props();
 
 	function getPageNumbers(): (number | string)[] {
 		const pageNumbers: (number | string)[] = [];

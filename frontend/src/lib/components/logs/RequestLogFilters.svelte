@@ -4,10 +4,13 @@
 		formatToLocalDateTimeString
 	} from '$lib/services/requestLogs';
 
-	let { filters = $bindable(), request_time_range } = $props<{
+	let {
+		filters = $bindable(),
+		request_time_range
+	}: {
 		filters: GetRequestLogsParams;
 		request_time_range: [Date, Date];
-	}>();
+	} = $props();
 
 	let min_request_time = $derived<string>(
 		formatToLocalDateTimeString(new Date(request_time_range[0]))

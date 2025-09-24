@@ -1,4 +1,5 @@
-import { formatInTimeZone } from 'date-fns-tz';
+import { TZDate } from '@date-fns/tz';
+import { format, parse } from 'date-fns';
 
 export function colorizeLog(logLine: string): string {
 	// 首先处理时间戳
@@ -8,15 +9,9 @@ export function colorizeLog(logLine: string): string {
 	if (match && match[1]) {
 		const utcTimestampStr = match[1];
 		try {
-			// 将时间戳字符串转换为严格的 ISO 8601 格式
-			const compliantTimestampStr = utcTimestampStr.replace(' ', 'T').replace(',', '.');
-			const date = new Date(compliantTimestampStr);
-			// 使用 date-fns-tz 格式化为本地时区
-			const localTimestampStr = formatInTimeZone(
-				date,
-				Intl.DateTimeFormat().resolvedOptions().timeZone,
-				'yyyy-MM-dd HH:mm:ss,SSS'
-			);
+			const date = parse(utcTimestampStr, 'yyyy-MM-dd HH:mm:ss,SSSXXX', new Date());
+			const tzDate = new TZDate(date, Intl.DateTimeFormat().resolvedOptions().timeZone);
+			const localTimestampStr = format(tzDate, 'yyyy-MM-dd HH:mm:ss,SSS');
 			logLine = logLine.replace(match[0], localTimestampStr);
 		} catch (e) {
 			console.error('Error parsing or formatting timestamp:', e);

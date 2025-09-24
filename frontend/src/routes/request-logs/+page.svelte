@@ -7,10 +7,12 @@
 	import {
 		formatToLocalDateTimeString,
 		getRequestLogs,
-		type GetRequestLogsParams
+		type GetRequestLogsParams,
+		type RequestLog
 	} from '$lib/services/requestLogs';
+	import { TZDate } from '@date-fns/tz';
 
-	let logs: any[] = $state([]);
+	let logs: RequestLog[] = $state([]);
 	let loading: boolean = $state(true);
 	let error: string | null = $state(null);
 	let currentPage: number = $state(1);
@@ -60,7 +62,11 @@
 			const offset = (currentPage - 1) * itemsPerPage;
 
 			// 预处理筛选参数，防止将空字符串传递给 API
-			const processedFilters: GetRequestLogsParams = { ...filters };
+			const processedFilters: GetRequestLogsParams = {
+				...filters,
+				request_time_start: new TZDate(filters.request_time_start).toISOString(),
+				request_time_end: new TZDate(filters.request_time_end).toISOString()
+			};
 
 			const params: GetRequestLogsParams = {
 				limit: itemsPerPage,
