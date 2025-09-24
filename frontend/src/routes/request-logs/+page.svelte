@@ -13,7 +13,6 @@
 	import { TZDate } from '@date-fns/tz';
 
 	let logs: RequestLog[] = $state([]);
-	let loading: boolean = $state(true);
 	let error: string | null = $state(null);
 	let currentPage: number = $state(1);
 	const itemsPerPage: number = 15;
@@ -56,7 +55,6 @@
 	}
 
 	async function fetchLogs() {
-		loading = true;
 		error = null;
 		try {
 			const offset = (currentPage - 1) * itemsPerPage;
@@ -86,8 +84,6 @@
 			}
 		} catch (e: any) {
 			error = e.message;
-		} finally {
-			loading = false;
 		}
 	}
 
@@ -121,9 +117,7 @@
 
 		<Notification message={error} type="error" autoHide={false} />
 
-		{#if loading}
-			<p>加载中...</p>
-		{:else if logs.length === 0}
+		{#if logs.length === 0}
 			<p class="text-gray-500">没有找到任何请求日志。</p>
 		{:else}
 			<RequestLogTable {logs} />

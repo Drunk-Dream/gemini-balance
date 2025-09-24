@@ -57,7 +57,7 @@
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-200 bg-white">
-				{#each authKeys as key (key.api_key)}
+				{#each [...authKeys].sort((a, b) => b.call_count - a.call_count) as key (key.api_key)}
 					<tr>
 						<td class="whitespace-nowrap px-6 py-4">
 							{#if editingKey?.api_key === key.api_key}

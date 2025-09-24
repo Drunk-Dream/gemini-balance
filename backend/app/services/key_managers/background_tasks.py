@@ -62,9 +62,6 @@ class BackgroundTaskManager:
                     async with self.key_manager_lock:
                         state = await db_manager.get_key_state(key_identifier)
                         if state and state.cool_down_until <= time.time():
-                            state.cool_down_until = 0.0
-                            state.request_fail_count = 0
-                            await db_manager.save_key_state(key_identifier, state)
                             await db_manager.reactivate_key(key_identifier)
                             app_logger.info(f"API key {key_identifier} reactivated.")
 
