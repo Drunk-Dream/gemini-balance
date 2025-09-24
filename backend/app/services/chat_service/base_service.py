@@ -190,10 +190,8 @@ class ApiService(ABC):
                     f"[Request ID: {request_id}] Streaming request finished without a STOP signal. "
                     f"Full response: {full_response_content}"
                 )
-                # Yield an error message to the client before returning
-                # yield 'data: {{"error": "Streaming request finished without a STOP signal."}}\n\n'
                 raise StreamingCompletionError(
-                    f"Streaming request finished without a STOP signal. Full response: {full_response_content}"
+                    "Streaming request finished without a STOP signal."
                 )
 
         await self._key_manager.mark_key_success(
