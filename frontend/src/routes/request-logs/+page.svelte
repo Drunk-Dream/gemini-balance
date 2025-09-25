@@ -41,24 +41,6 @@
 	let previousFilters: GetRequestLogsParams | null = null;
 	let previousPage: number = 0;
 
-	function goToPreviousPage() {
-		if (currentPage > 1) {
-			currentPage--;
-		}
-	}
-
-	function goToNextPage() {
-		if (currentPage < totalPages) {
-			currentPage++;
-		}
-	}
-
-	function goToPage(page: number) {
-		if (page >= 1 && page <= totalPages) {
-			currentPage = page;
-		}
-	}
-
 	async function fetchLogs() {
 		error = null;
 		try {
@@ -85,7 +67,7 @@
 				key_identifiers: response.key_identifiers,
 				auth_key_aliases: response.auth_key_aliases,
 				model_names: response.model_names
-			}
+			};
 			if (response.request_time_range) {
 				request_time_range = [
 					new Date(response.request_time_range[0]),
@@ -132,14 +114,7 @@
 		{:else}
 			<RequestLogTable {logs} />
 
-			<Pagination
-				{currentPage}
-				{totalPages}
-				{totalItems}
-				{goToPreviousPage}
-				{goToNextPage}
-				{goToPage}
-			/>
+			<Pagination bind:currentPage perPage={itemsPerPage} {totalItems} />
 		{/if}
 	</div>
 </AuthGuard>
