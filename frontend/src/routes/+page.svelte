@@ -120,7 +120,6 @@
 		<h1 class="mb-4 text-2xl font-bold text-gray-800 sm:mb-6 sm:text-3xl">密钥管理</h1>
 
 		<KeyManagementHeader {fetchKeyStatuses} {resetAllKeys} {loading} />
-
 		<AddKeyForm {addKeys} />
 
 		<Notification message={notificationMessage} type={notificationType} />
