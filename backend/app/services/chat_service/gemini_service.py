@@ -19,6 +19,7 @@ class GeminiService(ApiService):
         super().__init__(
             base_url=settings.GEMINI_API_BASE_URL,
             service_name="Gemini API",
+            settings=settings,
             key_manager=key_manager,
         )
 

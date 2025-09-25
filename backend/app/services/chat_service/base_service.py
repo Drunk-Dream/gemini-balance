@@ -18,7 +18,7 @@ from starlette.status import (
 )
 
 from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_manager
-from backend.app.core.config import settings
+from backend.app.core.config import Settings
 from backend.app.core.errors import ErrorType, StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
@@ -49,6 +49,7 @@ class ApiService(ABC):
         self,
         base_url: str,
         service_name: str,
+        settings: Settings,
         key_manager: KeyStateManager,
     ):
         self.base_url = base_url
@@ -57,7 +58,12 @@ class ApiService(ABC):
             base_url=self.base_url,
             timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
         )
-        self.max_retries = settings.MAX_RETRIES
+        self._max_retries = settings.MAX_RETRIES
+        self._request_timeout_seconds = settings.REQUEST_TIMEOUT_SECONDS
+        self._no_key_wait_seconds = settings.NO_KEY_WAIT_SECONDS
+        self._cloudflare_gateway_enabled = settings.CLOUDFLARE_GATEWAY_ENABLED
+        self._cf_ai_authorization_key = settings.CF_AI_AUTHORIZATION_KEY
+        self._rate_limit_default_wait_seconds = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
         self._key_manager = key_manager
 
     def _handle_exception_response(
@@ -92,7 +98,7 @@ class ApiService(ABC):
             )
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
-            timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
+            timeout=httpx.Timeout(self._request_timeout_seconds),
         )
         logger.info(
             f"[Request ID: {request_id}] Recreated httpx client for {self.service_name}."
@@ -272,35 +278,35 @@ class ApiService(ABC):
         last_exception = None
         stream = self.request_info.stream
         request_id = self.request_info.request_id
-        for attempt in range(self.max_retries):
+        for attempt in range(self._max_retries):
             key_identifier = await self._key_manager.get_next_key(self.request_info)
             if not key_identifier:
                 logger.warning(
-                    f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: No available API keys. "
-                    f"Waiting for {settings.NO_KEY_WAIT_SECONDS} seconds."
+                    f"[Request ID: {request_id}] Attempt {attempt + 1}/{self._max_retries}: No available API keys. "
+                    f"Waiting for {self._no_key_wait_seconds} seconds."
                 )
                 last_exception = HTTPException(
                     status_code=503, detail="No available API keys."
                 )
-                await asyncio.sleep(settings.NO_KEY_WAIT_SECONDS)
+                await asyncio.sleep(self._no_key_wait_seconds)
                 continue
 
             logger.info(
-                f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: Using API key "
+                f"[Request ID: {request_id}] Attempt {attempt + 1}/{self._max_retries}: Using API key "
                 f"{key_identifier} for {self.service_name}, stream={stream}"
             )
             api_key = await self._key_manager.get_key_from_identifier(key_identifier)
             if not api_key:
                 logger.error(
-                    f"[Request ID: {request_id}] Attempt {attempt + 1}/{self.max_retries}: API key {key_identifier} not found."
+                    f"[Request ID: {request_id}] Attempt {attempt + 1}/{self._max_retries}: API key {key_identifier} not found."
                 )
                 last_exception = HTTPException(
                     status_code=503, detail=f"{key_identifier}'s mapper not found."
                 )
                 continue
             headers = self._prepare_headers(api_key)
-            if settings.CLOUDFLARE_GATEWAY_ENABLED and settings.CF_AI_AUTHORIZATION_KEY:
-                headers["cf-aig-authorization"] = settings.CF_AI_AUTHORIZATION_KEY
+            if self._cloudflare_gateway_enabled and self._cf_ai_authorization_key:
+                headers["cf-aig-authorization"] = self._cf_ai_authorization_key
 
             try:
                 transaction_logger.info(
@@ -370,7 +376,7 @@ class ApiService(ABC):
 
                 logger.warning(
                     f"[Request ID: {request_id}] API Key {key_identifier} failed with status {e.response.status_code}. "
-                    f"Deactivating it. Attempt {attempt + 1}/{self.max_retries}."
+                    f"Deactivating it. Attempt {attempt + 1}/{self._max_retries}."
                 )
                 await self._key_manager.mark_key_fail(
                     key_identifier,
@@ -379,8 +385,8 @@ class ApiService(ABC):
                 )
 
                 if e.response.status_code == 429:
-                    wait_time = (
-                        settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS + random.randint(1, 9)
+                    wait_time = self._rate_limit_default_wait_seconds + random.randint(
+                        1, 9
                     )
                     logger.warning(
                         f"[Request ID: {request_id}] Rate limit hit. Retrying after {wait_time} seconds."
@@ -416,7 +422,7 @@ class ApiService(ABC):
 
         if last_exception:
             logger.critical(
-                f"[Request ID: {request_id}] All API request attempts({self.max_retries} times) failed. Last error: {last_exception}"
+                f"[Request ID: {request_id}] All API request attempts({self._max_retries} times) failed. Last error: {last_exception}"
             )
             if isinstance(last_exception, HTTPException):
                 raise last_exception

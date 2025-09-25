@@ -5,7 +5,7 @@ from starlette.responses import StreamingResponse
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
-from backend.app.core.config import Settings, get_settings, settings
+from backend.app.core.config import Settings, get_settings
 from backend.app.services.chat_service.base_service import ApiService, RequestInfo
 from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
@@ -19,6 +19,7 @@ class OpenAIService(ApiService):
         super().__init__(
             base_url=settings.OPENAI_API_BASE_URL,
             service_name="OpenAI API",
+            settings=settings,
             key_manager=key_manager,
         )
 
@@ -71,7 +72,7 @@ class OpenAIService(ApiService):
         if hasattr(request_data, "seed") and request_data.seed is not None:
             del request_data.seed
 
-        if settings.CLOUDFLARE_GATEWAY_ENABLED:
+        if self._cloudflare_gateway_enabled:
             request_data.model = f"google-ai-studio/{request_data.model}"
 
         if stream:
