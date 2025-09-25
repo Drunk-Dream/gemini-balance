@@ -165,8 +165,15 @@ class ApiService(ABC):
         ) as event_source:
             event_source.response.raise_for_status()
             stream_finished = False
+            first_see = True
 
             async for sse in event_source.aiter_sse():
+                if first_see:
+                    logger.info(
+                        f"[Request ID: {request_id}] Started streaming response."
+                    )
+                    first_see = False
+
                 transaction_logger.info(
                     f"[Request ID: {request_id}] SSE event: {sse.event}, data: {sse.data}"
                 )

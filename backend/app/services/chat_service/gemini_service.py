@@ -65,7 +65,7 @@ class GeminiService(ApiService):
             raise ValueError("request_data must be a GeminiRequest instance")
         stream = self.request_info.stream
         url = self._get_api_url(self.request_info.model_id, stream)
-        params = {"alt": "sse"} if stream else {"alt": "json"}
+        params = {"alt": "sse"} if stream else None
 
         response = await self._send_request(
             method="POST",
