@@ -1,4 +1,5 @@
 from logging import Logger
+from typing import Optional
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,6 +12,10 @@ class Settings(BaseSettings):
     GEMINI_API_BASE_URL: str = "https://generativelanguage.googleapis.com"
     OPENAI_API_BASE_URL: str = "https://generativelanguage.googleapis.com"
     REQUEST_TIMEOUT_SECONDS: int = 120
+
+    # Cloudflare Gateway 配置
+    CLOUDFLARE_GATEWAY_ENABLED: bool = False
+    CF_AI_AUTHORIZATION_KEY: Optional[str] = None
 
     # 日志配置
     LOG_LEVEL: str = "INFO"
@@ -63,6 +68,7 @@ async def print_non_sensitive_settings(logger: Logger):
         "GEMINI_API_BASE_URL": settings.GEMINI_API_BASE_URL,
         "OPENAI_API_BASE_URL": settings.OPENAI_API_BASE_URL,
         "REQUEST_TIMEOUT_SECONDS": settings.REQUEST_TIMEOUT_SECONDS,
+        "CLOUDFLARE_GATEWAY_ENABLED": settings.CLOUDFLARE_GATEWAY_ENABLED,
         "LOG_LEVEL": settings.LOG_LEVEL,
         "DEBUG_LOG_ENABLED": settings.DEBUG_LOG_ENABLED,
         "LOG_HISTORY_SIZE": settings.LOG_HISTORY_SIZE,

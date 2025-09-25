@@ -5,7 +5,7 @@ from starlette.responses import StreamingResponse
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
-from backend.app.core.config import Settings, get_settings
+from backend.app.core.config import Settings, get_settings, settings
 from backend.app.services.chat_service.base_service import ApiService, RequestInfo
 from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
@@ -23,7 +23,7 @@ class OpenAIService(ApiService):
         )
 
     def _get_api_url(self) -> str:
-        return "/v1beta/openai/chat/completions"
+        return "/chat/completions"
 
     def _prepare_headers(self, api_key: str) -> Dict[str, str]:
         return {
@@ -70,6 +70,9 @@ class OpenAIService(ApiService):
         # 检查并删除 'seed' 字段，因为 OpenAI API 不支持此字段
         if hasattr(request_data, "seed") and request_data.seed is not None:
             del request_data.seed
+
+        if settings.CLOUDFLARE_GATEWAY_ENABLED:
+            request_data.model = f"google-ai-studio/{request_data.model}"
 
         if stream:
             if request_data.stream_options is None:

@@ -300,6 +300,8 @@ class ApiService(ABC):
                 )
                 continue
             headers = self._prepare_headers(api_key)
+            if settings.CLOUDFLARE_GATEWAY_ENABLED and settings.CF_AI_AUTHORIZATION_KEY:
+                headers["cf-aig-authorization"] = settings.CF_AI_AUTHORIZATION_KEY
 
             try:
                 transaction_logger.info(
