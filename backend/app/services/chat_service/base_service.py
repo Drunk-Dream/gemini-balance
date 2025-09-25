@@ -142,7 +142,7 @@ class ApiService(ABC):
         url: str,
         request_data: GeminiRequest | OpenAIRequest,
         headers: Dict[str, str],
-        params: Dict[str, str],
+        params: Dict[str, str] | None,
     ) -> AsyncGenerator[str, None]:
         """
         Handles the streaming request logic, including SSE connection, token counting,
@@ -217,7 +217,7 @@ class ApiService(ABC):
         url: str,
         request_data: GeminiRequest | OpenAIRequest,
         headers: Dict[str, str],
-        params: Dict[str, str],
+        params: Dict[str, str] | None,
     ) -> Dict[str, Any]:
         """
         Handles the non-streaming request logic, including HTTP request, token counting,
@@ -264,7 +264,7 @@ class ApiService(ABC):
         method: str,
         url: str,
         request_data: GeminiRequest | OpenAIRequest,
-        params: Dict[str, str],
+        params: Dict[str, str] | None,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """
         A unified generator to handle both streaming and non-streaming requests.
@@ -434,7 +434,7 @@ class ApiService(ABC):
         method: str,
         url: str,
         request_data: GeminiRequest | OpenAIRequest,
-        params: Dict[str, str],
+        params: Dict[str, str] | None = None,
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
         Handles sending the HTTP request by dispatching to the appropriate generator.

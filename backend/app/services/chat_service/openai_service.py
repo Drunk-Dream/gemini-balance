@@ -80,13 +80,12 @@ class OpenAIService(ApiService):
             else:
                 request_data.stream_options["include_usage"] = True
 
-        params = {"alt": "sse"} if stream else {"alt": "json"}
+        # params = {"alt": "sse"} if stream else {"alt": "json"}
 
         response = await self._send_request(
             method="POST",
             url=url,
             request_data=request_data,
-            params=params,
         )
 
         # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
