@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from backend.app.core.config import settings
 
@@ -11,9 +12,22 @@ class ConcurrencyTimeoutError(Exception):
 
 
 class ConcurrencyManager:
+    _instance: Optional["ConcurrencyManager"] = None
+
     def __init__(self):
+        if ConcurrencyManager._instance is not None:
+            raise RuntimeError(
+                "ConcurrencyManager is a singleton and already instantiated."
+            )
+
         self._semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_REQUESTS)
         self._timeout = settings.CONCURRENCY_TIMEOUT_SECONDS
+
+    @classmethod
+    def get_instance(cls) -> "ConcurrencyManager":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
 
     @property
     def semaphore(self) -> asyncio.Semaphore:
@@ -37,4 +51,8 @@ class ConcurrencyManager:
                 self._semaphore.release()
 
 
-concurrency_manager = ConcurrencyManager()
+concurrency_manager = ConcurrencyManager.get_instance()
+
+
+def get_concurrency_manager():
+    return concurrency_manager

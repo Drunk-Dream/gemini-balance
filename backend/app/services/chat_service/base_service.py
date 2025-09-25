@@ -58,7 +58,6 @@ class ApiService(ABC):
             timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
         )
         self.max_retries = settings.MAX_RETRIES
-        self.concurrency_manager = concurrency_manager
         self._key_manager = key_manager
 
     def _handle_exception_response(
@@ -481,7 +480,7 @@ class ApiService(ABC):
         )
 
         try:
-            async with self.concurrency_manager.timeout_semaphore():
+            async with concurrency_manager.timeout_semaphore():
                 return await self._generate_content(request_data)
         except ConcurrencyTimeoutError as e:
             logger.warning(f"[Request ID: {request_id}] Concurrency timeout error: {e}")
