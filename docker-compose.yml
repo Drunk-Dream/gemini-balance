@@ -16,8 +16,8 @@ services:
       # 根据需要配置代理环境，如不需要，可删除v2rayA
       - HTTP_PROXY=http://v2raya:20170
       - HTTPS_PROXY=http://v2raya:20170
-    depends_on:
-      - v2raya
+    # depends_on:
+    #   - v2raya
 
   # v2raya:
   #   image: mzz2017/v2raya
