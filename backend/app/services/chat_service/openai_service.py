@@ -57,7 +57,7 @@ class OpenAIService(ApiService):
                 if hasattr(request_data, "reasoning_effort"):
                     del request_data.reasoning_effort
 
-    async def _generate_content(
+    async def _prepare_and_send_request(
         self,
         request_data: GeminiRequest | OpenAIRequest,
     ) -> Union[Dict[str, Any], StreamingResponse]:
@@ -83,7 +83,7 @@ class OpenAIService(ApiService):
 
         # params = {"alt": "sse"} if stream else {"alt": "json"}
 
-        response = await self._send_request(
+        response = await self._dispatch_request(
             method="POST",
             url=url,
             request_data=request_data,

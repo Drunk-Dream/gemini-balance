@@ -66,25 +66,6 @@ class ApiService(ABC):
         self._rate_limit_default_wait_seconds = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
         self._key_manager = key_manager
 
-    def _handle_exception_response(
-        self,
-        e: Exception,
-        status_code: int,
-        error_message: str,
-    ) -> Union[StreamingResponse, HTTPException]:
-        """
-        Handles exception responses, returning a StreamingResponse for stream requests
-        or raising an HTTPException for non-stream requests.
-        """
-        if self.request_info.stream:
-            return StreamingResponse(
-                content=f'{{"error": "{error_message}: {e}"}}',
-                status_code=status_code,
-                media_type="application/json",
-            )
-        else:
-            raise HTTPException(status_code=status_code, detail=f"{error_message}: {e}")
-
     async def _recreate_client(self):
         """
         Closes the current httpx client and creates a new one.
@@ -140,7 +121,17 @@ class ApiService(ABC):
         """
         raise NotImplementedError
 
-    async def _handle_stream_request_logic(
+    @abstractmethod
+    async def _prepare_and_send_request(
+        self,
+        request_data: GeminiRequest | OpenAIRequest,
+    ) -> Union[Dict[str, Any], StreamingResponse]:
+        """
+        Handles the logic of generating content from the API, including error handling and retrying.
+        """
+        raise NotImplementedError
+
+    async def _process_streaming_response(
         self,
         key_identifier: str,
         method: str,
@@ -206,23 +197,9 @@ class ApiService(ABC):
                     "Streaming request finished without a STOP signal."
                 )
 
-        await self._key_manager.mark_key_success(
-            key_identifier,
-            self.request_info.request_id,
-            self.request_info.auth_key_alias,
-            self.request_info.model_id,
-            self.request_info.prompt_tokens,
-            self.request_info.completion_tokens,
-            self.request_info.total_tokens,
-        )
-        logger.info(
-            f"[Request ID: {request_id}] Streaming request with key {key_identifier} succeeded. "
-            f"Tokens: prompt={self.request_info.prompt_tokens}, "
-            f"completion={self.request_info.completion_tokens}, "
-            f"total={self.request_info.total_tokens}"
-        )
+        await self._finalize_successful_request(key_identifier)
 
-    async def _handle_non_stream_request_logic(
+    async def _process_non_streaming_response(
         self,
         key_identifier: str,
         method: str,
@@ -247,6 +224,21 @@ class ApiService(ABC):
         response_json = response.json()
 
         self._extract_and_update_token_counts(response_json, self.request_info)
+        transaction_logger.info(
+            "[Request ID: %s] Response from %s API with key %s: %s",
+            request_id,
+            self.service_name,
+            key_identifier,
+            response_json,
+        )
+        await self._finalize_successful_request(key_identifier)
+        return response_json
+
+    async def _finalize_successful_request(self, key_identifier: str):
+        """
+        Finalizes a successful request by marking the key as success and logging token counts.
+        """
+        request_id = self.request_info.request_id
         await self._key_manager.mark_key_success(
             key_identifier,
             self.request_info.request_id,
@@ -256,22 +248,14 @@ class ApiService(ABC):
             self.request_info.completion_tokens,
             self.request_info.total_tokens,
         )
-        transaction_logger.info(
-            "[Request ID: %s] Response from %s API with key %s: %s",
-            request_id,
-            self.service_name,
-            key_identifier,
-            response_json,
-        )
         logger.info(
             f"[Request ID: {request_id}] Request with key {key_identifier} succeeded. "
             f"Tokens: prompt={self.request_info.prompt_tokens}, "
             f"completion={self.request_info.completion_tokens}, "
             f"total={self.request_info.total_tokens}"
         )
-        return response_json
 
-    async def _request_generator(
+    async def _execute_request_with_retries(
         self,
         method: str,
         url: str,
@@ -283,13 +267,17 @@ class ApiService(ABC):
         It manages API key rotation, retries, and error handling.
         """
         last_exception = None
-        stream = self.request_info.stream
         request_id = self.request_info.request_id
-        for attempt in range(self._max_retries):
+        max_retries = (
+            self._max_retries
+            if self._max_retries > 0
+            else await self._key_manager.get_available_keys_count()
+        )
+        for attempt in range(max_retries):
             key_identifier = await self._key_manager.get_next_key(self.request_info)
             if not key_identifier:
                 logger.warning(
-                    f"[Request ID: {request_id}] Attempt {attempt + 1}/{self._max_retries}: No available API keys. "
+                    f"[Request ID: {request_id}] Attempt {attempt + 1}/{max_retries}: No available API keys. "
                     f"Waiting for {self._no_key_wait_seconds} seconds."
                 )
                 last_exception = HTTPException(
@@ -298,138 +286,25 @@ class ApiService(ABC):
                 await asyncio.sleep(self._no_key_wait_seconds)
                 continue
 
-            logger.info(
-                f"[Request ID: {request_id}] Attempt {attempt + 1}/{self._max_retries}: Using API key "
-                f"{key_identifier} for {self.service_name}, stream={stream}"
-            )
-            api_key = await self._key_manager.get_key_from_identifier(key_identifier)
-            if not api_key:
-                logger.error(
-                    f"[Request ID: {request_id}] Attempt {attempt + 1}/{self._max_retries}: API key {key_identifier} not found."
-                )
-                last_exception = HTTPException(
-                    status_code=503, detail=f"{key_identifier}'s mapper not found."
-                )
-                continue
-            headers = self._prepare_headers(api_key)
-            if self._cloudflare_gateway_enabled and self._cf_ai_authorization_key:
-                headers["cf-aig-authorization"] = self._cf_ai_authorization_key
-
             try:
-                transaction_logger.info(
-                    "[Request ID: %s] Request to %s API with key %s: %s",
-                    request_id,
-                    self.service_name,
-                    key_identifier,
-                    request_data.model_dump_json(by_alias=True, exclude_unset=True),
-                )
-
-                if stream:
-                    async for chunk in self._handle_stream_request_logic(
-                        key_identifier, method, url, request_data, headers, params
-                    ):
-                        yield chunk
-                    return
-                else:
-                    response_data = await self._handle_non_stream_request_logic(
-                        key_identifier, method, url, request_data, headers, params
-                    )
-                    yield response_data
-                    return
-
-            except StreamingCompletionError as e:
-                last_exception = e
-                logger.error(
-                    f"[Request ID: {request_id}] Streaming completion error: {e}. Deactivating and retrying..."
-                )
-                await self._key_manager.mark_key_fail(
-                    key_identifier,
-                    ErrorType.STREAMING_COMPLETION_ERROR,
-                    self.request_info,
-                )
-                yield 'data: {{"error": {{"code": 500, "message": "Streaming completion error", "status": "error"}}}}\n\n'
+                async for chunk in self._attempt_single_request(
+                    key_identifier, method, url, request_data, params
+                ):
+                    yield chunk
                 return
-            except httpx.HTTPStatusError as e:
-                # Safely get the response text for logging
-                response_text = ""
-                try:
-                    response_text = e.response.text
-                except httpx.ResponseNotRead:
-                    # If the response body hasn't been read, try to read it.
-                    try:
-                        await e.response.aread()
-                        response_text = e.response.text
-                    except httpx.StreamClosed:
-                        response_text = "<Streamed response body not available due to connection error>"
-                except Exception:
-                    # Catch any other unexpected errors during text access
-                    response_text = "<Error reading response body>"
-
-                if not response_text:
-                    response_text = "<Response body not available>"
-                transaction_logger.error(
-                    "[Request ID: %s] Error response from %s API with key %s: %s",
-                    request_id,
-                    self.service_name,
-                    key_identifier,
-                    response_text,
-                )
-                last_exception = e
-                error_type = ErrorType.OTHER_HTTP_ERROR
-                if e.response.status_code in [401, 403]:
-                    error_type = ErrorType.AUTH_ERROR
-                elif e.response.status_code == 429:
-                    error_type = ErrorType.RATE_LIMIT_ERROR
-
-                logger.warning(
-                    f"[Request ID: {request_id}] API Key {key_identifier} failed with status {e.response.status_code}. "
-                    f"Deactivating it. Attempt {attempt + 1}/{self._max_retries}."
-                )
-                await self._key_manager.mark_key_fail(
-                    key_identifier,
-                    error_type,
-                    self.request_info,
-                )
-
-                if e.response.status_code == 429:
-                    wait_time = self._rate_limit_default_wait_seconds + random.randint(
-                        1, 9
-                    )
-                    logger.warning(
-                        f"[Request ID: {request_id}] Rate limit hit. Retrying after {wait_time} seconds."
-                    )
-                    await asyncio.sleep(wait_time)
-                continue
-            except httpx.RequestError as e:
-                last_exception = e
-                logger.error(
-                    f"[Request ID: {request_id}] Request error with key {key_identifier}: {e}. Deactivating and retrying..."
-                )
-                await self._key_manager.mark_key_fail(
-                    key_identifier,
-                    ErrorType.REQUEST_ERROR,
-                    self.request_info,
-                )
-                await self._recreate_client()  # Recreate client on request errors
-                continue
             except Exception as e:
                 last_exception = e
-                logger.critical(
-                    f"[Request ID: {request_id}] An unexpected error occurred with key {key_identifier}: {e}. Deactivating and retrying..."
-                )
-                await self._key_manager.mark_key_fail(
-                    key_identifier,
-                    ErrorType.UNEXPECTED_ERROR,
-                    self.request_info,
-                )
-                # 即使标记失败，也需要抛出异常，因为这是不可恢复的错误
-                raise HTTPException(
-                    status_code=500, detail=f"An unexpected error occurred: {e}"
-                )
+                await self._handle_request_error(key_identifier, e)
+                if isinstance(e, StreamingCompletionError):
+                    yield 'data: {{"error": {{"code": 500, "message": "Streaming completion error", "status": "error"}}}}\n\n'
+                    return
+                if isinstance(e, HTTPException) and e.status_code == 500:
+                    raise e
+                continue
 
         if last_exception:
             logger.critical(
-                f"[Request ID: {request_id}] All API request attempts({self._max_retries} times) failed. Last error: {last_exception}"
+                f"[Request ID: {request_id}] All API request attempts({max_retries} times) failed. Last error: {last_exception}"
             )
             if isinstance(last_exception, HTTPException):
                 raise last_exception
@@ -441,7 +316,152 @@ class ApiService(ABC):
             status_code=500, detail="No API keys were available or processed."
         )
 
-    async def _send_request(
+    async def _attempt_single_request(
+        self,
+        key_identifier: str,
+        method: str,
+        url: str,
+        request_data: GeminiRequest | OpenAIRequest,
+        params: Dict[str, str] | None,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """
+        Attempts a single API request, handling key preparation and dispatching to streaming/non-streaming processors.
+        """
+        request_id = self.request_info.request_id
+        stream = self.request_info.stream
+
+        logger.info(
+            f"[Request ID: {request_id}] Using API key {key_identifier} for {self.service_name}, stream={stream}"
+        )
+        api_key = await self._key_manager.get_key_from_identifier(key_identifier)
+        if not api_key:
+            logger.error(
+                f"[Request ID: {request_id}] API key {key_identifier} not found."
+            )
+            raise HTTPException(
+                status_code=503, detail=f"{key_identifier}'s mapper not found."
+            )
+
+        headers = self._prepare_headers(api_key)
+        if self._cloudflare_gateway_enabled and self._cf_ai_authorization_key:
+            headers["cf-aig-authorization"] = self._cf_ai_authorization_key
+
+        transaction_logger.info(
+            "[Request ID: %s] Request to %s API with key %s: %s",
+            request_id,
+            self.service_name,
+            key_identifier,
+            request_data.model_dump_json(by_alias=True, exclude_unset=True),
+        )
+
+        if stream:
+            async for chunk in self._process_streaming_response(
+                key_identifier, method, url, request_data, headers, params
+            ):
+                yield chunk
+        else:
+            response_data = await self._process_non_streaming_response(
+                key_identifier, method, url, request_data, headers, params
+            )
+            yield response_data
+
+    async def _handle_request_error(self, key_identifier: str, e: Exception):
+        """
+        Handles various request errors, marks the key as failed, and performs necessary recovery actions.
+        """
+        request_id = self.request_info.request_id
+        error_type = ErrorType.UNEXPECTED_ERROR
+        log_level = logger.critical
+
+        if isinstance(e, StreamingCompletionError):
+            error_type = ErrorType.STREAMING_COMPLETION_ERROR
+            log_level = logger.error
+            log_level(
+                f"[Request ID: {request_id}] Streaming completion error: {e}. Deactivating and retrying..."
+            )
+        elif isinstance(e, httpx.HTTPStatusError):
+            response_text = ""
+            try:
+                response_text = e.response.text
+            except httpx.ResponseNotRead:
+                try:
+                    await e.response.aread()
+                    response_text = e.response.text
+                except httpx.StreamClosed:
+                    response_text = (
+                        "<Streamed response body not available due to connection error>"
+                    )
+            except Exception:
+                response_text = "<Error reading response body>"
+
+            if not response_text:
+                response_text = "<Response body not available>"
+            transaction_logger.error(
+                "[Request ID: %s] Error response from %s API with key %s: %s",
+                request_id,
+                self.service_name,
+                key_identifier,
+                response_text,
+            )
+            error_type = ErrorType.OTHER_HTTP_ERROR
+            if e.response.status_code in [401, 403]:
+                error_type = ErrorType.AUTH_ERROR
+            elif e.response.status_code == 429:
+                error_type = ErrorType.RATE_LIMIT_ERROR
+
+            log_level = logger.warning
+            log_level(
+                f"[Request ID: {request_id}] API Key {key_identifier} failed with status {e.response.status_code}. "
+                f"Deactivating it."
+            )
+
+            if e.response.status_code == 429:
+                wait_time = self._rate_limit_default_wait_seconds + random.randint(1, 5)
+                logger.warning(
+                    f"[Request ID: {request_id}] Rate limit hit. Retrying after {wait_time} seconds."
+                )
+                await asyncio.sleep(wait_time)
+        elif isinstance(e, httpx.RequestError):
+            error_type = ErrorType.REQUEST_ERROR
+            log_level = logger.error
+            log_level(
+                f"[Request ID: {request_id}] Request error with key {key_identifier}: {e}. Deactivating and retrying..."
+            )
+            await self._recreate_client()
+        else:
+            log_level(
+                f"[Request ID: {request_id}] An unexpected error occurred with key {key_identifier}: {e}. Deactivating and retrying..."
+            )
+            raise HTTPException(
+                status_code=500, detail=f"An unexpected error occurred: {e}"
+            )
+
+        await self._key_manager.mark_key_fail(
+            key_identifier,
+            error_type,
+            self.request_info,
+        )
+
+    def _handle_exception_response(
+        self,
+        e: Exception,
+        status_code: int,
+        error_message: str,
+    ) -> Union[StreamingResponse, HTTPException]:
+        """
+        Handles exception responses, returning a StreamingResponse for stream requests
+        or raising an HTTPException for non-stream requests.
+        """
+        if self.request_info.stream:
+            return StreamingResponse(
+                content=f'{{"error": "{error_message}: {e}"}}',
+                status_code=status_code,
+                media_type="application/json",
+            )
+        else:
+            raise HTTPException(status_code=status_code, detail=f"{error_message}: {e}")
+
+    async def _dispatch_request(
         self,
         method: str,
         url: str,
@@ -451,7 +471,7 @@ class ApiService(ABC):
         """
         Handles sending the HTTP request by dispatching to the appropriate generator.
         """
-        generator = self._request_generator(
+        generator = self._execute_request_with_retries(
             method=method,
             url=url,
             request_data=request_data,
@@ -467,16 +487,6 @@ class ApiService(ABC):
             # For non-streaming, get the first (and only) item from the generator
             response_data = await generator.__anext__()
             return cast(Dict[str, Any], response_data)
-
-    @abstractmethod
-    async def _generate_content(
-        self,
-        request_data: GeminiRequest | OpenAIRequest,
-    ) -> Union[Dict[str, Any], StreamingResponse]:
-        """
-        Handles the logic of generating content from the API, including error handling and retrying.
-        """
-        raise NotImplementedError
 
     async def create_chat_completion(
         self,
@@ -494,7 +504,7 @@ class ApiService(ABC):
 
         try:
             async with concurrency_manager.timeout_semaphore():
-                return await self._generate_content(request_data)
+                return await self._prepare_and_send_request(request_data)
         except ConcurrencyTimeoutError as e:
             logger.warning(f"[Request ID: {request_id}] Concurrency timeout error: {e}")
             return self._handle_exception_response(

@@ -145,6 +145,15 @@ class SQLiteDBManager(DBManager):
             rows = await cursor.fetchall()
             return [row[0] for row in rows]
 
+    async def get_available_keys_count(self) -> int:
+        """Get the count of keys that are not in use and not cooled down."""
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM key_states WHERE is_in_use = 0 AND is_cooled_down = 0"
+            )
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+
     async def reactivate_key(self, key_identifier: str):
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(

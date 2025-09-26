@@ -62,6 +62,11 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def get_available_keys_count(self) -> int:
+        """Get the count of available keys."""
+        raise NotImplementedError
+
+    @abstractmethod
     async def reactivate_key(self, key_identifier: str):
         """Reactivate a key, moving it back to the available queue."""
         raise NotImplementedError

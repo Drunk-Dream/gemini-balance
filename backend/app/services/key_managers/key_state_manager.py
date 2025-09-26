@@ -84,6 +84,29 @@ class KeyStateManager:
     async def _save_key_state(self, key_identifier: str, state: KeyState):
         await self._db_manager.save_key_state(key_identifier, state)
 
+    @with_key_manager_lock
+    async def add_key(self, api_key: str) -> str:
+        key_identifier = self._get_key_identifier(api_key)
+        await self._db_manager.add_key(key_identifier, api_key)
+        app_logger.info(f"Added new API key: {key_identifier}")
+        return key_identifier
+
+    @with_key_manager_lock
+    async def delete_key(self, key_identifier: str):
+        await self._db_manager.delete_key(key_identifier)
+        app_logger.info(f"Deleted API key: {key_identifier}")
+
+    @with_key_manager_lock
+    async def reset_key_state(self, key_identifier: str):
+        await self._db_manager.reset_key_state(key_identifier)
+        app_logger.info(f"Reset state for API key: {key_identifier}")
+
+    @with_key_manager_lock
+    async def reset_all_key_states(self):
+        await self._db_manager.reset_all_key_states()
+        app_logger.info("Reset state for all API keys.")
+
+    @with_key_manager_lock
     async def get_next_key(self, request_info: RequestInfo) -> Optional[str]:
         key_identifier = await self._db_manager.get_next_available_key()
         if key_identifier:
@@ -239,23 +262,6 @@ class KeyStateManager:
         return states_response
 
     @with_key_manager_lock
-    async def add_key(self, api_key: str) -> str:
-        key_identifier = self._get_key_identifier(api_key)
-        await self._db_manager.add_key(key_identifier, api_key)
-        app_logger.info(f"Added new API key: {key_identifier}")
-        return key_identifier
-
-    @with_key_manager_lock
-    async def delete_key(self, key_identifier: str):
-        await self._db_manager.delete_key(key_identifier)
-        app_logger.info(f"Deleted API key: {key_identifier}")
-
-    @with_key_manager_lock
-    async def reset_key_state(self, key_identifier: str):
-        await self._db_manager.reset_key_state(key_identifier)
-        app_logger.info(f"Reset state for API key: {key_identifier}")
-
-    @with_key_manager_lock
-    async def reset_all_key_states(self):
-        await self._db_manager.reset_all_key_states()
-        app_logger.info("Reset state for all API keys.")
+    async def get_available_keys_count(self) -> int:
+        counts = await self._db_manager.get_available_keys_count()
+        return counts

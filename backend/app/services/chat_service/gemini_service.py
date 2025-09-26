@@ -57,7 +57,7 @@ class GeminiService(ApiService):
             return True
         return False
 
-    async def _generate_content(
+    async def _prepare_and_send_request(
         self,
         request_data: GeminiRequest | OpenAIRequest,
     ) -> Union[Dict[str, Any], StreamingResponse]:
@@ -67,7 +67,7 @@ class GeminiService(ApiService):
         url = self._get_api_url(self.request_info.model_id, stream)
         params = {"alt": "sse"} if stream else None
 
-        response = await self._send_request(
+        response = await self._dispatch_request(
             method="POST",
             url=url,
             request_data=request_data,

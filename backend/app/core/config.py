@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     API_KEY_FAILURE_THRESHOLD: int = 3
     MAX_COOL_DOWN_SECONDS: int = 3600 * 12
     RATE_LIMIT_DEFAULT_WAIT_SECONDS: int = 90
-    MAX_RETRIES: int = 3
+    MAX_RETRIES: int = -1
     NO_KEY_WAIT_SECONDS: int = 5
     KEY_IN_USE_TIMEOUT_SECONDS: int = 300  # 密钥在用状态的超时时间，默认5分钟
     DEFAULT_CHECK_COOLED_DOWN_SECONDS: int = 300
