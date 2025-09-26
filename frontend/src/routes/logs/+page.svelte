@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
 	import LogViewer from '$lib/components/logs/LogViewer.svelte';
 	import { onDestroy, onMount } from 'svelte';
 
@@ -65,4 +66,6 @@
 	});
 </script>
 
-<LogViewer {logs} {errorMessage} />
+<AuthGuard>
+	<LogViewer {logs} {errorMessage} />
+</AuthGuard>
