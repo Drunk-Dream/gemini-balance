@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     NO_KEY_WAIT_SECONDS: int = 5
     KEY_IN_USE_TIMEOUT_SECONDS: int = 300  # 密钥在用状态的超时时间，默认5分钟
     DEFAULT_CHECK_COOLED_DOWN_SECONDS: int = 300
+    CHECK_HEALTH_AFTER_COOL_DOWN: bool = False
 
     # 数据库配置
     DATABASE_TYPE: str = "sqlite"

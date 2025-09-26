@@ -13,6 +13,9 @@ from typing import (
     TypeVar,
 )
 
+import httpx
+
+from backend.app.core.config import settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
 
@@ -49,7 +52,6 @@ class BackgroundTaskManager:
     async def _release_cooled_down_keys(
         self,
         db_manager: DBManager,
-        default_check_cooled_down_seconds: int,
     ):
         """
         后台任务，定期检查并释放冷却中的密钥。
@@ -61,13 +63,17 @@ class BackgroundTaskManager:
                 for key_identifier in releasable_keys:
                     async with self.key_manager_lock:
                         state = await db_manager.get_key_state(key_identifier)
-                        if state and state.cool_down_until <= time.time():
+                        if (
+                            state
+                            and state.cool_down_until <= time.time()
+                            and self.check_key_health(key_identifier, db_manager)
+                        ):
                             await db_manager.reactivate_key(key_identifier)
                             app_logger.info(f"API key {key_identifier} reactivated.")
 
                 min_cool_down_until = await db_manager.get_min_cool_down_until()
 
-                wait_time = default_check_cooled_down_seconds
+                wait_time = settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS
                 if min_cool_down_until:
                     now = time.time()
                     calculated_wait = max(0, min_cool_down_until - now)
@@ -86,7 +92,37 @@ class BackgroundTaskManager:
                 app_logger.error(
                     f"Error in _release_cooled_down_keys background task: {e}"
                 )
-                await asyncio.sleep(default_check_cooled_down_seconds)
+                await asyncio.sleep(settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS)
+
+    async def check_key_health(
+        self, key_identifier: str, db_manager: DBManager
+    ) -> bool:
+        """
+        检查密钥的健康状况，如果健康再从冷却中释放
+        """
+        if not settings.CHECK_HEALTH_AFTER_COOL_DOWN:
+            return True
+        client = httpx.AsyncClient(
+            base_url=settings.GEMINI_API_BASE_URL,
+            timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
+        )
+        api_key = await db_manager.get_key_from_identifier(key_identifier)
+        headers = {"Content-Type": "application/json", "x-goog-api-key": api_key}
+        body = {"contents": [{"parts": [{"text": "Hello, world!"}]}]}
+        try:
+            async with client:
+                response = await client.post(
+                    url="models/gemini-2.5-flash-lite:generateContent",
+                    json=body,
+                    headers=headers,
+                )
+                response.raise_for_status()
+                return True
+        except Exception as e:
+            app_logger.error(f"Error checking key health for {key_identifier}: {e}")
+            return False
+
+        return True
 
     async def _timeout_release_key(
         self,
@@ -158,7 +194,6 @@ class BackgroundTaskManager:
     async def start_background_task(
         self,
         db_manager: DBManager,
-        default_check_cooled_down_seconds: int,
     ):
         """
         启动后台任务，用于定期释放冷却中的密钥。
@@ -168,7 +203,6 @@ class BackgroundTaskManager:
             self._background_task = asyncio.create_task(
                 self._release_cooled_down_keys(
                     db_manager,
-                    default_check_cooled_down_seconds,
                 )
             )
 
