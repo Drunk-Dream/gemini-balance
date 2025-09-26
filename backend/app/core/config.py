@@ -81,6 +81,7 @@ async def print_non_sensitive_settings(logger: Logger):
         "NO_KEY_WAIT_SECONDS": settings.NO_KEY_WAIT_SECONDS,
         "KEY_IN_USE_TIMEOUT_SECONDS": settings.KEY_IN_USE_TIMEOUT_SECONDS,
         "DEFAULT_CHECK_COOLED_DOWN_SECONDS": settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS,
+        "CHECK_HEALTH_AFTER_COOL_DOWN": settings.CHECK_HEALTH_AFTER_COOL_DOWN,
         "DATABASE_TYPE": settings.DATABASE_TYPE,
         "SQLITE_DB": settings.SQLITE_DB,
         "FORCE_RESET_DATABASE": settings.FORCE_RESET_DATABASE,
