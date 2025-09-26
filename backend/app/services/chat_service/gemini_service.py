@@ -23,9 +23,9 @@ class GeminiService(ApiService):
             key_manager=key_manager,
         )
 
-    def _get_api_url(self, model_id: str, stream: bool = False) -> str:
+    def _set_api_url(self, model_id: str, stream: bool = False) -> None:
         action = "streamGenerateContent" if stream else "generateContent"
-        return f"/v1beta/models/{model_id}:{action}"
+        self.url = f"/v1beta/models/{model_id}:{action}"
 
     def _prepare_headers(self, api_key: str) -> Dict[str, str]:
         return {"Content-Type": "application/json", "x-goog-api-key": api_key}
@@ -64,12 +64,10 @@ class GeminiService(ApiService):
         if not isinstance(request_data, GeminiRequest):
             raise ValueError("request_data must be a GeminiRequest instance")
         stream = self.request_info.stream
-        url = self._get_api_url(self.request_info.model_id, stream)
+        self._set_api_url(self.request_info.model_id, stream)
         params = {"alt": "sse"} if stream else None
 
         response = await self._dispatch_request(
-            method="POST",
-            url=url,
             request_data=request_data,
             params=params,
         )

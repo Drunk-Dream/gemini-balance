@@ -23,8 +23,8 @@ class OpenAIService(ApiService):
             key_manager=key_manager,
         )
 
-    def _get_api_url(self) -> str:
-        return "/chat/completions"
+    def _set_api_url(self) -> None:
+        self.url = "/chat/completions"
 
     def _prepare_headers(self, api_key: str) -> Dict[str, str]:
         return {
@@ -63,7 +63,7 @@ class OpenAIService(ApiService):
     ) -> Union[Dict[str, Any], StreamingResponse]:
         if not isinstance(request_data, OpenAIRequest):
             raise ValueError("request_data must be a ChatCompletionRequest instance")
-        url = self._get_api_url()
+        self._set_api_url()
         stream = self.request_info.stream
 
         self._handle_thinking_config(request_data)
@@ -81,11 +81,7 @@ class OpenAIService(ApiService):
             else:
                 request_data.stream_options["include_usage"] = True
 
-        # params = {"alt": "sse"} if stream else {"alt": "json"}
-
         response = await self._dispatch_request(
-            method="POST",
-            url=url,
             request_data=request_data,
         )
 

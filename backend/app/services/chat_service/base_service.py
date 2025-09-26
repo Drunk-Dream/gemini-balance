@@ -65,6 +65,7 @@ class ApiService(ABC):
         self._cf_ai_authorization_key = settings.CF_AI_AUTHORIZATION_KEY
         self._rate_limit_default_wait_seconds = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
         self._key_manager = key_manager
+        self.url: str
 
     async def _recreate_client(self):
         """
@@ -86,7 +87,7 @@ class ApiService(ABC):
         )
 
     @abstractmethod
-    def _get_api_url(self, *args, **kwargs) -> str:
+    def _set_api_url(self, *args, **kwargs) -> str:
         """
         Abstract method to get the specific API endpoint URL.
         Must be implemented by subclasses.
@@ -134,8 +135,6 @@ class ApiService(ABC):
     async def _process_streaming_response(
         self,
         key_identifier: str,
-        method: str,
-        url: str,
         request_data: GeminiRequest | OpenAIRequest,
         headers: Dict[str, str],
         params: Dict[str, str] | None,
@@ -148,8 +147,8 @@ class ApiService(ABC):
         full_response_content = ""
         async with httpx_sse.aconnect_sse(
             self.client,
-            method,
-            url,
+            "POST",
+            self.url,
             json=request_data.model_dump(by_alias=True, exclude_unset=True),
             headers=headers,
             params=params,
@@ -202,8 +201,6 @@ class ApiService(ABC):
     async def _process_non_streaming_response(
         self,
         key_identifier: str,
-        method: str,
-        url: str,
         request_data: GeminiRequest | OpenAIRequest,
         headers: Dict[str, str],
         params: Dict[str, str] | None,
@@ -214,8 +211,8 @@ class ApiService(ABC):
         """
         request_id = self.request_info.request_id
         response = await self.client.request(
-            method,
-            url,
+            "POST",
+            self.url,
             json=request_data.model_dump(by_alias=True, exclude_unset=True),
             headers=headers,
             params=params,
@@ -257,8 +254,6 @@ class ApiService(ABC):
 
     async def _execute_request_with_retries(
         self,
-        method: str,
-        url: str,
         request_data: GeminiRequest | OpenAIRequest,
         params: Dict[str, str] | None,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
@@ -288,7 +283,7 @@ class ApiService(ABC):
 
             try:
                 async for chunk in self._attempt_single_request(
-                    key_identifier, method, url, request_data, params
+                    key_identifier, request_data, params
                 ):
                     yield chunk
                 return
@@ -319,8 +314,6 @@ class ApiService(ABC):
     async def _attempt_single_request(
         self,
         key_identifier: str,
-        method: str,
-        url: str,
         request_data: GeminiRequest | OpenAIRequest,
         params: Dict[str, str] | None,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
@@ -356,12 +349,12 @@ class ApiService(ABC):
 
         if stream:
             async for chunk in self._process_streaming_response(
-                key_identifier, method, url, request_data, headers, params
+                key_identifier, request_data, headers, params
             ):
                 yield chunk
         else:
             response_data = await self._process_non_streaming_response(
-                key_identifier, method, url, request_data, headers, params
+                key_identifier, request_data, headers, params
             )
             yield response_data
 
@@ -463,8 +456,6 @@ class ApiService(ABC):
 
     async def _dispatch_request(
         self,
-        method: str,
-        url: str,
         request_data: GeminiRequest | OpenAIRequest,
         params: Dict[str, str] | None = None,
     ) -> Union[Dict[str, Any], StreamingResponse]:
@@ -472,8 +463,6 @@ class ApiService(ABC):
         Handles sending the HTTP request by dispatching to the appropriate generator.
         """
         generator = self._execute_request_with_retries(
-            method=method,
-            url=url,
             request_data=request_data,
             params=params,
         )
