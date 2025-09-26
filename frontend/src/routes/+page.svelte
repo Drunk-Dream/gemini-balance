@@ -1,9 +1,8 @@
 <script lang="ts">
 	import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
 	import Notification from '$lib/components/common/Notification.svelte';
-	import AddKeyForm from '$lib/components/key-management/AddKeyForm.svelte';
+	import KeyActions from '$lib/components/key-management/KeyActions.svelte';
 	import KeyList from '$lib/components/key-management/KeyList.svelte';
-	import KeyManagementHeader from '$lib/components/key-management/KeyManagementHeader.svelte';
 	import KeyStatusSummary from '$lib/components/key-management/KeyStatusSummary.svelte';
 	import type { KeyStatus } from '$lib/types/key-management';
 // 导入 Notification 组件
@@ -119,8 +118,7 @@
 	<div class="container mx-auto p-2 sm:p-4">
 		<h1 class="mb-4 text-2xl font-bold text-gray-800 sm:mb-6 sm:text-3xl">密钥管理</h1>
 
-		<KeyManagementHeader {fetchKeyStatuses} {resetAllKeys} {loading} />
-		<AddKeyForm {addKeys} />
+		<KeyActions {fetchKeyStatuses} {resetAllKeys} {addKeys} {loading} />
 
 		<Notification message={notificationMessage} type={notificationType} />
 

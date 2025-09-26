@@ -1,19 +1,38 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
 
-	let { addKeys }: { addKeys: (keysInput: string) => Promise<void> } = $props();
-	let keysInput: string = $state('');
-	let open = $state(false);
+	let {
+		fetchKeyStatuses,
+		resetAllKeys,
+		addKeys,
+		loading
+	}: {
+		fetchKeyStatuses: () => Promise<void>;
+		resetAllKeys: () => Promise<void>;
+		addKeys: (keysInput: string) => Promise<void>;
+		loading: boolean;
+	} = $props();
 
-	async function handleSubmit() {
+	let keysInput: string = $state('');
+	let addKeyDialogOpen = $state(false);
+
+	async function handleAddKeysSubmit() {
 		await addKeys(keysInput);
 		keysInput = ''; // Clear input after submission
-		open = false; // Close dialog
+		addKeyDialogOpen = false; // Close dialog
 	}
 </script>
 
-<div class="mb-6">
-	<Dialog.Root bind:open>
+<div class="mb-6 flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
+	<button
+		onclick={fetchKeyStatuses}
+		class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none sm:text-base"
+		disabled={loading}
+	>
+		{loading ? '刷新中...' : '立即刷新'}
+	</button>
+
+	<Dialog.Root bind:open={addKeyDialogOpen}>
 		<Dialog.Trigger
 			class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700 focus:outline-none"
 		>
@@ -49,7 +68,7 @@
 						取消
 					</Dialog.Close>
 					<button
-						onclick={handleSubmit}
+						onclick={handleAddKeysSubmit}
 						class="focus:shadow-outline cursor-pointer rounded bg-green-500 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 focus:outline-none"
 					>
 						添加密钥
@@ -58,4 +77,11 @@
 			</Dialog.Content>
 		</Dialog.Portal>
 	</Dialog.Root>
+
+	<button
+		onclick={resetAllKeys}
+		class="focus:shadow-outline cursor-pointer rounded bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 focus:outline-none sm:text-base"
+	>
+		重置所有密钥状态
+	</button>
 </div>
