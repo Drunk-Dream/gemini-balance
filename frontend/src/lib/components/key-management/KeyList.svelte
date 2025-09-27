@@ -1,15 +1,6 @@
 <script lang="ts">
+	import type { KeyStatus } from '$lib/types/key-management';
 	import KeyCard from './KeyCard.svelte';
-
-	interface KeyStatus {
-		key_identifier: string;
-		status: string;
-		cool_down_seconds_remaining: number;
-		daily_usage: { [model: string]: number };
-		failure_count: number;
-		cool_down_entry_count: number;
-		current_cool_down_seconds: number;
-	}
 
 	let {
 		keyStatuses,

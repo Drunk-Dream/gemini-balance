@@ -103,7 +103,7 @@ class SQLiteDBManager(DBManager):
                     return None
                 key_identifier = row[0]
                 api_key = row[1]
-                brief_api_key = f"{api_key[:4]}...{api_key[-4:]}"
+                brief_api_key = DBManager.key_to_brief(api_key)
                 return KeyType(
                     identifier=key_identifier, brief=brief_api_key, full=api_key
                 )
@@ -139,7 +139,7 @@ class SQLiteDBManager(DBManager):
             for row in rows:
                 key_identifier = row[0]
                 api_key = row[1]
-                brief_api_key = f"{api_key[:4]}...{api_key[-4:]}"
+                brief_api_key = DBManager.key_to_brief(api_key)
                 keys.append(
                     KeyType(
                         identifier=key_identifier, brief=brief_api_key, full=api_key

@@ -1,14 +1,5 @@
 <script lang="ts">
-	interface KeyStatus {
-		key_identifier: string;
-		status: string;
-		cool_down_seconds_remaining: number;
-		daily_usage: { [model: string]: number };
-		failure_count: number;
-		cool_down_entry_count: number;
-		current_cool_down_seconds: number;
-	}
-
+	import type { KeyStatus } from '$lib/types/key-management';
 	const statusMap = new Map<string, { text: string; colorClass: string }>();
 	statusMap.set('active', { text: '活跃', colorClass: 'bg-green-200' });
 	statusMap.set('cooling_down', { text: '冷却中', colorClass: 'bg-yellow-200' });
@@ -37,7 +28,7 @@
 <div class="rounded-lg bg-white p-4 shadow-md">
 	<div class="mb-2 flex items-center justify-between">
 		<h3 class="text-md font-semibold text-gray-800">密钥标识:</h3>
-		<p class="text-sm text-gray-900">{keyStatus.key_identifier}</p>
+		<p class="text-sm text-gray-900">{keyStatus.key_brief}</p>
 	</div>
 	<div class="mb-2 flex items-center justify-between">
 		<h3 class="text-md font-semibold text-gray-800">状态:</h3>

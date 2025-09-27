@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
 class KeyStatusResponse(BaseModel):
     key_identifier: str
+    key_brief: str
     status: str
     cool_down_seconds_remaining: float
     daily_usage: Dict[str, int]
@@ -74,6 +75,12 @@ class KeyStateManager:
         import hashlib
 
         return f"key_sha256_{hashlib.sha256(key.encode()).hexdigest()[:8]}"
+
+    def calculate_cool_down_seconds(self, state: KeyState) -> int:
+        return min(
+            self._initial_cool_down_seconds * (2**state.cool_down_entry_count),
+            self._max_cool_down_seconds,
+        )
 
     async def get_key_brief(self, key_identifier: str) -> str | None:
         api_key = await self._db_manager.get_key_from_identifier(key_identifier)
@@ -153,20 +160,16 @@ class KeyStateManager:
             error_type_str += " & max_failures_error"  # 保持原始字符串，以便日志记录
 
         if should_cool_down:
+            current_cool_down_seconds = self.calculate_cool_down_seconds(state)
             state.cool_down_entry_count += 1
-            backoff_factor = 2 ** (state.cool_down_entry_count - 1)
-            new_cool_down = self._initial_cool_down_seconds * backoff_factor
-            state.current_cool_down_seconds = min(
-                new_cool_down, self._max_cool_down_seconds
-            )
-            state.cool_down_until = time.time() + state.current_cool_down_seconds
+            state.cool_down_until = time.time() + current_cool_down_seconds
             await self._db_manager.move_to_cooldown(
                 key.identifier, state.cool_down_until
             )
             self._background_task_manager.wakeup_event.set()
             app_logger.warning(
                 f"[Request ID: {request_info.request_id}] Key {key.brief} cooled down for "
-                f"{state.current_cool_down_seconds:.2f}s due to {error_type_str}."
+                f"{current_cool_down_seconds:.2f}s due to {error_type_str}."
             )
         else:  # 如果不需要冷却，则释放密钥
             await self._db_manager.release_key_from_use(key.identifier)
@@ -203,7 +206,6 @@ class KeyStateManager:
         if not state:
             return
         state.cool_down_entry_count = 0
-        state.current_cool_down_seconds = self._initial_cool_down_seconds
         state.request_fail_count = 0
         state.last_usage_time = time.time()
 
@@ -237,6 +239,7 @@ class KeyStateManager:
 
         for state in states:
             key_identifier = state.key_identifier
+            key_brief = self._db_manager.key_to_brief(state.api_key)
             cool_down_remaining = max(0, state.cool_down_until - now)
 
             if state.is_in_use:
@@ -252,12 +255,13 @@ class KeyStateManager:
             states_response.append(
                 KeyStatusResponse(
                     key_identifier=key_identifier,
+                    key_brief=key_brief,
                     status=status,
                     cool_down_seconds_remaining=round(cool_down_remaining, 2),
                     daily_usage=key_daily_usage,
                     failure_count=state.request_fail_count,
                     cool_down_entry_count=state.cool_down_entry_count,
-                    current_cool_down_seconds=state.current_cool_down_seconds,
+                    current_cool_down_seconds=self.calculate_cool_down_seconds(state),
                     is_in_use=state.is_in_use,
                 )
             )

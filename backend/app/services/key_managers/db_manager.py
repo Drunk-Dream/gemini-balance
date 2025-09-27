@@ -26,6 +26,9 @@ class DBManager(ABC):
     """
     Abstract class for database operations for the key manager.
     """
+    @staticmethod
+    def key_to_brief(key: str) -> str:
+        return key[:4] + "..." + key[-4:]
 
     @abstractmethod
     async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:

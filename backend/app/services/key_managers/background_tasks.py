@@ -63,11 +63,7 @@ class BackgroundTaskManager:
                 for key in releasable_keys:
                     async with self.key_manager_lock:
                         state = await db_manager.get_key_state(key.identifier)
-                        if (
-                            state
-                            and state.cool_down_until <= time.time()
-                            and self.check_key_health(key)
-                        ):
+                        if state and state.cool_down_until <= time.time():
                             await db_manager.reactivate_key(key.identifier)
                             app_logger.info(f"API key {key.brief} reactivated.")
 
@@ -99,6 +95,7 @@ class BackgroundTaskManager:
         检查密钥的健康状况，如果健康再从冷却中释放
         """
         if not settings.CHECK_HEALTH_AFTER_COOL_DOWN:
+            app_logger.debug("Skipping key health check.")
             return True
         client = httpx.AsyncClient(
             base_url=settings.GEMINI_API_BASE_URL,
