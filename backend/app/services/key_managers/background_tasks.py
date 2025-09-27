@@ -112,7 +112,7 @@ class BackgroundTaskManager:
         try:
             async with client:
                 response = await client.post(
-                    url="models/gemini-2.5-flash-lite:generateContent",
+                    url="/v1beta/models/gemini-2.5-flash-lite:generateContent",
                     json=body,
                     headers=headers,
                 )

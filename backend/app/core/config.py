@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     # API 配置
     GEMINI_API_BASE_URL: str = "https://generativelanguage.googleapis.com"
-    OPENAI_API_BASE_URL: str = "https://generativelanguage.googleapis.com"
+    OPENAI_API_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     REQUEST_TIMEOUT_SECONDS: int = 120
 
     # Cloudflare Gateway 配置
