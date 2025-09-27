@@ -22,6 +22,7 @@ from backend.app.core.config import Settings
 from backend.app.core.errors import ErrorType, StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
+from backend.app.services.key_managers.db_manager import KeyType
 
 if TYPE_CHECKING:
     from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
@@ -134,7 +135,7 @@ class ApiService(ABC):
 
     async def _process_streaming_response(
         self,
-        key_identifier: str,
+        key: KeyType,
         request_data: GeminiRequest | OpenAIRequest,
         headers: Dict[str, str],
         params: Dict[str, str] | None,
@@ -196,11 +197,11 @@ class ApiService(ABC):
                     "Streaming request finished without a STOP signal."
                 )
 
-        await self._finalize_successful_request(key_identifier)
+        await self._finalize_successful_request(key)
 
     async def _process_non_streaming_response(
         self,
-        key_identifier: str,
+        key: KeyType,
         request_data: GeminiRequest | OpenAIRequest,
         headers: Dict[str, str],
         params: Dict[str, str] | None,
@@ -225,28 +226,20 @@ class ApiService(ABC):
             "[Request ID: %s] Response from %s API with key %s: %s",
             request_id,
             self.service_name,
-            key_identifier,
+            key.brief,
             response_json,
         )
-        await self._finalize_successful_request(key_identifier)
+        await self._finalize_successful_request(key)
         return response_json
 
-    async def _finalize_successful_request(self, key_identifier: str):
+    async def _finalize_successful_request(self, key: KeyType):
         """
         Finalizes a successful request by marking the key as success and logging token counts.
         """
         request_id = self.request_info.request_id
-        await self._key_manager.mark_key_success(
-            key_identifier,
-            self.request_info.request_id,
-            self.request_info.auth_key_alias,
-            self.request_info.model_id,
-            self.request_info.prompt_tokens,
-            self.request_info.completion_tokens,
-            self.request_info.total_tokens,
-        )
+        await self._key_manager.mark_key_success(key, self.request_info)
         logger.info(
-            f"[Request ID: {request_id}] Request with key {key_identifier} succeeded. "
+            f"[Request ID: {request_id}] Request with key {key.brief} succeeded. "
             f"Tokens: prompt={self.request_info.prompt_tokens}, "
             f"completion={self.request_info.completion_tokens}, "
             f"total={self.request_info.total_tokens}"
@@ -269,8 +262,8 @@ class ApiService(ABC):
             else await self._key_manager.get_available_keys_count()
         )
         for attempt in range(max_retries):
-            key_identifier = await self._key_manager.get_next_key(self.request_info)
-            if not key_identifier:
+            key = await self._key_manager.get_next_key(self.request_info)
+            if not key:
                 logger.warning(
                     f"[Request ID: {request_id}] Attempt {attempt + 1}/{max_retries}: No available API keys. "
                     f"Waiting for {self._no_key_wait_seconds} seconds."
@@ -283,13 +276,13 @@ class ApiService(ABC):
 
             try:
                 async for chunk in self._attempt_single_request(
-                    key_identifier, request_data, params
+                    key, request_data, params
                 ):
                     yield chunk
                 return
             except Exception as e:
                 last_exception = e
-                await self._handle_request_error(key_identifier, e)
+                await self._handle_request_error(key, e)
                 if isinstance(e, StreamingCompletionError):
                     yield 'data: {{"error": {{"code": 500, "message": "Streaming completion error", "status": "error"}}}}\n\n'
                     return
@@ -313,7 +306,7 @@ class ApiService(ABC):
 
     async def _attempt_single_request(
         self,
-        key_identifier: str,
+        key: KeyType,
         request_data: GeminiRequest | OpenAIRequest,
         params: Dict[str, str] | None,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
@@ -324,18 +317,10 @@ class ApiService(ABC):
         stream = self.request_info.stream
 
         logger.info(
-            f"[Request ID: {request_id}] Using API key {key_identifier} for {self.service_name}, stream={stream}"
+            f"[Request ID: {request_id}] Using API key {key.brief} for {self.service_name}, stream={stream}"
         )
-        api_key = await self._key_manager.get_key_from_identifier(key_identifier)
-        if not api_key:
-            logger.error(
-                f"[Request ID: {request_id}] API key {key_identifier} not found."
-            )
-            raise HTTPException(
-                status_code=503, detail=f"{key_identifier}'s mapper not found."
-            )
 
-        headers = self._prepare_headers(api_key)
+        headers = self._prepare_headers(key.full)
         if self._cloudflare_gateway_enabled and self._cf_ai_authorization_key:
             headers["cf-aig-authorization"] = self._cf_ai_authorization_key
 
@@ -343,22 +328,22 @@ class ApiService(ABC):
             "[Request ID: %s] Request to %s API with key %s: %s",
             request_id,
             self.service_name,
-            key_identifier,
+            key.brief,
             request_data.model_dump_json(by_alias=True, exclude_unset=True),
         )
 
         if stream:
             async for chunk in self._process_streaming_response(
-                key_identifier, request_data, headers, params
+                key, request_data, headers, params
             ):
                 yield chunk
         else:
             response_data = await self._process_non_streaming_response(
-                key_identifier, request_data, headers, params
+                key, request_data, headers, params
             )
             yield response_data
 
-    async def _handle_request_error(self, key_identifier: str, e: Exception):
+    async def _handle_request_error(self, key: KeyType, e: Exception):
         """
         Handles various request errors, marks the key as failed, and performs necessary recovery actions.
         """
@@ -393,7 +378,7 @@ class ApiService(ABC):
                 "[Request ID: %s] Error response from %s API with key %s: %s",
                 request_id,
                 self.service_name,
-                key_identifier,
+                key.identifier,
                 response_text,
             )
             error_type = ErrorType.OTHER_HTTP_ERROR
@@ -404,7 +389,7 @@ class ApiService(ABC):
 
             log_level = logger.warning
             log_level(
-                f"[Request ID: {request_id}] API Key {key_identifier} failed with status {e.response.status_code}. "
+                f"[Request ID: {request_id}] API Key {key.brief} failed with status {e.response.status_code}. "
                 f"Deactivating it."
             )
 
@@ -418,19 +403,19 @@ class ApiService(ABC):
             error_type = ErrorType.REQUEST_ERROR
             log_level = logger.error
             log_level(
-                f"[Request ID: {request_id}] Request error with key {key_identifier}: {e}. Deactivating and retrying..."
+                f"[Request ID: {request_id}] Request error with key {key.brief}: {e}. Deactivating and retrying..."
             )
             await self._recreate_client()
         else:
             log_level(
-                f"[Request ID: {request_id}] An unexpected error occurred with key {key_identifier}: {e}. Deactivating and retrying..."
+                f"[Request ID: {request_id}] An unexpected error occurred with key {key.brief}: {e}. Deactivating and retrying..."
             )
             raise HTTPException(
                 status_code=500, detail=f"An unexpected error occurred: {e}"
             )
 
         await self._key_manager.mark_key_fail(
-            key_identifier,
+            key,
             error_type,
             self.request_info,
         )

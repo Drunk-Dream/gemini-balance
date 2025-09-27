@@ -16,6 +16,12 @@ class KeyState(BaseModel):
     is_in_use: bool = False  # 新增字段，指示key是否在使用中
 
 
+class KeyType(BaseModel):
+    identifier: str
+    brief: str
+    full: str
+
+
 class DBManager(ABC):
     """
     Abstract class for database operations for the key manager.
@@ -42,7 +48,7 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_next_available_key(self) -> Optional[str]:
+    async def get_next_available_key(self) -> Optional[KeyType]:
         """Get the next available key identifier."""
         raise NotImplementedError
 
@@ -52,7 +58,7 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_releasable_keys(self) -> List[str]:
+    async def get_releasable_keys(self) -> List[KeyType]:
         """Get all keys that have finished their cooldown."""
         raise NotImplementedError
 

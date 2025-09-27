@@ -21,7 +21,7 @@ from backend.app.core.logging import app_logger
 
 if TYPE_CHECKING:
     from backend.app.services.chat_service.base_service import RequestInfo
-    from backend.app.services.key_managers.db_manager import DBManager
+    from backend.app.services.key_managers.db_manager import DBManager, KeyType
     from backend.app.services.key_managers.key_state_manager import KeyStateManager
 
 _P = ParamSpec("_P")
@@ -60,16 +60,16 @@ class BackgroundTaskManager:
             app_logger.debug("Background task for releasing cooled down keys started.")
             try:
                 releasable_keys = await db_manager.get_releasable_keys()
-                for key_identifier in releasable_keys:
+                for key in releasable_keys:
                     async with self.key_manager_lock:
-                        state = await db_manager.get_key_state(key_identifier)
+                        state = await db_manager.get_key_state(key.identifier)
                         if (
                             state
                             and state.cool_down_until <= time.time()
-                            and self.check_key_health(key_identifier, db_manager)
+                            and self.check_key_health(key)
                         ):
-                            await db_manager.reactivate_key(key_identifier)
-                            app_logger.info(f"API key {key_identifier} reactivated.")
+                            await db_manager.reactivate_key(key.identifier)
+                            app_logger.info(f"API key {key.brief} reactivated.")
 
                 min_cool_down_until = await db_manager.get_min_cool_down_until()
 
@@ -94,9 +94,7 @@ class BackgroundTaskManager:
                 )
                 await asyncio.sleep(settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS)
 
-    async def check_key_health(
-        self, key_identifier: str, db_manager: DBManager
-    ) -> bool:
+    async def check_key_health(self, key: KeyType) -> bool:
         """
         检查密钥的健康状况，如果健康再从冷却中释放
         """
@@ -106,7 +104,7 @@ class BackgroundTaskManager:
             base_url=settings.GEMINI_API_BASE_URL,
             timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
         )
-        api_key = await db_manager.get_key_from_identifier(key_identifier)
+        api_key = key.full
         headers = {"Content-Type": "application/json", "x-goog-api-key": api_key}
         body = {"contents": [{"parts": [{"text": "Hello, world!"}]}]}
         try:
@@ -117,16 +115,17 @@ class BackgroundTaskManager:
                     headers=headers,
                 )
                 response.raise_for_status()
+                app_logger.info(f"Key {key.brief} is healthy.")
                 return True
         except Exception as e:
-            app_logger.error(f"Error checking key health for {key_identifier}: {e}")
+            app_logger.error(f"Error checking key health for {key.brief}: {e}")
             return False
 
         return True
 
     async def _timeout_release_key(
         self,
-        key_identifier: str,
+        key: KeyType,
         key_in_use_timeout_seconds: int,
         request_info: RequestInfo,
         key_manager: KeyStateManager,
@@ -137,19 +136,19 @@ class BackgroundTaskManager:
         try:
             await asyncio.sleep(key_in_use_timeout_seconds)
             await key_manager.mark_key_fail(
-                key_identifier, ErrorType.USE_TIMEOUT_ERROR, request_info
+                key, ErrorType.USE_TIMEOUT_ERROR, request_info
             )
         except asyncio.CancelledError:
-            app_logger.debug(f"Timeout task for key {key_identifier} was cancelled.")
+            app_logger.debug(f"Timeout task for key {key.brief} was cancelled.")
         except Exception as e:
-            app_logger.error(f"Error in _timeout_release_key for {key_identifier}: {e}")
+            app_logger.error(f"Error in _timeout_release_key for {key.brief}: {e}")
         finally:
-            if key_identifier in self.timeout_tasks:
-                del self.timeout_tasks[key_identifier]
+            if key.identifier in self.timeout_tasks:
+                del self.timeout_tasks[key.identifier]
 
     def create_timeout_task(
         self,
-        key_identifier: str,
+        key: KeyType,
         key_in_use_timeout_seconds: int,
         request_info: RequestInfo,
         key_manager: KeyStateManager,
@@ -157,28 +156,28 @@ class BackgroundTaskManager:
         """
         创建并启动一个用于超时释放密钥的任务。
         """
-        if key_identifier in self.timeout_tasks:
-            self.timeout_tasks[key_identifier].cancel()
+        if key.identifier in self.timeout_tasks:
+            self.timeout_tasks[key.identifier].cancel()
 
         task = asyncio.create_task(
             self._timeout_release_key(
-                key_identifier,
+                key,
                 key_in_use_timeout_seconds,
                 request_info,
                 key_manager,
             )
         )
-        self.timeout_tasks[key_identifier] = task
+        self.timeout_tasks[key.identifier] = task
 
-    def cancel_timeout_task(self, key_identifier: str):
+    def cancel_timeout_task(self, key: KeyType):
         """
         取消指定密钥的超时任务。
         """
-        if key_identifier in self.timeout_tasks:
-            task = self.timeout_tasks.pop(key_identifier)
+        if key.identifier in self.timeout_tasks:
+            task = self.timeout_tasks.pop(key.identifier)
             if not task.done():
                 task.cancel()
-                app_logger.debug(f"Cancelled timeout task for key {key_identifier}.")
+                app_logger.debug(f"Cancelled timeout task for key {key.brief}.")
 
     async def initialize_key_states(self, db_manager: DBManager):
         """

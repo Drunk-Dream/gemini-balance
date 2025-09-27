@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 import aiosqlite
 
-from backend.app.core.logging import app_logger
-from backend.app.services.key_managers.db_manager import DBManager, KeyState
+from backend.app.services.key_managers.db_manager import DBManager, KeyState, KeyType
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
@@ -88,12 +87,12 @@ class SQLiteDBManager(DBManager):
             rows = await cursor.fetchall()
             return [self._row_to_key_state(row) for row in rows]
 
-    async def get_next_available_key(self) -> Optional[str]:
+    async def get_next_available_key(self) -> Optional[KeyType]:
         async with aiosqlite.connect(self.sqlite_db) as db:
             try:
                 cursor = await db.execute(
                     """
-                    SELECT key_identifier FROM key_states
+                    SELECT key_identifier, api_key FROM key_states
                     WHERE is_in_use = 0 AND is_cooled_down = 0
                     ORDER BY last_usage_time ASC
                     LIMIT 1
@@ -103,10 +102,12 @@ class SQLiteDBManager(DBManager):
                 if not row:
                     return None
                 key_identifier = row[0]
-                return key_identifier
-            except Exception as e:
-                app_logger.error(f"Error getting next available key: {e}")
-                await db.rollback()
+                api_key = row[1]
+                brief_api_key = f"{api_key[:4]}...{api_key[-4:]}"
+                return KeyType(
+                    identifier=key_identifier, brief=brief_api_key, full=api_key
+                )
+            except Exception:
                 return None
 
     async def move_to_use(self, key_identifier: str):
@@ -130,11 +131,21 @@ class SQLiteDBManager(DBManager):
         now = time.time()
         async with aiosqlite.connect(self.sqlite_db) as db:
             cursor = await db.execute(
-                "SELECT key_identifier FROM key_states WHERE is_cooled_down = 1 AND cool_down_until <= ?",
+                "SELECT key_identifier, api_key FROM key_states WHERE is_cooled_down = 1 AND cool_down_until <= ?",
                 (now,),
             )
             rows = await cursor.fetchall()
-            return [row[0] for row in rows]
+            keys = []
+            for row in rows:
+                key_identifier = row[0]
+                api_key = row[1]
+                brief_api_key = f"{api_key[:4]}...{api_key[-4:]}"
+                keys.append(
+                    KeyType(
+                        identifier=key_identifier, brief=brief_api_key, full=api_key
+                    )
+                )
+            return keys
 
     async def get_keys_in_use(self) -> List[str]:
         """Get all keys that are currently in use."""
@@ -183,7 +194,6 @@ class SQLiteDBManager(DBManager):
                 ),
             )
             await db.commit()
-            app_logger.info(f"Added new API key {key_identifier} to SQLite.")
 
     async def delete_key(self, key_identifier: str):
         async with aiosqlite.connect(self.sqlite_db) as db:
@@ -192,7 +202,6 @@ class SQLiteDBManager(DBManager):
                 "DELETE FROM key_states WHERE key_identifier = ?", (key_identifier,)
             )
             await db.commit()
-            app_logger.info(f"Removed API key {key_identifier} from SQLite.")
 
     async def reset_key_state(self, key_identifier: str):
         async with aiosqlite.connect(self.sqlite_db) as db:
@@ -220,7 +229,6 @@ class SQLiteDBManager(DBManager):
                 ),
             )
             await db.commit()
-            app_logger.info(f"Reset state for API key {key_identifier} in SQLite.")
 
     async def reset_all_key_states(self):
         async with aiosqlite.connect(self.sqlite_db) as db:
@@ -246,7 +254,6 @@ class SQLiteDBManager(DBManager):
                 ),
             )
             await db.commit()
-            app_logger.info("Reset state for all API keys in SQLite.")
 
     async def release_key_from_use(self, key_identifier: str):
         async with aiosqlite.connect(self.sqlite_db) as db:

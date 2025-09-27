@@ -23,7 +23,11 @@ from backend.app.services.request_logs.schemas import RequestLog
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
     from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
-    from backend.app.services.key_managers.db_manager import DBManager, KeyState
+    from backend.app.services.key_managers.db_manager import (
+        DBManager,
+        KeyState,
+        KeyType,
+    )
 
 
 class KeyStatusResponse(BaseModel):
@@ -71,9 +75,11 @@ class KeyStateManager:
 
         return f"key_sha256_{hashlib.sha256(key.encode()).hexdigest()[:8]}"
 
-    async def get_key_from_identifier(self, key_identifier: str) -> Optional[str]:
-        key_state = await self._db_manager.get_key_state(key_identifier)
-        return key_state.api_key if key_state else None
+    async def get_key_brief(self, key_identifier: str) -> str | None:
+        api_key = await self._db_manager.get_key_from_identifier(key_identifier)
+        if not api_key:
+            return None
+        return api_key[:4] + "..." + api_key[-4:]
 
     async def _get_key_state(self, key_identifier: str) -> Optional[KeyState]:
         return await self._db_manager.get_key_state(key_identifier)
@@ -107,29 +113,30 @@ class KeyStateManager:
         app_logger.info("Reset state for all API keys.")
 
     @with_key_manager_lock
-    async def get_next_key(self, request_info: RequestInfo) -> Optional[str]:
-        key_identifier = await self._db_manager.get_next_available_key()
-        if key_identifier:
-            await self._db_manager.move_to_use(key_identifier)
-            # 启动一个定时任务，在超时后自动释放密钥
-            self._background_task_manager.create_timeout_task(
-                key_identifier,
-                self._key_in_use_timeout_seconds,
-                request_info,
-                self,
-            )
-        return key_identifier
+    async def get_next_key(self, request_info: RequestInfo) -> Optional[KeyType]:
+        key = await self._db_manager.get_next_available_key()
+        if not key:
+            return None
+        await self._db_manager.move_to_use(key.identifier)
+        # 启动一个定时任务，在超时后自动释放密钥
+        self._background_task_manager.create_timeout_task(
+            key,
+            self._key_in_use_timeout_seconds,
+            request_info,
+            self,
+        )
+        return key
 
     @with_key_manager_lock
     async def mark_key_fail(
-        self, key_identifier: str, error_type: ErrorType, request_info: RequestInfo
+        self, key: KeyType, error_type: ErrorType, request_info: RequestInfo
     ):
         # 取消对应的超时任务
         if error_type != ErrorType.USE_TIMEOUT_ERROR:
-            self._background_task_manager.cancel_timeout_task(key_identifier)
+            self._background_task_manager.cancel_timeout_task(key)
 
         error_type_str = error_type.value
-        state = await self._get_key_state(key_identifier)
+        state = await self._get_key_state(key.identifier)
         if not state:
             return
 
@@ -154,28 +161,28 @@ class KeyStateManager:
             )
             state.cool_down_until = time.time() + state.current_cool_down_seconds
             await self._db_manager.move_to_cooldown(
-                key_identifier, state.cool_down_until
+                key.identifier, state.cool_down_until
             )
             self._background_task_manager.wakeup_event.set()
             app_logger.warning(
-                f"[Request ID: {request_info.request_id}] Key {key_identifier} cooled down for "
+                f"[Request ID: {request_info.request_id}] Key {key.brief} cooled down for "
                 f"{state.current_cool_down_seconds:.2f}s due to {error_type_str}."
             )
         else:  # 如果不需要冷却，则释放密钥
-            await self._db_manager.release_key_from_use(key_identifier)
+            await self._db_manager.release_key_from_use(key.identifier)
             app_logger.info(
-                f"[Request ID: {request_info.request_id}] Key {key_identifier} released from "
+                f"[Request ID: {request_info.request_id}] Key {key.identifier} released from "
                 f"use after {error_type_str} without cooldown."
             )
 
-        await self._save_key_state(key_identifier, state)
+        await self._save_key_state(key.identifier, state)
 
         # 记录请求日志
         log_entry = RequestLog(
             id=None,
             request_id=request_info.request_id,
             request_time=datetime.now(ZoneInfo("UTC")),
-            key_identifier=key_identifier,
+            key_identifier=key.identifier,
             auth_key_alias=request_info.auth_key_alias,
             model_name=request_info.model_id,
             is_success=False,
@@ -186,18 +193,13 @@ class KeyStateManager:
     @with_key_manager_lock
     async def mark_key_success(
         self,
-        key_identifier: str,
-        request_id: str,
-        auth_key_alias: Optional[str],
-        model_id: str,
-        prompt_tokens: Optional[int] = None,
-        completion_tokens: Optional[int] = None,
-        total_tokens: Optional[int] = None,
+        key: KeyType,
+        request_info: RequestInfo,
     ):
         # 取消对应的超时任务
-        self._background_task_manager.cancel_timeout_task(key_identifier)
+        self._background_task_manager.cancel_timeout_task(key)
 
-        state = await self._get_key_state(key_identifier)
+        state = await self._get_key_state(key.identifier)
         if not state:
             return
         state.cool_down_entry_count = 0
@@ -205,21 +207,21 @@ class KeyStateManager:
         state.request_fail_count = 0
         state.last_usage_time = time.time()
 
-        await self._save_key_state(key_identifier, state)
-        await self._db_manager.reactivate_key(key_identifier)
+        await self._save_key_state(key.identifier, state)
+        await self._db_manager.reactivate_key(key.identifier)
 
         # 记录请求日志
         log_entry = RequestLog(
             id=None,
-            request_id=request_id,
+            request_id=request_info.request_id,
             request_time=datetime.now(ZoneInfo("UTC")),
-            key_identifier=key_identifier,
-            auth_key_alias=auth_key_alias,
-            model_name=model_id,
+            key_identifier=key.identifier,
+            auth_key_alias=request_info.auth_key_alias,
+            model_name=request_info.model_id,
             is_success=True,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            total_tokens=total_tokens,
+            prompt_tokens=request_info.prompt_tokens,
+            completion_tokens=request_info.completion_tokens,
+            total_tokens=request_info.total_tokens,
         )
         await self._request_log_manager.record_request_log(log_entry)
 
