@@ -64,7 +64,7 @@ def get_settings() -> Settings:
     return settings
 
 
-async def print_non_sensitive_settings(logger: Logger):
+def print_non_sensitive_settings(logger: Logger):
     non_sensitive_settings = {
         "GEMINI_API_BASE_URL": settings.GEMINI_API_BASE_URL,
         "OPENAI_API_BASE_URL": settings.OPENAI_API_BASE_URL,

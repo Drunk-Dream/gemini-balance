@@ -44,7 +44,7 @@ async def verify_bearer_token(
 )
 async def create_chat_completion_endpoint(
     request: ChatCompletionRequest,
-    openai_service: OpenAIService = Depends(OpenAIService),
+    openai_service: OpenAIService = Depends(),
     auth_key_alias: str = Depends(verify_bearer_token),
 ) -> Union[Dict[str, Any], StreamingResponse, HTTPException]:
     stream = bool(request.stream)

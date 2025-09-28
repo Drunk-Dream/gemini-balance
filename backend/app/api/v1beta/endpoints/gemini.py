@@ -42,7 +42,7 @@ async def verify_x_goog_api_key(
 async def generate_content_endpoint(
     model_id: str,
     request: GeminiRequest,
-    gemini_service: GeminiService = Depends(GeminiService),
+    gemini_service: GeminiService = Depends(),
     auth_key_alias: str = Depends(verify_x_goog_api_key),
 ) -> Dict[str, Any]:
     await gemini_service.create_request_info(model_id, auth_key_alias, False)

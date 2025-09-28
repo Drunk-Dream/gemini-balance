@@ -22,7 +22,7 @@ security = HTTPBearer()
 async def create_auth_key(
     key_create: AuthKeyCreate,
     auth_service: AuthService = Depends(AuthService),
-    current_user: bool = Depends(
+    current_user: dict = Depends(
         get_current_user
     ),  # Protect this endpoint with get_current_user
 ):
@@ -40,7 +40,7 @@ async def create_auth_key(
 async def get_auth_keys(
     auth_service: AuthService = Depends(AuthService),
     request_log_manager: RequestLogManager = Depends(RequestLogManager),
-    current_user: bool = Depends(
+    current_user: dict = Depends(
         get_current_user
     ),  # Protect this endpoint with get_current_user
 ):
@@ -62,7 +62,7 @@ async def update_auth_key_alias(
     key_update: AuthKeyUpdate,
     auth_service: AuthService = Depends(AuthService),
     request_log_manager: RequestLogManager = Depends(RequestLogManager),
-    current_user: bool = Depends(
+    current_user: dict = Depends(
         get_current_user
     ),  # Protect this endpoint with get_current_user
 ):
@@ -88,7 +88,7 @@ async def update_auth_key_alias(
 async def delete_auth_key(
     api_key: str,
     auth_service: AuthService = Depends(AuthService),
-    current_user: bool = Depends(
+    current_user: dict = Depends(
         get_current_user
     ),  # Protect this endpoint with get_current_user
 ):

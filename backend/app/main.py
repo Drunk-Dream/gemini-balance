@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     app.state.settings = settings
 
-    await print_non_sensitive_settings(logger)
+    print_non_sensitive_settings(logger)
     logger.info("Running database migrations...")
     migration_manager = get_migration_manager(settings)
     await migration_manager.run_migrations()
