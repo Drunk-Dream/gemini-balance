@@ -35,27 +35,18 @@ class SQLiteDBManager(DBManager):
         if not self.sqlite_db.parent.exists():
             self.sqlite_db.parent.mkdir(parents=True, exist_ok=True)
 
-    async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
+    async def get_key_state(self, key: KeyType) -> Optional[KeyState]:
         async with aiosqlite.connect(self.sqlite_db) as db:
             db.row_factory = aiosqlite.Row  # Return rows as dict-like objects
             cursor = await db.execute(
-                "SELECT * FROM key_states WHERE key_identifier = ?", (key_identifier,)
+                "SELECT * FROM key_states WHERE key_identifier = ?", (key.identifier,)
             )
             row = await cursor.fetchone()
             if not row:
                 return None
             return self._row_to_key_state(row)
 
-    async def get_key_from_identifier(self, key_identifier: str) -> Optional[str]:
-        async with aiosqlite.connect(self.sqlite_db) as db:
-            cursor = await db.execute(
-                "SELECT api_key FROM key_states WHERE key_identifier = ?",
-                (key_identifier,),
-            )
-            row = await cursor.fetchone()
-            return row[0] if row else None
-
-    async def save_key_state(self, key_identifier: str, state: KeyState):
+    async def save_key_state(self, key: KeyType, state: KeyState):
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
                 """
@@ -75,7 +66,7 @@ class SQLiteDBManager(DBManager):
                     state.cool_down_entry_count,
                     state.current_cool_down_seconds,
                     state.last_usage_time,
-                    key_identifier,
+                    key.identifier,
                 ),
             )
             await db.commit()
@@ -147,14 +138,24 @@ class SQLiteDBManager(DBManager):
                 )
             return keys
 
-    async def get_keys_in_use(self) -> List[str]:
+    async def get_keys_in_use(self) -> List[KeyType]:
         """Get all keys that are currently in use."""
         async with aiosqlite.connect(self.sqlite_db) as db:
             cursor = await db.execute(
-                "SELECT key_identifier FROM key_states WHERE is_in_use = 1"
+                "SELECT key_identifier, api_key FROM key_states WHERE is_in_use = 1"
             )
             rows = await cursor.fetchall()
-            return [row[0] for row in rows]
+            keys = []
+            for row in rows:
+                key_identifier = row[0]
+                api_key = row[1]
+                brief_api_key = DBManager.key_to_brief(api_key)
+                keys.append(
+                    KeyType(
+                        identifier=key_identifier, brief=brief_api_key, full=api_key
+                    )
+                )
+            return keys
 
     async def get_available_keys_count(self) -> int:
         """Get the count of keys that are not in use and not cooled down."""
@@ -165,11 +166,11 @@ class SQLiteDBManager(DBManager):
             row = await cursor.fetchone()
             return row[0] if row else 0
 
-    async def reactivate_key(self, key_identifier: str):
+    async def reactivate_key(self, key: KeyType):
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
                 "UPDATE key_states SET is_cooled_down = 0, is_in_use = 0, request_fail_count = 0 WHERE key_identifier = ?",
-                (key_identifier,),
+                (key.identifier,),
             )
             await db.commit()
 
@@ -255,11 +256,11 @@ class SQLiteDBManager(DBManager):
             )
             await db.commit()
 
-    async def release_key_from_use(self, key_identifier: str):
+    async def release_key_from_use(self, key: KeyType):
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
                 "UPDATE key_states SET is_in_use = 0 WHERE key_identifier = ?",
-                (key_identifier,),
+                (key.identifier,),
             )
             await db.commit()
 

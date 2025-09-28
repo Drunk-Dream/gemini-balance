@@ -5,6 +5,7 @@ class ErrorType(Enum):
     AUTH_ERROR = ("auth_error", True)
     RATE_LIMIT_ERROR = ("rate_limit_error", True)
     UNEXPECTED_ERROR = ("unexpected_error", True)
+    HEALTH_CHECK_ERROR = ("health_check_error", True)
     OTHER_HTTP_ERROR = ("other_http_error", False)
     REQUEST_ERROR = ("request_error", False)
     USE_TIMEOUT_ERROR = ("use_timeout_error", False)

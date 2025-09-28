@@ -18,7 +18,14 @@ from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import setup_app_logger, setup_transaction_logger
 from backend.app.db import migration_manager
 from backend.app.services.key_managers.background_tasks import background_task_manager
-from backend.app.services.key_managers.key_state_manager import get_key_db_manager
+from backend.app.services.key_managers.key_state_manager import (
+    KeyStateManager,
+    get_key_db_manager,
+)
+from backend.app.services.request_logs.request_log_manager import (
+    RequestLogManager,
+    get_request_log_db_manager,
+)
 
 
 @asynccontextmanager
@@ -28,14 +35,21 @@ async def lifespan(app: FastAPI):
     await migration_manager.run_migrations()
     logger.info("Database migrations completed.")
 
-    db_manager = get_key_db_manager(settings)
+    key_db_manager = get_key_db_manager(settings)
+    request_db_manager = get_request_log_db_manager(settings)
+    request_log_manager = RequestLogManager(request_db_manager)
+    key_manager = KeyStateManager(
+        settings=settings,
+        db_manager=key_db_manager,
+        request_log_manager=request_log_manager,
+    )
 
     logger.info("Initializing KeyManager states...")
-    await background_task_manager.initialize_key_states(db_manager)
+    await background_task_manager.initialize_key_states(key_manager)
 
     logger.info("Starting background task for KeyManager...")
     await background_task_manager.start_background_task(
-        db_manager,
+        key_manager=key_manager,
     )
     yield
     logger.info("Stopping background task for KeyManager...")

@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union, cast
 import httpx
 import httpx_sse
 from fastapi import HTTPException
-from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 from starlette.status import (
     HTTP_500_INTERNAL_SERVER_ERROR,
@@ -22,22 +21,13 @@ from backend.app.core.config import Settings
 from backend.app.core.errors import ErrorType, StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
+from backend.app.services.chat_service.types import RequestInfo
 from backend.app.services.key_managers.db_manager import KeyType
 
 if TYPE_CHECKING:
     from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
     from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
     from backend.app.services.key_managers.key_state_manager import KeyStateManager
-
-
-class RequestInfo(BaseModel):
-    request_id: str
-    model_id: str
-    auth_key_alias: str = "anonymous"
-    stream: bool
-    prompt_tokens: int | None = None
-    completion_tokens: int | None = None
-    total_tokens: int | None = None
 
 
 class ApiService(ABC):

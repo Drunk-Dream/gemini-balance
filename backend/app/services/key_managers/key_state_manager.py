@@ -11,9 +11,8 @@ from pydantic import BaseModel
 from backend.app.core.config import get_settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
-from backend.app.services.chat_service.base_service import RequestInfo
 from backend.app.services.key_managers.background_tasks import (
-    get_background_task_manager,
+    background_task_manager,
     with_key_manager_lock,
 )
 from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
@@ -22,7 +21,7 @@ from backend.app.services.request_logs.schemas import RequestLog
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
-    from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
+    from backend.app.services.chat_service.types import RequestInfo
     from backend.app.services.key_managers.db_manager import (
         DBManager,
         KeyState,
@@ -58,9 +57,6 @@ class KeyStateManager:
         settings: Settings = Depends(get_settings),
         db_manager: DBManager = Depends(get_key_db_manager),
         request_log_manager: RequestLogManager = Depends(RequestLogManager),
-        background_task_manager: BackgroundTaskManager = Depends(
-            get_background_task_manager
-        ),
     ):
         self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
@@ -76,26 +72,11 @@ class KeyStateManager:
 
         return f"key_sha256_{hashlib.sha256(key.encode()).hexdigest()[:8]}"
 
-    def calculate_cool_down_seconds(self, state: KeyState) -> int:
+    def _calculate_cool_down_seconds(self, state: KeyState) -> int:
         return min(
             self._initial_cool_down_seconds * (2**state.cool_down_entry_count),
             self._max_cool_down_seconds,
         )
-
-    async def get_key_brief(self, key_identifier: str) -> str | None:
-        api_key = await self._db_manager.get_key_from_identifier(key_identifier)
-        if not api_key:
-            return None
-        return api_key[:4] + "..." + api_key[-4:]
-
-    async def _get_key_state(self, key_identifier: str) -> Optional[KeyState]:
-        return await self._db_manager.get_key_state(key_identifier)
-
-    async def _get_all_key_states(self) -> List[KeyState]:
-        return await self._db_manager.get_all_key_states()
-
-    async def _save_key_state(self, key_identifier: str, state: KeyState):
-        await self._db_manager.save_key_state(key_identifier, state)
 
     @with_key_manager_lock
     async def add_key(self, api_key: str) -> str:
@@ -143,7 +124,7 @@ class KeyStateManager:
             self._background_task_manager.cancel_timeout_task(key)
 
         error_type_str = error_type.value
-        state = await self._get_key_state(key.identifier)
+        state = await self._db_manager.get_key_state(key)
         if not state:
             return
 
@@ -160,7 +141,8 @@ class KeyStateManager:
             error_type_str += " & max_failures_error"  # 保持原始字符串，以便日志记录
 
         if should_cool_down:
-            current_cool_down_seconds = self.calculate_cool_down_seconds(state)
+            current_cool_down_seconds = self._calculate_cool_down_seconds(state)
+            state.current_cool_down_seconds = current_cool_down_seconds
             state.cool_down_entry_count += 1
             state.cool_down_until = time.time() + current_cool_down_seconds
             await self._db_manager.move_to_cooldown(
@@ -172,13 +154,13 @@ class KeyStateManager:
                 f"{current_cool_down_seconds:.2f}s due to {error_type_str}."
             )
         else:  # 如果不需要冷却，则释放密钥
-            await self._db_manager.release_key_from_use(key.identifier)
+            await self._db_manager.release_key_from_use(key)
             app_logger.info(
                 f"[Request ID: {request_info.request_id}] Key {key.identifier} released from "
                 f"use after {error_type_str} without cooldown."
             )
 
-        await self._save_key_state(key.identifier, state)
+        await self._db_manager.save_key_state(key, state)
 
         # 记录请求日志
         log_entry = RequestLog(
@@ -202,15 +184,15 @@ class KeyStateManager:
         # 取消对应的超时任务
         self._background_task_manager.cancel_timeout_task(key)
 
-        state = await self._get_key_state(key.identifier)
+        state = await self._db_manager.get_key_state(key)
         if not state:
             return
         state.cool_down_entry_count = 0
         state.request_fail_count = 0
         state.last_usage_time = time.time()
 
-        await self._save_key_state(key.identifier, state)
-        await self._db_manager.reactivate_key(key.identifier)
+        await self._db_manager.save_key_state(key, state)
+        await self._db_manager.reactivate_key(key)
 
         # 记录请求日志
         log_entry = RequestLog(
@@ -235,7 +217,7 @@ class KeyStateManager:
         daily_usage_stats = (
             await self._request_log_manager.get_daily_model_usage_stats()
         )
-        states = await self._get_all_key_states()
+        states = await self._db_manager.get_all_key_states()
 
         for state in states:
             key_identifier = state.key_identifier
@@ -261,7 +243,7 @@ class KeyStateManager:
                     daily_usage=key_daily_usage,
                     failure_count=state.request_fail_count,
                     cool_down_entry_count=state.cool_down_entry_count,
-                    current_cool_down_seconds=self.calculate_cool_down_seconds(state),
+                    current_cool_down_seconds=self._calculate_cool_down_seconds(state),
                     is_in_use=state.is_in_use,
                 )
             )
@@ -271,3 +253,27 @@ class KeyStateManager:
     async def get_available_keys_count(self) -> int:
         counts = await self._db_manager.get_available_keys_count()
         return counts
+
+    @with_key_manager_lock
+    async def get_releasable_keys(self) -> List[KeyType]:
+        return await self._db_manager.get_releasable_keys()
+
+    @with_key_manager_lock
+    async def get_key_state(self, key: KeyType) -> KeyState | None:
+        return await self._db_manager.get_key_state(key)
+
+    @with_key_manager_lock
+    async def get_min_cool_down_until(self) -> float | None:
+        return await self._db_manager.get_min_cool_down_until()
+
+    @with_key_manager_lock
+    async def reactivate_key(self, key: KeyType):
+        await self._db_manager.reactivate_key(key)
+
+    @with_key_manager_lock
+    async def get_keys_in_use(self) -> List[KeyType]:
+        return await self._db_manager.get_keys_in_use()
+
+    @with_key_manager_lock
+    async def release_key_from_use(self, key: KeyType):
+        await self._db_manager.release_key_from_use(key)

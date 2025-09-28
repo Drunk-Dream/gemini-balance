@@ -26,22 +26,18 @@ class DBManager(ABC):
     """
     Abstract class for database operations for the key manager.
     """
+
     @staticmethod
     def key_to_brief(key: str) -> str:
         return key[:4] + "..." + key[-4:]
 
     @abstractmethod
-    async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
+    async def get_key_state(self, key: KeyType) -> Optional[KeyState]:
         """Get the state of a single key."""
         raise NotImplementedError
 
     @abstractmethod
-    async def get_key_from_identifier(self, key_identifier: str) -> Optional[str]:
-        """Get the raw API key from its identifier."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def save_key_state(self, key_identifier: str, state: "KeyState"):
+    async def save_key_state(self, key: KeyType, state: "KeyState"):
         """Save the state of a single key."""
         raise NotImplementedError
 
@@ -66,7 +62,7 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_keys_in_use(self) -> List[str]:
+    async def get_keys_in_use(self) -> List[KeyType]:
         """Get all keys that are currently in use."""
         raise NotImplementedError
 
@@ -76,12 +72,12 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def reactivate_key(self, key_identifier: str):
+    async def reactivate_key(self, key: KeyType):
         """Reactivate a key, moving it back to the available queue."""
         raise NotImplementedError
 
     @abstractmethod
-    async def release_key_from_use(self, key_identifier: str):
+    async def release_key_from_use(self, key: KeyType):
         """Release a key from being in use, setting its is_in_use flag to 0."""
         raise NotImplementedError
 
