@@ -18,7 +18,7 @@ from starlette.status import (
     HTTP_503_SERVICE_UNAVAILABLE,
 )
 
-from backend.app.core.concurrency import ConcurrencyTimeoutError, concurrency_manager
+from backend.app.core.concurrency import ConcurrencyTimeoutError
 from backend.app.core.config import Settings
 from backend.app.core.errors import ErrorType, StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
@@ -31,6 +31,7 @@ from backend.app.services.request_logs.schemas import RequestLog
 if TYPE_CHECKING:
     from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
     from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
+    from backend.app.core.concurrency import ConcurrencyManager
     from backend.app.services.key_managers.key_state_manager import KeyStateManager
     from backend.app.services.request_logs.request_log_manager import RequestLogManager
 
@@ -49,6 +50,7 @@ class ApiService(ABC):
         key_manager: KeyStateManager,
         request_log_manager: RequestLogManager,
         background_task_manager: BackgroundTaskManager,
+        concurrency_manager: ConcurrencyManager,
     ):
         self.base_url = base_url
         self.service_name = service_name
@@ -61,6 +63,7 @@ class ApiService(ABC):
         self._key_manager = key_manager
         self._request_log_manager = request_log_manager
         self._background_task_manager = background_task_manager
+        self._concurrency_manager = concurrency_manager
 
         self._max_retries = settings.MAX_RETRIES
         self._request_timeout_seconds = settings.REQUEST_TIMEOUT_SECONDS
@@ -515,7 +518,7 @@ class ApiService(ABC):
         )
 
         try:
-            async with concurrency_manager.timeout_semaphore():
+            async with self._concurrency_manager.timeout_semaphore():
                 return await self._prepare_and_send_request(request_data)
         except ConcurrencyTimeoutError as e:
             logger.warning(f"[Request ID: {request_id}] Concurrency timeout error: {e}")

@@ -6,8 +6,9 @@ import time
 from typing import TYPE_CHECKING, Dict, Optional
 
 import httpx
+from fastapi import Request
 
-from backend.app.core.config import settings
+from backend.app.core.config import Settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
 from backend.app.services.key_managers.key_state_manager import (
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 class BackgroundTaskManager:
     _instance: Optional["BackgroundTaskManager"] = None
 
-    def __init__(self) -> None:
+    def __init__(self, settings: Settings) -> None:
         if BackgroundTaskManager._instance is not None:
             raise RuntimeError(
                 "BackgroundTaskManager is a singleton and already instantiated."
@@ -30,6 +31,12 @@ class BackgroundTaskManager:
         self._key_manager: KeyStateManager = KeyStateManager(
             settings, get_key_db_manager(settings)
         )
+        self._check_health_after_cool_down = settings.CHECK_HEALTH_AFTER_COOL_DOWN
+        self._default_check_cooled_down_seconds = (
+            settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS
+        )
+        self._gemini_api_base_url = settings.GEMINI_API_BASE_URL
+        self._request_timeout_seconds = settings.REQUEST_TIMEOUT_SECONDS
 
         self.wakeup_event = asyncio.Event()
         self.timeout_tasks: Dict[str, asyncio.Task] = {}
@@ -37,9 +44,9 @@ class BackgroundTaskManager:
         BackgroundTaskManager._instance = self
 
     @classmethod
-    def get_instance(cls) -> "BackgroundTaskManager":
+    def get_instance(cls, settings: Settings) -> "BackgroundTaskManager":
         if cls._instance is None:
-            cls._instance = cls()
+            cls._instance = cls(settings)
         return cls._instance
 
     async def _release_cooled_down_keys(
@@ -61,13 +68,13 @@ class BackgroundTaskManager:
                     ):
                         await self._key_manager.reactivate_key(key)
                         app_logger.info(f"API key {key.brief} reactivated.")
-                    if settings.CHECK_HEALTH_AFTER_COOL_DOWN:
+                    if self._check_health_after_cool_down:
                         sleep_time = 30 + random.randint(0, 30)
                         await asyncio.sleep(sleep_time)
 
                 min_cool_down_until = await self._key_manager.get_min_cool_down_until()
 
-                wait_time = settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS
+                wait_time = self._default_check_cooled_down_seconds
                 if min_cool_down_until:
                     now = time.time()
                     calculated_wait = max(1, min_cool_down_until - now)
@@ -86,20 +93,20 @@ class BackgroundTaskManager:
                 app_logger.error(
                     f"Error in _release_cooled_down_keys background task: {e}"
                 )
-                await asyncio.sleep(settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS)
+                await asyncio.sleep(self._default_check_cooled_down_seconds)
 
     async def check_key_health(self, key: KeyType) -> bool:
         """
         检查密钥的健康状况，如果健康再从冷却中释放
         """
-        if not settings.CHECK_HEALTH_AFTER_COOL_DOWN:
+        if not self._check_health_after_cool_down:
             app_logger.debug(f"Skipping {key.brief} health check.")
             return True
         app_logger.debug(f"Checking {key.brief} health.")
 
         client = httpx.AsyncClient(
-            base_url=settings.GEMINI_API_BASE_URL,
-            timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
+            base_url=self._gemini_api_base_url,
+            timeout=httpx.Timeout(self._request_timeout_seconds),
         )
         headers = {"Content-Type": "application/json", "x-goog-api-key": key.full}
         body = {"contents": [{"parts": [{"text": "Hello, world!"}]}]}
@@ -205,9 +212,5 @@ class BackgroundTaskManager:
         app_logger.info("All timeout tasks cancelled.")
 
 
-# 获取单例实例
-background_task_manager = BackgroundTaskManager.get_instance()
-
-
-def get_background_task_manager():
-    return background_task_manager
+def get_background_task_manager(request: Request) -> BackgroundTaskManager:
+    return request.app.state.background_task_manager

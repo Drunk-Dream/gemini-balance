@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from backend.app.core.config import settings
+from fastapi import Request
+
+if TYPE_CHECKING:
+    from backend.app.core.config import Settings
 
 
 class ConcurrencyTimeoutError(Exception):
@@ -14,7 +19,7 @@ class ConcurrencyTimeoutError(Exception):
 class ConcurrencyManager:
     _instance: Optional["ConcurrencyManager"] = None
 
-    def __init__(self):
+    def __init__(self, settings: Settings):
         if ConcurrencyManager._instance is not None:
             raise RuntimeError(
                 "ConcurrencyManager is a singleton and already instantiated."
@@ -25,9 +30,9 @@ class ConcurrencyManager:
         ConcurrencyManager._instance = self
 
     @classmethod
-    def get_instance(cls) -> "ConcurrencyManager":
+    def get_instance(cls, settings: Settings) -> "ConcurrencyManager":
         if cls._instance is None:
-            cls._instance = cls()
+            cls._instance = cls(settings)
         return cls._instance
 
     @property
@@ -52,4 +57,5 @@ class ConcurrencyManager:
                 self._semaphore.release()
 
 
-concurrency_manager = ConcurrencyManager.get_instance()
+def get_concurrency_manager(request: Request) -> ConcurrencyManager:
+    return request.app.state.concurrency_manager

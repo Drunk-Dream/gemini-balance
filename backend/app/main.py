@@ -13,19 +13,33 @@ from backend.app.api.api.endpoints.request_logs import router as request_logs_ro
 from backend.app.api.api.endpoints.status import router as status_router
 from backend.app.api.v1.endpoints.chat import router as openai_chat_router
 from backend.app.api.v1beta.endpoints.gemini import router as gemini_router
-from backend.app.core.config import print_non_sensitive_settings
+from backend.app.core.concurrency import ConcurrencyManager
+from backend.app.core.config import get_settings, print_non_sensitive_settings
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import setup_app_logger, setup_transaction_logger
-from backend.app.db import migration_manager
-from backend.app.services.key_managers.background_tasks import background_task_manager
+from backend.app.db import get_migration_manager
+from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Initializing Settings...")
+    settings = get_settings()
+    app.state.settings = settings
+
     await print_non_sensitive_settings(logger)
     logger.info("Running database migrations...")
+    migration_manager = get_migration_manager(settings)
     await migration_manager.run_migrations()
     logger.info("Database migrations completed.")
+
+    logger.info("Initializing ConcurrencyManager...")
+    concurrency_manager = ConcurrencyManager.get_instance(settings)
+    app.state.concurrency_manager = concurrency_manager
+
+    logger.info("Initializing BackgroundTaskManager...")
+    background_task_manager = BackgroundTaskManager.get_instance(settings)
+    app.state.background_task_manager = background_task_manager
 
     logger.info("Initializing KeyManager states...")
     await background_task_manager.initialize_key_states()

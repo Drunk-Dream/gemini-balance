@@ -34,9 +34,15 @@
 3.  无需手动更新 `CURRENT_DB_VERSION` 或 `MIGRATIONS` 字典，`SQLiteMigrationManager` 会在运行时自动检测并加载新的迁移文件。
 4.  确保在应用启动时调用 `migration_manager.run_migrations()` 方法，以执行新的迁移。
 """
-from backend.app.core.config import Settings, settings
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from backend.app.db.base_migration_manager import BaseMigrationManager
 from backend.app.db.sqlite_migration_manager import SQLiteMigrationManager
+
+if TYPE_CHECKING:
+    from backend.app.core.config import Settings
 
 
 def get_migration_manager(settings: Settings) -> BaseMigrationManager:
@@ -44,6 +50,3 @@ def get_migration_manager(settings: Settings) -> BaseMigrationManager:
         return SQLiteMigrationManager(settings)
     else:
         raise ValueError("Unsupported database type")
-
-
-migration_manager = get_migration_manager(settings)

@@ -7,6 +7,7 @@ from starlette.responses import StreamingResponse
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
+from backend.app.core.concurrency import get_concurrency_manager
 from backend.app.core.config import Settings, get_settings
 from backend.app.services.chat_service.base_service import ApiService
 from backend.app.services.key_managers.background_tasks import (
@@ -16,6 +17,7 @@ from backend.app.services.key_managers.key_state_manager import KeyStateManager
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 
 if TYPE_CHECKING:
+    from backend.app.core.concurrency import ConcurrencyManager
     from backend.app.services.chat_service.types import RequestInfo
     from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
 
@@ -29,6 +31,7 @@ class OpenAIService(ApiService):
         background_task_manager: BackgroundTaskManager = Depends(
             get_background_task_manager
         ),
+        concurrency_manager: ConcurrencyManager = Depends(get_concurrency_manager),
     ):
         super().__init__(
             base_url=settings.OPENAI_API_BASE_URL,
@@ -37,6 +40,7 @@ class OpenAIService(ApiService):
             key_manager=key_manager,
             request_log_manager=request_log_manager,
             background_task_manager=background_task_manager,
+            concurrency_manager=concurrency_manager,
         )
 
     def _set_api_url(self) -> None:
