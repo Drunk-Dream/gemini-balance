@@ -14,20 +14,22 @@ from backend.app.api.api.endpoints.status import router as status_router
 from backend.app.api.v1.endpoints.chat import router as openai_chat_router
 from backend.app.api.v1beta.endpoints.gemini import router as gemini_router
 from backend.app.core.concurrency import ConcurrencyManager
-from backend.app.core.config import get_settings, print_non_sensitive_settings
+from backend.app.core.config import Settings, print_non_sensitive_settings
 from backend.app.core.logging import app_logger as logger
-from backend.app.core.logging import setup_app_logger, setup_transaction_logger
+from backend.app.core.logging import initialize_logging
 from backend.app.db import get_migration_manager
 from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Initializing Settings...")
-    settings = get_settings()
+    settings = Settings()
     app.state.settings = settings
 
-    print_non_sensitive_settings(logger)
+    log_broadcaster = initialize_logging(settings)
+    app.state.log_broadcaster = log_broadcaster
+
+    print_non_sensitive_settings(logger, settings)
     logger.info("Running database migrations...")
     migration_manager = get_migration_manager(settings)
     await migration_manager.run_migrations()
@@ -52,11 +54,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    # Setup loggers first
-    setup_app_logger()
-    setup_transaction_logger()
 
-    logger.info("Starting Gemini Balance API application...")
     app = FastAPI(
         title="Gemini Balance API",
         description="A proxy service for Google Gemini API",

@@ -53,25 +53,18 @@ class SecurityService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    async def get_current_user(
-        self, token: str = Depends(OAuth2PasswordBearer(tokenUrl="/api/login"))
-    ) -> dict[str, Any]:
-        """获取当前用户（通过验证 JWT 令牌）"""
-        payload = self.decode_access_token(token)
-        if payload:
-            return payload
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的认证凭据",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
-
-def get_security_service() -> SecurityService:
-    return SecurityService()
-
-
-def get_current_user(
-    security_service: SecurityService = Depends(get_security_service),
-):
-    return security_service.get_current_user()
+async def get_current_user(
+    token: str = Depends(OAuth2PasswordBearer(tokenUrl="/api/login")),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """获取当前用户（通过验证 JWT 令牌）"""
+    security_service = SecurityService(settings)
+    payload = security_service.decode_access_token(token)
+    if payload:
+        return payload
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="无效的认证凭据",
+        headers={"WWW-Authenticate": "Bearer"},
+    )

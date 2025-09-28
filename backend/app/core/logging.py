@@ -7,13 +7,14 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Deque, List
 
-from backend.app.core.config import settings
+from fastapi import Request
+
+from backend.app.core.config import Settings
 
 # --- Constants ---
 LOG_DIR = Path("logs")
 APP_LOG_FILE = LOG_DIR / "app.log"
 TRANSACTION_LOG_FILE = LOG_DIR / "transactions.log"
-DEBUG_LOG_FILE = Path(settings.DEBUG_LOG_FILE)
 
 APP_FORMATTER = logging.Formatter("%(asctime)sZ - %(levelname)s - %(message)s")
 APP_FORMATTER.converter = time.gmtime
@@ -21,17 +22,87 @@ CONSOLE_FORMATTER = logging.Formatter("%(levelname)s - %(name)s - %(message)s")
 CONSOLE_FORMATTER.converter = time.gmtime
 TRANSACTION_FORMATTER = logging.Formatter("%(asctime)sZ - %(message)s")
 TRANSACTION_FORMATTER.converter = time.gmtime
-DEBUG_FORMATTER = logging.Formatter(
-    "%(asctime)sZ - %(name)s - %(levelname)s - %(message)s"
-)
-DEBUG_FORMATTER.converter = time.gmtime
 
-# --- Loggers ---
 app_logger = logging.getLogger("app")
 transaction_logger = logging.getLogger("transaction")
 
 
-def setup_app_logger() -> None:
+def get_log_broadcaster(request: Request) -> "LogBroadcaster":
+    return request.app.state.log_broadcaster
+
+
+def initialize_logging(settings: Settings) -> "LogBroadcaster":
+    log_broadcaster = LogBroadcaster(settings)
+    sse_log_handler = SSELogHandler(log_broadcaster)
+
+    setup_app_logger(settings, sse_log_handler)
+    setup_transaction_logger()
+    return log_broadcaster
+
+
+# --- SSE Log Broadcasting ---
+class LogBroadcaster:
+    """
+    Manages active SSE connections and broadcasts log messages to all clients.
+    """
+
+    def __init__(self, settings: Settings) -> None:
+        """Initializes the broadcaster with a list of subscribers and history."""
+        self.subscribers: List[asyncio.Queue[str]] = []
+        self._history: Deque[str] = deque(maxlen=settings.LOG_HISTORY_SIZE)
+
+    async def register(self, queue: asyncio.Queue[str]) -> None:
+        """
+        Registers a new client queue and sends them the log history.
+        """
+        for msg in self._history:
+            await queue.put(msg)
+        self.subscribers.append(queue)
+
+    def unregister(self, queue: asyncio.Queue[str]) -> None:
+        """Removes a client queue."""
+        if queue in self.subscribers:
+            self.subscribers.remove(queue)
+
+    async def broadcast(self, message: str) -> None:
+        """
+        Broadcasts a log message to all registered clients and saves it to history.
+        """
+        self._history.append(message)
+        for queue in self.subscribers:
+            await queue.put(message)
+
+
+class SSELogHandler(logging.Handler):
+    """
+    A logging handler that broadcasts log records to SSE clients.
+    """
+
+    def __init__(self, log_broadcaster: LogBroadcaster) -> None:
+        """Initializes the handler and its formatter."""
+        super().__init__()
+        self.formatter = APP_FORMATTER
+        self._log_broadcaster = log_broadcaster
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """
+        Formats the log record and broadcasts it asynchronously.
+        """
+        try:
+            msg = self.format(record)
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.run_coroutine_threadsafe(
+                    self._log_broadcaster.broadcast(msg), loop
+                )
+            else:
+                # This path is less common in async apps but provides a fallback.
+                asyncio.run(self._log_broadcaster.broadcast(msg))
+        except Exception:
+            self.handleError(record)
+
+
+def setup_app_logger(settings: Settings, sse_log_handler: SSELogHandler) -> None:
     """
     Configures the main application logger.
     - Clears existing handlers to prevent duplicates during hot-reloads.
@@ -62,7 +133,7 @@ def setup_app_logger() -> None:
     app_logger.addHandler(console_handler)
 
     # SSE handler
-    app_logger.addHandler(SSELogHandler())
+    app_logger.addHandler(sse_log_handler)
 
     # Suppress verbose logging from libraries
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
@@ -94,93 +165,3 @@ def setup_transaction_logger() -> None:
     )
     transaction_file_handler.setFormatter(TRANSACTION_FORMATTER)
     transaction_logger.addHandler(transaction_file_handler)
-
-
-def setup_debug_logger(logger_name: str) -> logging.Logger:
-    """
-    Sets up a dedicated debug logger with a rotating file handler.
-
-    Args:
-        logger_name: The name for the debug logger.
-
-    Returns:
-        The configured logger instance.
-    """
-    debug_logger = logging.getLogger(logger_name)
-    if debug_logger.handlers:
-        debug_logger.handlers.clear()
-
-    debug_logger.setLevel(logging.DEBUG)
-    debug_logger.propagate = False
-
-    if settings.DEBUG_LOG_ENABLED:
-        DEBUG_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = RotatingFileHandler(
-            DEBUG_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5
-        )
-        file_handler.setFormatter(DEBUG_FORMATTER)
-        debug_logger.addHandler(file_handler)
-
-    return debug_logger
-
-
-# --- SSE Log Broadcasting ---
-class LogBroadcaster:
-    """
-    Manages active SSE connections and broadcasts log messages to all clients.
-    """
-
-    def __init__(self) -> None:
-        """Initializes the broadcaster with a list of subscribers and history."""
-        self.subscribers: List[asyncio.Queue[str]] = []
-        self._history: Deque[str] = deque(maxlen=settings.LOG_HISTORY_SIZE)
-
-    async def register(self, queue: asyncio.Queue[str]) -> None:
-        """
-        Registers a new client queue and sends them the log history.
-        """
-        for msg in self._history:
-            await queue.put(msg)
-        self.subscribers.append(queue)
-
-    def unregister(self, queue: asyncio.Queue[str]) -> None:
-        """Removes a client queue."""
-        if queue in self.subscribers:
-            self.subscribers.remove(queue)
-
-    async def broadcast(self, message: str) -> None:
-        """
-        Broadcasts a log message to all registered clients and saves it to history.
-        """
-        self._history.append(message)
-        for queue in self.subscribers:
-            await queue.put(message)
-
-
-log_broadcaster = LogBroadcaster()
-
-
-class SSELogHandler(logging.Handler):
-    """
-    A logging handler that broadcasts log records to SSE clients.
-    """
-
-    def __init__(self) -> None:
-        """Initializes the handler and its formatter."""
-        super().__init__()
-        self.formatter = APP_FORMATTER
-
-    def emit(self, record: logging.LogRecord) -> None:
-        """
-        Formats the log record and broadcasts it asynchronously.
-        """
-        try:
-            msg = self.format(record)
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.run_coroutine_threadsafe(log_broadcaster.broadcast(msg), loop)
-            else:
-                # This path is less common in async apps but provides a fallback.
-                asyncio.run(log_broadcaster.broadcast(msg))
-        except Exception:
-            self.handleError(record)

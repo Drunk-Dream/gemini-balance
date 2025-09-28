@@ -1,16 +1,18 @@
 import asyncio
 from typing import AsyncGenerator
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from starlette.responses import StreamingResponse
 
-from backend.app.core.logging import app_logger, log_broadcaster
+from backend.app.core.logging import LogBroadcaster, app_logger, get_log_broadcaster
 
 router = APIRouter()
 
 
 @router.get("/status/logs/sse", summary="通过 SSE 实时推送应用日志")
-async def sse_log_stream() -> StreamingResponse:
+async def sse_log_stream(
+    log_broadcaster: LogBroadcaster = Depends(get_log_broadcaster),
+) -> StreamingResponse:
     """
     建立 Server-Sent Events (SSE) 连接，实时将应用日志推送到前端。
     """
