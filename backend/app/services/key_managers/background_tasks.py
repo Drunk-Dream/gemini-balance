@@ -80,7 +80,7 @@ class BackgroundTaskManager:
                 wait_time = settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS
                 if min_cool_down_until:
                     now = time.time()
-                    calculated_wait = max(0, min_cool_down_until - now)
+                    calculated_wait = max(1, min_cool_down_until - now)
                     wait_time = calculated_wait
 
                 self.wakeup_event.clear()
@@ -201,12 +201,11 @@ class BackgroundTaskManager:
         """
         应用启动时初始化密钥状态，释放所有处于“使用中”状态的密钥。
         """
-        async with self.key_manager_lock:
-            keys_in_use = await key_manager.get_keys_in_use()
-            for key in keys_in_use:
-                app_logger.warning(f"Releasing {key} from use due to initialization.")
-                await key_manager.release_key_from_use(key)
-            app_logger.info("Key states initialized: all 'in_use' keys released.")
+        keys_in_use = await key_manager.get_keys_in_use()
+        for key in keys_in_use:
+            app_logger.warning(f"Releasing {key} from use due to initialization.")
+            await key_manager.release_key_from_use(key)
+        app_logger.info("Key states initialized: all 'in_use' keys released.")
 
     async def start_background_task(self, key_manager: KeyStateManager):
         """
