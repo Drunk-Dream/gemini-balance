@@ -9,10 +9,7 @@ from pydantic import BaseModel
 from backend.app.core.config import get_settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
-from backend.app.services.key_managers.background_tasks import (
-    background_task_manager,
-    with_key_manager_lock,
-)
+from backend.app.services.key_managers.background_tasks import with_key_manager_lock
 from backend.app.services.key_managers.db_manager import DBManager, KeyType
 from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
 
@@ -52,9 +49,7 @@ class KeyStateManager:
         self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
         self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
-        self._key_in_use_timeout_seconds = settings.KEY_IN_USE_TIMEOUT_SECONDS
         self._db_manager = db_manager
-        self._background_task_manager = background_task_manager
 
     def _get_key_identifier(self, key: str) -> str:
         """生成一个对日志友好且唯一的密钥标识符"""
@@ -101,24 +96,14 @@ class KeyStateManager:
         if not key:
             return None
         await self._db_manager.move_to_use(key)
-        # 启动一个定时任务，在超时后自动释放密钥
-        self._background_task_manager.create_timeout_task(
-            key,
-            self._key_in_use_timeout_seconds,
-            self,
-        )
         return key
 
     @with_key_manager_lock
     async def mark_key_fail(self, key: KeyType, error_type: ErrorType):
-        # 取消对应的超时任务
-        if error_type != ErrorType.USE_TIMEOUT_ERROR:
-            self._background_task_manager.cancel_timeout_task(key)
-
         error_type_str = error_type.value
         state = await self._db_manager.get_key_state(key)
         if not state:
-            return
+            return False
 
         state.request_fail_count += 1
         state.last_usage_time = time.time()
@@ -138,7 +123,6 @@ class KeyStateManager:
             state.cool_down_entry_count += 1
             state.cool_down_until = time.time() + current_cool_down_seconds
             await self._db_manager.move_to_cooldown(key, state.cool_down_until)
-            self._background_task_manager.wakeup_event.set()
             app_logger.warning(
                 f"Key {key.brief} cooled down for "
                 f"{current_cool_down_seconds:.2f}s due to {error_type_str}."
@@ -151,15 +135,13 @@ class KeyStateManager:
             )
 
         await self._db_manager.save_key_state(key, state)
+        return should_cool_down
 
     @with_key_manager_lock
     async def mark_key_success(
         self,
         key: KeyType,
     ):
-        # 取消对应的超时任务
-        self._background_task_manager.cancel_timeout_task(key)
-
         state = await self._db_manager.get_key_state(key)
         if not state:
             return

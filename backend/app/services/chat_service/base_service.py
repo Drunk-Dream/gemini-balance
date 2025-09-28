@@ -24,6 +24,7 @@ from backend.app.core.errors import ErrorType, StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
 from backend.app.services.chat_service.types import RequestInfo
+from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
 from backend.app.services.key_managers.db_manager import KeyType
 from backend.app.services.request_logs.schemas import RequestLog
 
@@ -47,6 +48,7 @@ class ApiService(ABC):
         settings: Settings,
         key_manager: KeyStateManager,
         request_log_manager: RequestLogManager,
+        background_task_manager: BackgroundTaskManager,
     ):
         self.base_url = base_url
         self.service_name = service_name
@@ -58,6 +60,7 @@ class ApiService(ABC):
 
         self._key_manager = key_manager
         self._request_log_manager = request_log_manager
+        self._background_task_manager = background_task_manager
 
         self._max_retries = settings.MAX_RETRIES
         self._request_timeout_seconds = settings.REQUEST_TIMEOUT_SECONDS
@@ -65,6 +68,7 @@ class ApiService(ABC):
         self._cloudflare_gateway_enabled = settings.CLOUDFLARE_GATEWAY_ENABLED
         self._cf_ai_authorization_key = settings.CF_AI_AUTHORIZATION_KEY
         self._rate_limit_default_wait_seconds = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
+        self._key_in_use_timeout_seconds = settings.KEY_IN_USE_TIMEOUT_SECONDS
 
     async def _recreate_client(self):
         """
@@ -234,6 +238,9 @@ class ApiService(ABC):
         """
         Finalizes a successful request by marking the key as success and logging token counts.
         """
+        # 取消对应的超时任务
+        self._background_task_manager.cancel_timeout_task(key)
+
         request_id = self.request_info.request_id
         await self._key_manager.mark_key_success(key)
         logger.info(
@@ -285,6 +292,13 @@ class ApiService(ABC):
                 )
                 await asyncio.sleep(self._no_key_wait_seconds)
                 continue
+
+            # 启动一个定时任务，在超时后自动释放密钥
+            self._background_task_manager.create_timeout_task(
+                key=key,
+                key_in_use_timeout_seconds=self._key_in_use_timeout_seconds,
+                key_manager=self._key_manager,
+            )
 
             try:
                 async for chunk in self._attempt_single_request(
@@ -363,6 +377,9 @@ class ApiService(ABC):
         error_type = ErrorType.UNEXPECTED_ERROR
         log_level = logger.critical
 
+        # 取消对应的超时任务
+        self._background_task_manager.cancel_timeout_task(key)
+
         if isinstance(e, StreamingCompletionError):
             error_type = ErrorType.STREAMING_COMPLETION_ERROR
             log_level = logger.error
@@ -426,7 +443,10 @@ class ApiService(ABC):
                 status_code=500, detail=f"An unexpected error occurred: {e}"
             )
 
-        await self._key_manager.mark_key_fail(key, error_type)
+        should_cool_down = await self._key_manager.mark_key_fail(key, error_type)
+        if should_cool_down:
+            self._background_task_manager.wakeup_event.set()
+
         log_entry = RequestLog(
             id=None,
             request_id=request_id,

@@ -9,11 +9,15 @@ from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIReque
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.core.config import Settings, get_settings
 from backend.app.services.chat_service.base_service import ApiService
+from backend.app.services.key_managers.background_tasks import (
+    get_background_task_manager,
+)
 from backend.app.services.key_managers.key_state_manager import KeyStateManager
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 
 if TYPE_CHECKING:
     from backend.app.services.chat_service.types import RequestInfo
+    from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
 
 
 class OpenAIService(ApiService):
@@ -22,6 +26,9 @@ class OpenAIService(ApiService):
         settings: Settings = Depends(get_settings),
         key_manager: KeyStateManager = Depends(KeyStateManager),
         request_log_manager: RequestLogManager = Depends(RequestLogManager),
+        background_task_manager: BackgroundTaskManager = Depends(
+            get_background_task_manager
+        ),
     ):
         super().__init__(
             base_url=settings.OPENAI_API_BASE_URL,
@@ -29,6 +36,7 @@ class OpenAIService(ApiService):
             settings=settings,
             key_manager=key_manager,
             request_log_manager=request_log_manager,
+            background_task_manager=background_task_manager,
         )
 
     def _set_api_url(self) -> None:
