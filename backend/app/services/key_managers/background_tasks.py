@@ -181,7 +181,7 @@ class BackgroundTaskManager:
         """
         keys_in_use = await self._key_manager.get_keys_in_use()
         for key in keys_in_use:
-            app_logger.warning(f"Releasing {key} from use due to initialization.")
+            app_logger.warning(f"Releasing {key.brief} from use due to initialization.")
             await self._key_manager.release_key_from_use(key)
         app_logger.info("Key states initialized: all 'in_use' keys released.")
 
