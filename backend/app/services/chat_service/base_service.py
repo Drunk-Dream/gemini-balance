@@ -248,6 +248,7 @@ class ApiService(ABC):
             request_id=request_id,
             request_time=datetime.now(ZoneInfo("UTC")),
             key_identifier=key.identifier,
+            auth_key_alias=self.request_info.auth_key_alias,
             model_name=self.request_info.model_id,
             is_success=True,
             prompt_tokens=self.request_info.prompt_tokens,

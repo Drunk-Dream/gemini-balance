@@ -52,7 +52,7 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def move_to_cooldown(self, key_identifier: str, cool_down_until: float):
+    async def move_to_cooldown(self, key: KeyType, cool_down_until: float):
         """Move a key to the cooldown queue."""
         raise NotImplementedError
 
@@ -82,12 +82,12 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def move_to_use(self, key_identifier: str):
+    async def move_to_use(self, key: KeyType):
         """Mark a key as in use and update its last usage time."""
         raise NotImplementedError
 
     @abstractmethod
-    async def add_key(self, key_identifier: str, api_key: str):
+    async def add_key(self, key: KeyType):
         """Add a new API key to the database."""
         raise NotImplementedError
 

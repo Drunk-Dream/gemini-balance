@@ -101,20 +101,20 @@ class SQLiteDBManager(DBManager):
             except Exception:
                 return None
 
-    async def move_to_use(self, key_identifier: str):
+    async def move_to_use(self, key: KeyType):
         """Mark a key as in use and update its last usage time in SQLite."""
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
                 "UPDATE key_states SET is_in_use = 1 WHERE key_identifier = ?",
-                (key_identifier,),
+                (key.identifier,),
             )
             await db.commit()
 
-    async def move_to_cooldown(self, key_identifier: str, cool_down_until: float):
+    async def move_to_cooldown(self, key: KeyType, cool_down_until: float):
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
                 "UPDATE key_states SET is_cooled_down = 1, cool_down_until = ?, is_in_use = 0 WHERE key_identifier = ?",
-                (cool_down_until, key_identifier),
+                (cool_down_until, key.identifier),
             )
             await db.commit()
 
@@ -174,7 +174,7 @@ class SQLiteDBManager(DBManager):
             )
             await db.commit()
 
-    async def add_key(self, key_identifier: str, api_key: str):
+    async def add_key(self, key: KeyType):
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
                 """
@@ -185,8 +185,8 @@ class SQLiteDBManager(DBManager):
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    key_identifier,
-                    api_key,
+                    key.identifier,
+                    key.full,
                     0.0,
                     0,
                     0,

@@ -22,10 +22,6 @@ from backend.app.services.key_managers.key_state_manager import (
     KeyStateManager,
     get_key_db_manager,
 )
-from backend.app.services.request_logs.request_log_manager import (
-    RequestLogManager,
-    get_request_log_db_manager,
-)
 
 
 @asynccontextmanager
@@ -36,12 +32,9 @@ async def lifespan(app: FastAPI):
     logger.info("Database migrations completed.")
 
     key_db_manager = get_key_db_manager(settings)
-    request_db_manager = get_request_log_db_manager(settings)
-    request_log_manager = RequestLogManager(request_db_manager)
     key_manager = KeyStateManager(
         settings=settings,
         db_manager=key_db_manager,
-        request_log_manager=request_log_manager,
     )
 
     logger.info("Initializing KeyManager states...")

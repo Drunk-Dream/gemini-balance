@@ -13,15 +13,12 @@ from backend.app.services.key_managers.background_tasks import (
     background_task_manager,
     with_key_manager_lock,
 )
+from backend.app.services.key_managers.db_manager import DBManager, KeyType
 from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
-    from backend.app.services.key_managers.db_manager import (
-        DBManager,
-        KeyState,
-        KeyType,
-    )
+    from backend.app.services.key_managers.db_manager import KeyState
 
 
 class KeyStatusResponse(BaseModel):
@@ -74,8 +71,13 @@ class KeyStateManager:
     @with_key_manager_lock
     async def add_key(self, api_key: str) -> str:
         key_identifier = self._get_key_identifier(api_key)
-        await self._db_manager.add_key(key_identifier, api_key)
-        app_logger.info(f"Added new API key: {key_identifier}")
+        key = KeyType(
+            identifier=key_identifier,
+            brief=DBManager.key_to_brief(api_key),
+            full=api_key,
+        )
+        await self._db_manager.add_key(key)
+        app_logger.info(f"Added new API key: {key.brief}")
         return key_identifier
 
     @with_key_manager_lock
@@ -98,7 +100,7 @@ class KeyStateManager:
         key = await self._db_manager.get_next_available_key()
         if not key:
             return None
-        await self._db_manager.move_to_use(key.identifier)
+        await self._db_manager.move_to_use(key)
         # 启动一个定时任务，在超时后自动释放密钥
         self._background_task_manager.create_timeout_task(
             key,
@@ -135,9 +137,7 @@ class KeyStateManager:
             state.current_cool_down_seconds = current_cool_down_seconds
             state.cool_down_entry_count += 1
             state.cool_down_until = time.time() + current_cool_down_seconds
-            await self._db_manager.move_to_cooldown(
-                key.identifier, state.cool_down_until
-            )
+            await self._db_manager.move_to_cooldown(key, state.cool_down_until)
             self._background_task_manager.wakeup_event.set()
             app_logger.warning(
                 f"Key {key.brief} cooled down for "
