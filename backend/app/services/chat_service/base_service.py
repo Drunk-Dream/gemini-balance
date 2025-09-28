@@ -297,7 +297,6 @@ class ApiService(ABC):
             self._background_task_manager.create_timeout_task(
                 key=key,
                 key_in_use_timeout_seconds=self._key_in_use_timeout_seconds,
-                key_manager=self._key_manager,
             )
 
             try:

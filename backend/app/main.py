@@ -13,15 +13,11 @@ from backend.app.api.api.endpoints.request_logs import router as request_logs_ro
 from backend.app.api.api.endpoints.status import router as status_router
 from backend.app.api.v1.endpoints.chat import router as openai_chat_router
 from backend.app.api.v1beta.endpoints.gemini import router as gemini_router
-from backend.app.core.config import print_non_sensitive_settings, settings
+from backend.app.core.config import print_non_sensitive_settings
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import setup_app_logger, setup_transaction_logger
 from backend.app.db import migration_manager
 from backend.app.services.key_managers.background_tasks import background_task_manager
-from backend.app.services.key_managers.key_state_manager import (
-    KeyStateManager,
-    get_key_db_manager,
-)
 
 
 @asynccontextmanager
@@ -31,19 +27,11 @@ async def lifespan(app: FastAPI):
     await migration_manager.run_migrations()
     logger.info("Database migrations completed.")
 
-    key_db_manager = get_key_db_manager(settings)
-    key_manager = KeyStateManager(
-        settings=settings,
-        db_manager=key_db_manager,
-    )
-
     logger.info("Initializing KeyManager states...")
-    await background_task_manager.initialize_key_states(key_manager)
+    await background_task_manager.initialize_key_states()
 
     logger.info("Starting background task for KeyManager...")
-    await background_task_manager.start_background_task(
-        key_manager=key_manager,
-    )
+    await background_task_manager.start_background_task()
     yield
     logger.info("Stopping background task for KeyManager...")
     background_task_manager.stop_background_task()

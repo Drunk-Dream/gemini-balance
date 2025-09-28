@@ -1,7 +1,18 @@
 from __future__ import annotations
 
+import asyncio  # 导入 asyncio
 import time
-from typing import TYPE_CHECKING, Dict, List, Optional
+from functools import wraps
+from typing import (
+    TYPE_CHECKING,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    ParamSpec,
+    TypeVar,
+)
 
 from fastapi import Depends
 from pydantic import BaseModel
@@ -9,13 +20,18 @@ from pydantic import BaseModel
 from backend.app.core.config import get_settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
-from backend.app.services.key_managers.background_tasks import with_key_manager_lock
 from backend.app.services.key_managers.db_manager import DBManager, KeyType
 from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
     from backend.app.services.key_managers.db_manager import KeyState
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+# 在模块级别创建全局锁
+key_manager_lock = asyncio.Lock()
 
 
 class KeyStatusResponse(BaseModel):
@@ -38,6 +54,21 @@ def get_key_db_manager(
     else:
         raise ValueError(f"Unsupported key manager type: {settings.DATABASE_TYPE}")
     return db_manager
+
+
+def with_key_manager_lock(
+    func: Callable[_P, Awaitable[_R]],
+) -> Callable[_P, Awaitable[_R]]:
+    """
+    一个异步装饰器，用于在执行函数时获取 key_manager_lock。
+    """
+
+    @wraps(func)
+    async def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+        async with key_manager_lock:
+            return await func(*args, **kwargs)
+
+    return wrapper
 
 
 class KeyStateManager:

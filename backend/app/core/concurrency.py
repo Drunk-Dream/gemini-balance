@@ -22,6 +22,7 @@ class ConcurrencyManager:
 
         self._semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_REQUESTS)
         self._timeout = settings.CONCURRENCY_TIMEOUT_SECONDS
+        ConcurrencyManager._instance = self
 
     @classmethod
     def get_instance(cls) -> "ConcurrencyManager":
@@ -52,7 +53,3 @@ class ConcurrencyManager:
 
 
 concurrency_manager = ConcurrencyManager.get_instance()
-
-
-def get_concurrency_manager():
-    return concurrency_manager
