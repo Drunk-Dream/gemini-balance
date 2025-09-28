@@ -5,7 +5,9 @@ import json
 import random
 import secrets
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union, cast
+from zoneinfo import ZoneInfo
 
 import httpx
 import httpx_sse
@@ -23,11 +25,13 @@ from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
 from backend.app.services.chat_service.types import RequestInfo
 from backend.app.services.key_managers.db_manager import KeyType
+from backend.app.services.request_logs.schemas import RequestLog
 
 if TYPE_CHECKING:
     from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
     from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
     from backend.app.services.key_managers.key_state_manager import KeyStateManager
+    from backend.app.services.request_logs.request_log_manager import RequestLogManager
 
 
 class ApiService(ABC):
@@ -42,21 +46,25 @@ class ApiService(ABC):
         service_name: str,
         settings: Settings,
         key_manager: KeyStateManager,
+        request_log_manager: RequestLogManager,
     ):
         self.base_url = base_url
         self.service_name = service_name
+        self.url: str
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
             timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
         )
+
+        self._key_manager = key_manager
+        self._request_log_manager = request_log_manager
+
         self._max_retries = settings.MAX_RETRIES
         self._request_timeout_seconds = settings.REQUEST_TIMEOUT_SECONDS
         self._no_key_wait_seconds = settings.NO_KEY_WAIT_SECONDS
         self._cloudflare_gateway_enabled = settings.CLOUDFLARE_GATEWAY_ENABLED
         self._cf_ai_authorization_key = settings.CF_AI_AUTHORIZATION_KEY
         self._rate_limit_default_wait_seconds = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
-        self._key_manager = key_manager
-        self.url: str
 
     async def _recreate_client(self):
         """
@@ -227,13 +235,26 @@ class ApiService(ABC):
         Finalizes a successful request by marking the key as success and logging token counts.
         """
         request_id = self.request_info.request_id
-        await self._key_manager.mark_key_success(key, self.request_info)
+        await self._key_manager.mark_key_success(key)
         logger.info(
             f"[Request ID: {request_id}] Request with key {key.brief} succeeded. "
             f"Tokens: prompt={self.request_info.prompt_tokens}, "
             f"completion={self.request_info.completion_tokens}, "
             f"total={self.request_info.total_tokens}"
         )
+        # 记录请求日志
+        log_entry = RequestLog(
+            id=None,
+            request_id=request_id,
+            request_time=datetime.now(ZoneInfo("UTC")),
+            key_identifier=key.identifier,
+            model_name=self.request_info.model_id,
+            is_success=True,
+            prompt_tokens=self.request_info.prompt_tokens,
+            completion_tokens=self.request_info.completion_tokens,
+            total_tokens=self.request_info.total_tokens,
+        )
+        await self._request_log_manager.record_request_log(log_entry)
 
     async def _execute_request_with_retries(
         self,
@@ -252,7 +273,7 @@ class ApiService(ABC):
             else await self._key_manager.get_available_keys_count()
         )
         for attempt in range(max_retries):
-            key = await self._key_manager.get_next_key(self.request_info)
+            key = await self._key_manager.get_next_key()
             if not key:
                 logger.warning(
                     f"[Request ID: {request_id}] Attempt {attempt + 1}/{max_retries}: No available API keys. "
@@ -404,11 +425,18 @@ class ApiService(ABC):
                 status_code=500, detail=f"An unexpected error occurred: {e}"
             )
 
-        await self._key_manager.mark_key_fail(
-            key,
-            error_type,
-            self.request_info,
+        await self._key_manager.mark_key_fail(key, error_type)
+        log_entry = RequestLog(
+            id=None,
+            request_id=request_id,
+            request_time=datetime.now(ZoneInfo("UTC")),
+            key_identifier=key.identifier,
+            auth_key_alias=self.request_info.auth_key_alias,
+            model_name=self.request_info.model_id,
+            is_success=False,
+            error_type=error_type.value,
         )
+        await self._request_log_manager.record_request_log(log_entry)
 
     def _handle_exception_response(
         self,

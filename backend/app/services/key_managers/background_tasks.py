@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import random
-import secrets
 import time
 from functools import wraps
 from typing import (
@@ -20,7 +19,6 @@ import httpx
 from backend.app.core.config import settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
-from backend.app.services.chat_service.types import RequestInfo
 
 if TYPE_CHECKING:
     from backend.app.services.key_managers.db_manager import KeyType
@@ -109,13 +107,6 @@ class BackgroundTaskManager:
             return True
         app_logger.debug(f"Checking {key.brief} health.")
 
-        request_info = RequestInfo(
-            request_id=secrets.token_hex(4),
-            model_id="gemini-2.5-flash-lite",
-            auth_key_alias="check_health",
-            stream=False,
-        )
-
         client = httpx.AsyncClient(
             base_url=settings.GEMINI_API_BASE_URL,
             timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
@@ -133,9 +124,7 @@ class BackgroundTaskManager:
                 app_logger.info(f"Key {key.brief} is healthy.")
                 return True
         except Exception as e:
-            await key_manager.mark_key_fail(
-                key, ErrorType.HEALTH_CHECK_ERROR, request_info
-            )
+            await key_manager.mark_key_fail(key, ErrorType.HEALTH_CHECK_ERROR)
             app_logger.error(f"Error checking key health for {key.brief}: {e}")
             return False
 
@@ -145,7 +134,6 @@ class BackgroundTaskManager:
         self,
         key: KeyType,
         key_in_use_timeout_seconds: int,
-        request_info: RequestInfo,
         key_manager: KeyStateManager,
     ):
         """
@@ -153,9 +141,7 @@ class BackgroundTaskManager:
         """
         try:
             await asyncio.sleep(key_in_use_timeout_seconds)
-            await key_manager.mark_key_fail(
-                key, ErrorType.USE_TIMEOUT_ERROR, request_info
-            )
+            await key_manager.mark_key_fail(key, ErrorType.USE_TIMEOUT_ERROR)
         except asyncio.CancelledError:
             app_logger.debug(f"Timeout task for key {key.brief} was cancelled.")
         except Exception as e:
@@ -168,7 +154,6 @@ class BackgroundTaskManager:
         self,
         key: KeyType,
         key_in_use_timeout_seconds: int,
-        request_info: RequestInfo,
         key_manager: KeyStateManager,
     ):
         """
@@ -181,7 +166,6 @@ class BackgroundTaskManager:
             self._timeout_release_key(
                 key,
                 key_in_use_timeout_seconds,
-                request_info,
                 key_manager,
             )
         )

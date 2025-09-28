@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 
 from backend.app.core.security import get_current_user
 from backend.app.services.key_managers.key_state_manager import KeyStateManager
+from backend.app.services.request_logs.request_log_manager import RequestLogManager
 
 router = APIRouter()
 
@@ -10,6 +11,7 @@ router = APIRouter()
 async def get_api_key_status(
     current_user: bool = Depends(get_current_user),
     key_manager: KeyStateManager = Depends(KeyStateManager),
+    request_log_manager: RequestLogManager = Depends(RequestLogManager),
 ):  # 保护此端点
     """
     返回所有配置的 API Key 的详细状态列表，包括：
@@ -22,4 +24,7 @@ async def get_api_key_status(
     - current_cool_down_seconds: 当前 Key 的冷却时长。
     """
     key_states = await key_manager.get_key_states()
+    daily_usage_stats = await request_log_manager.get_daily_model_usage_stats()
+    for key_state in key_states:
+        key_state.daily_usage = daily_usage_stats.get(key_state.key_identifier, {})
     return {"keys": key_states}

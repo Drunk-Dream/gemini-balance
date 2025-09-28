@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List, Optional
-from zoneinfo import ZoneInfo
 
 from fastapi import Depends
 from pydantic import BaseModel
@@ -16,12 +14,9 @@ from backend.app.services.key_managers.background_tasks import (
     with_key_manager_lock,
 )
 from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
-from backend.app.services.request_logs.request_log_manager import RequestLogManager
-from backend.app.services.request_logs.schemas import RequestLog
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
-    from backend.app.services.chat_service.types import RequestInfo
     from backend.app.services.key_managers.db_manager import (
         DBManager,
         KeyState,
@@ -56,14 +51,12 @@ class KeyStateManager:
         self,
         settings: Settings = Depends(get_settings),
         db_manager: DBManager = Depends(get_key_db_manager),
-        request_log_manager: RequestLogManager = Depends(RequestLogManager),
     ):
         self._initial_cool_down_seconds = settings.API_KEY_COOL_DOWN_SECONDS
         self._api_key_failure_threshold = settings.API_KEY_FAILURE_THRESHOLD
         self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
         self._key_in_use_timeout_seconds = settings.KEY_IN_USE_TIMEOUT_SECONDS
         self._db_manager = db_manager
-        self._request_log_manager = request_log_manager
         self._background_task_manager = background_task_manager
 
     def _get_key_identifier(self, key: str) -> str:
@@ -101,7 +94,7 @@ class KeyStateManager:
         app_logger.info("Reset state for all API keys.")
 
     @with_key_manager_lock
-    async def get_next_key(self, request_info: RequestInfo) -> Optional[KeyType]:
+    async def get_next_key(self) -> Optional[KeyType]:
         key = await self._db_manager.get_next_available_key()
         if not key:
             return None
@@ -110,15 +103,12 @@ class KeyStateManager:
         self._background_task_manager.create_timeout_task(
             key,
             self._key_in_use_timeout_seconds,
-            request_info,
             self,
         )
         return key
 
     @with_key_manager_lock
-    async def mark_key_fail(
-        self, key: KeyType, error_type: ErrorType, request_info: RequestInfo
-    ):
+    async def mark_key_fail(self, key: KeyType, error_type: ErrorType):
         # 取消对应的超时任务
         if error_type != ErrorType.USE_TIMEOUT_ERROR:
             self._background_task_manager.cancel_timeout_task(key)
@@ -150,36 +140,22 @@ class KeyStateManager:
             )
             self._background_task_manager.wakeup_event.set()
             app_logger.warning(
-                f"[Request ID: {request_info.request_id}] Key {key.brief} cooled down for "
+                f"Key {key.brief} cooled down for "
                 f"{current_cool_down_seconds:.2f}s due to {error_type_str}."
             )
         else:  # 如果不需要冷却，则释放密钥
             await self._db_manager.release_key_from_use(key)
             app_logger.info(
-                f"[Request ID: {request_info.request_id}] Key {key.identifier} released from "
+                f"Key {key.identifier} released from "
                 f"use after {error_type_str} without cooldown."
             )
 
         await self._db_manager.save_key_state(key, state)
 
-        # 记录请求日志
-        log_entry = RequestLog(
-            id=None,
-            request_id=request_info.request_id,
-            request_time=datetime.now(ZoneInfo("UTC")),
-            key_identifier=key.identifier,
-            auth_key_alias=request_info.auth_key_alias,
-            model_name=request_info.model_id,
-            is_success=False,
-            error_type=error_type_str,
-        )
-        await self._request_log_manager.record_request_log(log_entry)
-
     @with_key_manager_lock
     async def mark_key_success(
         self,
         key: KeyType,
-        request_info: RequestInfo,
     ):
         # 取消对应的超时任务
         self._background_task_manager.cancel_timeout_task(key)
@@ -194,29 +170,10 @@ class KeyStateManager:
         await self._db_manager.save_key_state(key, state)
         await self._db_manager.reactivate_key(key)
 
-        # 记录请求日志
-        log_entry = RequestLog(
-            id=None,
-            request_id=request_info.request_id,
-            request_time=datetime.now(ZoneInfo("UTC")),
-            key_identifier=key.identifier,
-            auth_key_alias=request_info.auth_key_alias,
-            model_name=request_info.model_id,
-            is_success=True,
-            prompt_tokens=request_info.prompt_tokens,
-            completion_tokens=request_info.completion_tokens,
-            total_tokens=request_info.total_tokens,
-        )
-        await self._request_log_manager.record_request_log(log_entry)
-
     @with_key_manager_lock
     async def get_key_states(self) -> List[KeyStatusResponse]:
         states_response = []
         now = time.time()
-        # 获取当天的模型使用统计
-        daily_usage_stats = (
-            await self._request_log_manager.get_daily_model_usage_stats()
-        )
         states = await self._db_manager.get_all_key_states()
 
         for state in states:
@@ -232,7 +189,6 @@ class KeyStateManager:
                 status = "active"
 
             # 从统计数据中获取当前 key_identifier 的 daily_usage，如果不存在则为空字典
-            key_daily_usage = daily_usage_stats.get(key_identifier, {})
 
             states_response.append(
                 KeyStatusResponse(
@@ -240,7 +196,7 @@ class KeyStateManager:
                     key_brief=key_brief,
                     status=status,
                     cool_down_seconds_remaining=round(cool_down_remaining, 2),
-                    daily_usage=key_daily_usage,
+                    daily_usage={},  # 由RequestLogManager提供，在请求端点处添加
                     failure_count=state.request_fail_count,
                     cool_down_entry_count=state.cool_down_entry_count,
                     current_cool_down_seconds=self._calculate_cool_down_seconds(state),
