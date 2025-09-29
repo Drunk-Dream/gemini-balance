@@ -37,9 +37,11 @@ from backend.app.services.request_logs.schemas import RequestLog
 from backend.app.services.request_service.base_request_service import BaseRequestService
 from backend.app.services.request_service.gemini_request_service import (
     GeminiRequestService,
+    get_gemini_request_service,
 )
 from backend.app.services.request_service.openai_request_service import (
     OpenAIRequestService,
+    get_openai_request_service,
 )
 
 if TYPE_CHECKING:
@@ -61,8 +63,12 @@ class ChatService:
             get_background_task_manager
         ),
         concurrency_manager: ConcurrencyManager = Depends(get_concurrency_manager),
-        gemini_request_service: GeminiRequestService = Depends(GeminiRequestService),
-        openai_request_service: OpenAIRequestService = Depends(OpenAIRequestService),
+        gemini_request_service: GeminiRequestService = Depends(
+            get_gemini_request_service
+        ),
+        openai_request_service: OpenAIRequestService = Depends(
+            get_openai_request_service
+        ),
     ):
         self.settings = settings
         self._key_manager = key_manager
@@ -337,7 +343,10 @@ class ChatService:
                 return cast(Dict[str, Any], response_chunks[0])
             else:
                 # Handle case where no response was yielded (e.g., due to an error handled internally)
-                raise HTTPException(status_code=500, detail="No response data received for non-streaming request.")
+                raise HTTPException(
+                    status_code=500,
+                    detail="No response data received for non-streaming request.",
+                )
 
     async def create_chat_completion(
         self,

@@ -19,6 +19,12 @@ from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import initialize_logging
 from backend.app.db import get_migration_manager
 from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
+from backend.app.services.request_service.gemini_request_service import (
+    GeminiRequestService,
+)
+from backend.app.services.request_service.openai_request_service import (
+    OpenAIRequestService,
+)
 
 
 @asynccontextmanager
@@ -29,7 +35,9 @@ async def lifespan(app: FastAPI):
     log_broadcaster = initialize_logging(settings)
     app.state.log_broadcaster = log_broadcaster
 
+    logger.info("Starting Gemini Balance Application...")
     print_non_sensitive_settings(logger, settings)
+
     logger.info("Running database migrations...")
     migration_manager = get_migration_manager(settings)
     await migration_manager.run_migrations()
@@ -48,7 +56,15 @@ async def lifespan(app: FastAPI):
 
     logger.info("Starting background task for KeyManager...")
     await background_task_manager.start_background_task()
+
+    logger.info("Initializing RequestService Client...")
+    gemini_request_service = GeminiRequestService(settings=settings)
+    app.state.gemini_request_service = gemini_request_service
+    openai_request_service = OpenAIRequestService(settings=settings)
+    app.state.openai_request_service = openai_request_service
+
     yield
+
     logger.info("Stopping background task for KeyManager...")
     background_task_manager.stop_background_task()
 

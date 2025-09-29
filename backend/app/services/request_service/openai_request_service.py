@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
 from backend.app.core.config import Settings, get_settings
@@ -13,6 +13,10 @@ from backend.app.services.request_service.base_request_service import BaseReques
 if TYPE_CHECKING:
     from backend.app.services.chat_service.types import RequestInfo
     from backend.app.services.key_managers.db_manager import KeyType
+
+
+def get_openai_request_service(request: Request) -> OpenAIRequestService:
+    return request.app.state.openai_request_service
 
 
 class OpenAIRequestService(BaseRequestService):

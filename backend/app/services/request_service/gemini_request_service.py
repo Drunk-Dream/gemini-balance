@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.core.config import Settings, get_settings
@@ -13,6 +13,10 @@ from backend.app.services.request_service.base_request_service import BaseReques
 if TYPE_CHECKING:
     from backend.app.services.chat_service.types import RequestInfo
     from backend.app.services.key_managers.db_manager import KeyType
+
+
+def get_gemini_request_service(request: Request) -> GeminiRequestService:
+    return request.app.state.gemini_request_service
 
 
 class GeminiRequestService(BaseRequestService):
