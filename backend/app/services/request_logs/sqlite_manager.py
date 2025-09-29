@@ -27,6 +27,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         completion_tokens INTEGER,
         total_tokens INTEGER,
         error_type TEXT,
+        key_brief TEXT
         FOREIGN KEY (key_identifier) REFERENCES key_states(key_identifier) ON DELETE CASCADE,
         FOREIGN KEY (auth_key_alias) REFERENCES auth_keys(alias) ON DELETE CASCADE ON UPDATE CASCADE
     """
@@ -44,10 +45,10 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 INSERT INTO request_logs (
                     request_id, request_time, key_identifier, auth_key_alias,
                     model_name, is_success, prompt_tokens, completion_tokens,
-                    total_tokens, error_type
+                    total_tokens, error_type, key_brief
                 )
                 VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                 )
                 """,
                 (
@@ -61,6 +62,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                     log.completion_tokens,
                     log.total_tokens,
                     log.error_type,
+                    log.key_brief,
                 ),
             )
             await db.commit()
@@ -152,6 +154,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                     completion_tokens=row["completion_tokens"],
                     total_tokens=row["total_tokens"],
                     error_type=row["error_type"],
+                    key_brief=row["key_brief"],
                 )
                 for row in rows
             ]

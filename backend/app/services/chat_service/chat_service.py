@@ -115,6 +115,7 @@ class ChatService:
             prompt_tokens=self.request_info.prompt_tokens,
             completion_tokens=self.request_info.completion_tokens,
             total_tokens=self.request_info.total_tokens,
+            key_brief=key.brief,
         )
         await self._request_log_manager.record_request_log(log_entry)
 
@@ -294,6 +295,7 @@ class ChatService:
             model_name=self.request_info.model_id,
             is_success=False,
             error_type=error_type.value,
+            key_brief=key.brief,
         )
         await self._request_log_manager.record_request_log(log_entry)
 

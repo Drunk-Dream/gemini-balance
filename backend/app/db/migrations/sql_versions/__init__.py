@@ -29,6 +29,7 @@ request_logs:
     completion_tokens INTEGER,
     total_tokens INTEGER,
     error_type TEXT,
+    key_brief TEXT
     FOREIGN KEY (key_identifier) REFERENCES key_states(key_identifier) ON DELETE CASCADE,
     FOREIGN KEY (auth_key_alias) REFERENCES auth_keys(alias) ON DELETE CASCADE ON UPDATE CASCADE
 """

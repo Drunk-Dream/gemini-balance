@@ -20,6 +20,7 @@ class RequestLog(BaseModel):
     completion_tokens: Optional[int] = None
     total_tokens: Optional[int] = None
     error_type: Optional[str] = None
+    key_brief: Optional[str] = None
 
 
 class RequestLogsResponse(BaseModel):

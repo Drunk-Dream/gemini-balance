@@ -10,12 +10,12 @@
 	const headers = [
 		{ key: 'request_id', label: '请求 ID' },
 		{ key: 'request_time', label: '请求时间' },
-		{ key: 'key_identifier', label: '密钥标识符' },
+		{ key: 'key_brief', label: '密钥' },
 		{ key: 'auth_key_alias', label: '用户' },
 		{ key: 'model_name', label: '模型名称' },
 		{ key: 'token_usage', label: 'Token 使用情况' },
 		{ key: 'is_success', label: '成功' },
-		{ key: 'error_type', label: '错误类型' },
+		{ key: 'error_type', label: '错误类型' }
 	];
 
 	function formatDateTime(isoString: string): string {

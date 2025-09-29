@@ -14,6 +14,7 @@ export interface RequestLog {
 	completion_tokens?: number;
 	total_tokens?: number;
 	error_type?: string;
+	key_brief?: string;
 }
 
 interface RequestLogsResponse {
