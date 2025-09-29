@@ -1,69 +1,78 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import random
 import secrets
-from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union, cast
 from zoneinfo import ZoneInfo
 
 import httpx
-import httpx_sse
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 from starlette.responses import StreamingResponse
 from starlette.status import (
     HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_503_SERVICE_UNAVAILABLE,
 )
 
-from backend.app.core.concurrency import ConcurrencyTimeoutError
-from backend.app.core.config import Settings
+from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
+from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
+from backend.app.core.concurrency import (
+    ConcurrencyTimeoutError,
+    get_concurrency_manager,
+)
+from backend.app.core.config import Settings, get_settings
 from backend.app.core.errors import ErrorType, StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
 from backend.app.services.chat_service.types import RequestInfo
-from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
+from backend.app.services.key_managers.background_tasks import (
+    BackgroundTaskManager,
+    get_background_task_manager,
+)
 from backend.app.services.key_managers.db_manager import KeyType
+from backend.app.services.key_managers.key_state_manager import KeyStateManager
+from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLog
+from backend.app.services.request_service.base_request_service import BaseRequestService
+from backend.app.services.request_service.gemini_request_service import (
+    GeminiRequestService,
+)
+from backend.app.services.request_service.openai_request_service import (
+    OpenAIRequestService,
+)
 
 if TYPE_CHECKING:
-    from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
-    from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
     from backend.app.core.concurrency import ConcurrencyManager
-    from backend.app.services.key_managers.key_state_manager import KeyStateManager
-    from backend.app.services.request_logs.request_log_manager import RequestLogManager
 
 
-class ApiService(ABC):
+class ChatService:
     """
-    Base class for API services, handling common logic like HTTP client,
-    API key api, retry mechanisms, and streaming responses.
+    Handles chat completion logic, including API key management, retry mechanisms,
+    concurrency control, and dispatching requests to specific API services.
     """
 
     def __init__(
         self,
-        base_url: str,
-        service_name: str,
-        settings: Settings,
-        key_manager: KeyStateManager,
-        request_log_manager: RequestLogManager,
-        background_task_manager: BackgroundTaskManager,
-        concurrency_manager: ConcurrencyManager,
+        settings: Settings = Depends(get_settings),
+        key_manager: KeyStateManager = Depends(KeyStateManager),
+        request_log_manager: RequestLogManager = Depends(RequestLogManager),
+        background_task_manager: BackgroundTaskManager = Depends(
+            get_background_task_manager
+        ),
+        concurrency_manager: ConcurrencyManager = Depends(get_concurrency_manager),
+        gemini_request_service: GeminiRequestService = Depends(GeminiRequestService),
+        openai_request_service: OpenAIRequestService = Depends(OpenAIRequestService),
     ):
-        self.base_url = base_url
-        self.service_name = service_name
-        self.url: str
-        self.client = httpx.AsyncClient(
-            base_url=self.base_url,
-            timeout=httpx.Timeout(settings.REQUEST_TIMEOUT_SECONDS),
-        )
-
+        self.settings = settings
         self._key_manager = key_manager
         self._request_log_manager = request_log_manager
         self._background_task_manager = background_task_manager
         self._concurrency_manager = concurrency_manager
+        self._request_services: Dict[str, BaseRequestService] = {
+            "gemini": gemini_request_service,
+            "openai": openai_request_service,
+        }
 
         self._max_retries = settings.MAX_RETRIES
         self._request_timeout_seconds = settings.REQUEST_TIMEOUT_SECONDS
@@ -72,170 +81,6 @@ class ApiService(ABC):
         self._cf_ai_authorization_key = settings.CF_AI_AUTHORIZATION_KEY
         self._rate_limit_default_wait_seconds = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
         self._key_in_use_timeout_seconds = settings.KEY_IN_USE_TIMEOUT_SECONDS
-
-    async def _recreate_client(self):
-        """
-        Closes the current httpx client and creates a new one.
-        This is useful for recovering from connection errors.
-        """
-        request_id = self.request_info.request_id
-        if self.client:
-            await self.client.aclose()
-            logger.info(
-                f"[Request ID: {request_id}] Closed existing httpx client for {self.service_name}."
-            )
-        self.client = httpx.AsyncClient(
-            base_url=self.base_url,
-            timeout=httpx.Timeout(self._request_timeout_seconds),
-        )
-        logger.info(
-            f"[Request ID: {request_id}] Recreated httpx client for {self.service_name}."
-        )
-
-    @abstractmethod
-    def _set_api_url(self, *args, **kwargs) -> str:
-        """
-        Abstract method to get the specific API endpoint URL.
-        Must be implemented by subclasses.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _prepare_headers(self, api_key: str) -> Dict[str, str]:
-        """
-        Abstract method to prepare request headers, including API key.
-        Must be implemented by subclasses.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _extract_and_update_token_counts(
-        self, response_data: Dict[str, Any], request_info: RequestInfo
-    ) -> None:
-        """
-        Abstract method to extract token counts from the API response and update RequestInfo.
-        Must be implemented by subclasses.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _extract_and_update_token_counts_from_stream(
-        self, chunk_data: Dict[str, Any], request_info: RequestInfo
-    ) -> bool:
-        """
-        Abstract method to extract token counts from the API response stream and update RequestInfo.
-        Must be implemented by subclasses.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    async def _prepare_and_send_request(
-        self,
-        request_data: GeminiRequest | OpenAIRequest,
-    ) -> Union[Dict[str, Any], StreamingResponse]:
-        """
-        Handles the logic of generating content from the API, including error handling and retrying.
-        """
-        raise NotImplementedError
-
-    async def _process_streaming_response(
-        self,
-        key: KeyType,
-        request_data: GeminiRequest | OpenAIRequest,
-        headers: Dict[str, str],
-        params: Dict[str, str] | None,
-    ) -> AsyncGenerator[str, None]:
-        """
-        Handles the streaming request logic, including SSE connection, token counting,
-        and error handling for streaming responses.
-        """
-        request_id = self.request_info.request_id
-        full_response_content = ""
-        async with httpx_sse.aconnect_sse(
-            self.client,
-            "POST",
-            self.url,
-            json=request_data.model_dump(by_alias=True, exclude_unset=True),
-            headers=headers,
-            params=params,
-        ) as event_source:
-            event_source.response.raise_for_status()
-            stream_finished = False
-            first_see = True
-
-            async for sse in event_source.aiter_sse():
-                if first_see:
-                    logger.info(
-                        f"[Request ID: {request_id}] Started streaming response."
-                    )
-                    first_see = False
-
-                transaction_logger.info(
-                    f"[Request ID: {request_id}] SSE event: {sse.event}, data: {sse.data}"
-                )
-                full_response_content += sse.data
-                yield f"data: {sse.data}\n\n"
-
-                if sse.data == "[DONE]":
-                    continue
-
-                try:
-                    chunk_data = json.loads(sse.data)
-                    stream_finished = self._extract_and_update_token_counts_from_stream(
-                        chunk_data, self.request_info
-                    )
-                except json.JSONDecodeError:
-                    logger.warning(
-                        f"[Request ID: {request_id}] Could not decode JSON from SSE data"
-                    )
-                    continue
-
-            if not stream_finished:
-                logger.error(
-                    f"[Request ID: {request_id}] Streaming request finished without a STOP signal. "
-                )
-                transaction_logger.error(
-                    f"[Request ID: {request_id}] Streaming request finished without a STOP signal. "
-                    f"Full response: {full_response_content}"
-                )
-                raise StreamingCompletionError(
-                    "Streaming request finished without a STOP signal."
-                )
-
-        await self._finalize_successful_request(key)
-
-    async def _process_non_streaming_response(
-        self,
-        key: KeyType,
-        request_data: GeminiRequest | OpenAIRequest,
-        headers: Dict[str, str],
-        params: Dict[str, str] | None,
-    ) -> Dict[str, Any]:
-        """
-        Handles the non-streaming request logic, including HTTP request, token counting,
-        and error handling for non-streaming responses.
-        """
-        request_id = self.request_info.request_id
-        response = await self.client.request(
-            "POST",
-            self.url,
-            json=request_data.model_dump(by_alias=True, exclude_unset=True),
-            headers=headers,
-            params=params,
-        )
-        response.raise_for_status()
-        response_json = response.json()
-
-        self._extract_and_update_token_counts(response_json, self.request_info)
-        transaction_logger.info(
-            "[Request ID: %s] Response from %s API with key %s: %s",
-            request_id,
-            self.service_name,
-            key.brief,
-            response_json,
-        )
-        await self._finalize_successful_request(key)
-        return response_json
 
     async def _finalize_successful_request(self, key: KeyType):
         """
@@ -270,7 +115,6 @@ class ApiService(ABC):
     async def _execute_request_with_retries(
         self,
         request_data: GeminiRequest | OpenAIRequest,
-        params: Dict[str, str] | None,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """
         A unified generator to handle both streaming and non-streaming requests.
@@ -303,10 +147,9 @@ class ApiService(ABC):
             )
 
             try:
-                async for chunk in self._attempt_single_request(
-                    key, request_data, params
-                ):
+                async for chunk in self._attempt_single_request(key, request_data):
                     yield chunk
+                await self._finalize_successful_request(key)
                 return
             except Exception as e:
                 last_exception = e
@@ -336,40 +179,29 @@ class ApiService(ABC):
         self,
         key: KeyType,
         request_data: GeminiRequest | OpenAIRequest,
-        params: Dict[str, str] | None,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """
-        Attempts a single API request, handling key preparation and dispatching to streaming/non-streaming processors.
+        Attempts a single API request, handling key preparation and dispatching to the correct request service.
         """
-        request_id = self.request_info.request_id
-        stream = self.request_info.stream
-
-        logger.info(
-            f"[Request ID: {request_id}] Using API key {key.brief} for {self.service_name}, stream={stream}"
-        )
-
-        headers = self._prepare_headers(key.full)
-        if self._cloudflare_gateway_enabled and self._cf_ai_authorization_key:
-            headers["cf-aig-authorization"] = self._cf_ai_authorization_key
-
-        transaction_logger.info(
-            "[Request ID: %s] Request to %s API with key %s: %s",
-            request_id,
-            self.service_name,
-            key.brief,
-            request_data.model_dump_json(by_alias=True, exclude_unset=True),
-        )
-
-        if stream:
-            async for chunk in self._process_streaming_response(
-                key, request_data, headers, params
-            ):
-                yield chunk
+        # Determine which request service to use based on the request data type
+        if isinstance(request_data, GeminiRequest):
+            service = self._request_services["gemini"]
+        elif isinstance(request_data, OpenAIRequest):
+            service = self._request_services["openai"]
         else:
-            response_data = await self._process_non_streaming_response(
-                key, request_data, headers, params
-            )
-            yield response_data
+            raise TypeError(f"Unsupported request data type: {type(request_data)}")
+
+        async for chunk in cast(
+            AsyncGenerator[Union[str, Dict[str, Any]], None],
+            service.send_request(
+                key=key,
+                request_data=request_data,
+                request_info=self.request_info,
+                cloudflare_gateway_enabled=self._cloudflare_gateway_enabled,
+                cf_ai_authorization_key=self._cf_ai_authorization_key,
+            ),
+        ):
+            yield chunk
 
     async def _handle_request_error(self, key: KeyType, e: Exception):
         """
@@ -406,9 +238,8 @@ class ApiService(ABC):
             if not response_text:
                 response_text = "<Response body not available>"
             transaction_logger.error(
-                "[Request ID: %s] Error response from %s API with key %s: %s",
+                "[Request ID: %s] Error response from API with key %s: %s",
                 request_id,
-                self.service_name,
                 key.identifier,
                 response_text,
             )
@@ -436,7 +267,6 @@ class ApiService(ABC):
             log_level(
                 f"[Request ID: {request_id}] Request error with key {key.brief}: {e}. Deactivating and retrying..."
             )
-            await self._recreate_client()
         else:
             log_level(
                 f"[Request ID: {request_id}] An unexpected error occurred with key {key.brief}: {e}. Deactivating and retrying..."
@@ -483,14 +313,12 @@ class ApiService(ABC):
     async def _dispatch_request(
         self,
         request_data: GeminiRequest | OpenAIRequest,
-        params: Dict[str, str] | None = None,
     ) -> Union[Dict[str, Any], StreamingResponse]:
         """
         Handles sending the HTTP request by dispatching to the appropriate generator.
         """
         generator = self._execute_request_with_retries(
             request_data=request_data,
-            params=params,
         )
 
         if self.request_info.stream:
@@ -499,27 +327,34 @@ class ApiService(ABC):
                 media_type="text/event-stream",
             )
         else:
-            # For non-streaming, get the first (and only) item from the generator
-            response_data = await generator.__anext__()
-            return cast(Dict[str, Any], response_data)
+            # For non-streaming, iterate through the generator to ensure _finalize_successful_request is called
+            # and collect the full response.
+            response_chunks = []
+            async for chunk in generator:
+                response_chunks.append(chunk)
+            # Assuming non-streaming requests yield a single dictionary chunk
+            if response_chunks:
+                return cast(Dict[str, Any], response_chunks[0])
+            else:
+                # Handle case where no response was yielded (e.g., due to an error handled internally)
+                raise HTTPException(status_code=500, detail="No response data received for non-streaming request.")
 
     async def create_chat_completion(
         self,
         request_data: GeminiRequest | OpenAIRequest,
     ):
         """
-        Abstract method to create a chat completion request.
-        Must be implemented by subclasses.
+        Creates a chat completion request, handling concurrency and error responses.
         """
         request_id = self.request_info.request_id
         logger.info(
-            f"[Request ID: {request_id}] {self.service_name} receives request from "
+            f"[Request ID: {request_id}] Receives request from "
             f"'{self.request_info.auth_key_alias}' for model: {self.request_info.model_id}, stream: {self.request_info.stream}"
         )
 
         try:
             async with self._concurrency_manager.timeout_semaphore():
-                return await self._prepare_and_send_request(request_data)
+                return await self._dispatch_request(request_data)
         except ConcurrencyTimeoutError as e:
             logger.warning(f"[Request ID: {request_id}] Concurrency timeout error: {e}")
             return self._handle_exception_response(

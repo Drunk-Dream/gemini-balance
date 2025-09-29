@@ -5,7 +5,7 @@ from starlette.responses import StreamingResponse
 
 from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
 from backend.app.services.auth_key_manager.auth_service import AuthService
-from backend.app.services.chat_service.gemini_service import GeminiService
+from backend.app.services.chat_service.chat_service import ChatService
 
 router = APIRouter()
 
@@ -42,11 +42,11 @@ async def verify_x_goog_api_key(
 async def generate_content_endpoint(
     model_id: str,
     request: GeminiRequest,
-    gemini_service: GeminiService = Depends(),
+    chat_service: ChatService = Depends(),
     auth_key_alias: str = Depends(verify_x_goog_api_key),
 ) -> Dict[str, Any]:
-    await gemini_service.create_request_info(model_id, auth_key_alias, False)
-    response = await gemini_service.create_chat_completion(request)
+    await chat_service.create_request_info(model_id, auth_key_alias, False)
+    response = await chat_service.create_chat_completion(request)
     return response if isinstance(response, Dict) else {}
 
 
@@ -57,11 +57,11 @@ async def generate_content_endpoint(
 async def stream_generate_content_endpoint(
     model_id: str,
     request: GeminiRequest,
-    gemini_service: GeminiService = Depends(GeminiService),
+    chat_service: ChatService = Depends(ChatService),
     auth_key_alias: str = Depends(verify_x_goog_api_key),
 ) -> StreamingResponse:
-    await gemini_service.create_request_info(model_id, auth_key_alias, True)
-    response = await gemini_service.create_chat_completion(request)
+    await chat_service.create_request_info(model_id, auth_key_alias, True)
+    response = await chat_service.create_chat_completion(request)
     return (
         response
         if isinstance(response, StreamingResponse)

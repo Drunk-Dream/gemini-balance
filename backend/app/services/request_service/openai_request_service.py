@@ -1,50 +1,34 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Union
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union
 
 from fastapi import Depends
-from starlette.responses import StreamingResponse
 
 from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
-from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
-from backend.app.core.concurrency import get_concurrency_manager
 from backend.app.core.config import Settings, get_settings
-from backend.app.services.chat_service.base_service import ApiService
-from backend.app.services.key_managers.background_tasks import (
-    get_background_task_manager,
-)
-from backend.app.services.key_managers.key_state_manager import KeyStateManager
-from backend.app.services.request_logs.request_log_manager import RequestLogManager
+from backend.app.core.logging import app_logger as logger
+from backend.app.core.logging import transaction_logger
+from backend.app.services.request_service.base_request_service import BaseRequestService
 
 if TYPE_CHECKING:
-    from backend.app.core.concurrency import ConcurrencyManager
     from backend.app.services.chat_service.types import RequestInfo
-    from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
+    from backend.app.services.key_managers.db_manager import KeyType
 
 
-class OpenAIService(ApiService):
+class OpenAIRequestService(BaseRequestService):
     def __init__(
         self,
         settings: Settings = Depends(get_settings),
-        key_manager: KeyStateManager = Depends(KeyStateManager),
-        request_log_manager: RequestLogManager = Depends(RequestLogManager),
-        background_task_manager: BackgroundTaskManager = Depends(
-            get_background_task_manager
-        ),
-        concurrency_manager: ConcurrencyManager = Depends(get_concurrency_manager),
     ):
         super().__init__(
             base_url=settings.OPENAI_API_BASE_URL,
             service_name="OpenAI API",
             settings=settings,
-            key_manager=key_manager,
-            request_log_manager=request_log_manager,
-            background_task_manager=background_task_manager,
-            concurrency_manager=concurrency_manager,
         )
 
-    def _set_api_url(self) -> None:
-        self.url = "/chat/completions"
+    def _set_api_url(self, model_id: str, stream: bool = False) -> str:
+        # OpenAI API URL doesn't depend on model_id or stream for chat completions
+        return "/chat/completions"
 
     def _prepare_headers(self, api_key: str) -> Dict[str, str]:
         return {
@@ -77,39 +61,6 @@ class OpenAIService(ApiService):
                 if hasattr(request_data, "reasoning_effort"):
                     del request_data.reasoning_effort
 
-    async def _prepare_and_send_request(
-        self,
-        request_data: GeminiRequest | OpenAIRequest,
-    ) -> Union[Dict[str, Any], StreamingResponse]:
-        if not isinstance(request_data, OpenAIRequest):
-            raise ValueError("request_data must be a ChatCompletionRequest instance")
-        self._set_api_url()
-        stream = self.request_info.stream
-
-        self._handle_thinking_config(request_data)
-
-        # 检查并删除 'seed' 字段，因为 OpenAI API 不支持此字段
-        if hasattr(request_data, "seed") and request_data.seed is not None:
-            del request_data.seed
-
-        if self._cloudflare_gateway_enabled:
-            request_data.model = f"google-ai-studio/{request_data.model}"
-
-        if stream:
-            if request_data.stream_options is None:
-                request_data.stream_options = {"include_usage": True}
-            else:
-                request_data.stream_options["include_usage"] = True
-
-        response = await self._dispatch_request(
-            request_data=request_data,
-        )
-
-        # 如果是流式响应，需要确保返回的 StreamingResponse 使用正确的 media_type
-        if stream and isinstance(response, StreamingResponse):
-            response.media_type = "text/event-stream"
-        return response
-
     def _extract_and_update_token_counts(
         self, response_data: Dict[str, Any], request_info: RequestInfo
     ) -> None:
@@ -121,7 +72,6 @@ class OpenAIService(ApiService):
             request_info.prompt_tokens = usage.get("prompt_tokens")
             request_info.completion_tokens = usage.get("completion_tokens")
             request_info.total_tokens = usage.get("total_tokens")
-            self.request_info = request_info
 
     def _extract_and_update_token_counts_from_stream(
         self, chunk_data: Dict[str, Any], request_info: RequestInfo
@@ -136,3 +86,70 @@ class OpenAIService(ApiService):
             self._extract_and_update_token_counts(chunk_data, request_info)
             return True
         return False
+
+    async def send_request(
+        self,
+        key: KeyType,
+        request_data: OpenAIRequest,
+        request_info: RequestInfo,
+        cloudflare_gateway_enabled: bool,
+        cf_ai_authorization_key: str | None,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """
+        发送 OpenAI API 请求，处理流式和非流式响应。
+        """
+        request_id = request_info.request_id
+        stream = request_info.stream
+        model_id = (
+            request_info.model_id
+        )  # Added for consistency with _set_api_url signature
+
+        logger.info(
+            f"[Request ID: {request_id}] Using API key {key.brief} for OpenAI API, stream={stream}"
+        )
+
+        headers = self._prepare_headers(key.full)
+        if cloudflare_gateway_enabled and cf_ai_authorization_key:
+            headers["cf-aig-authorization"] = cf_ai_authorization_key
+
+        url = self._set_api_url(model_id, stream)
+
+        # 处理 thinking_config
+        self._handle_thinking_config(request_data)
+
+        # 检查并删除 'seed' 字段，因为 OpenAI API 不支持此字段
+        if hasattr(request_data, "seed") and request_data.seed is not None:
+            del request_data.seed
+
+        if cloudflare_gateway_enabled:
+            request_data.model = f"google-ai-studio/{request_data.model}"
+
+        if stream:
+            if request_data.stream_options is None:
+                request_data.stream_options = {"include_usage": True}
+            else:
+                request_data.stream_options["include_usage"] = True
+
+        transaction_logger.info(
+            "[Request ID: %s] Request to OpenAI API with key %s: %s",
+            request_id,
+            key.brief,
+            request_data.model_dump_json(by_alias=True, exclude_unset=True),
+        )
+
+        if stream:
+            async for chunk in self._send_streaming_request(
+                request_data=request_data,
+                request_info=request_info,
+                headers=headers,
+                url=url,
+            ):
+                yield chunk
+        else:
+            async for chunk in self._send_non_streaming_request(
+                request_data=request_data,
+                request_info=request_info,
+                headers=headers,
+                url=url,
+            ):
+                yield chunk
