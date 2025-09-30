@@ -75,7 +75,7 @@ class SQLiteDBManager(DBManager):
     async def get_all_key_states(self) -> List[KeyState]:
         async with aiosqlite.connect(self.sqlite_db) as db:
             db.row_factory = aiosqlite.Row
-            cursor = await db.execute("SELECT * FROM key_states")
+            cursor = await db.execute("SELECT * FROM key_states ORDER BY last_usage_time DESC")
             rows = await cursor.fetchall()
             return [self._row_to_key_state(row) for row in rows]
 

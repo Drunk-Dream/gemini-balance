@@ -45,8 +45,10 @@ class OpenAIRequestService(BaseRequestService):
         处理 include_thoughts 和 thinking_budget 字段，将其转换为 extra_body 中的 google.thinking_config 结构。
         """
         if (
-            request_data.include_thoughts is not None
-            or request_data.thinking_budget is not None
+            hasattr(request_data, "include_thoughts")
+            and request_data.include_thoughts is not None
+            or hasattr(request_data, "thinking_budget")
+            and request_data.thinking_budget is not None
         ):
             if request_data.extra_body is None:
                 request_data.extra_body = {}
@@ -54,11 +56,11 @@ class OpenAIRequestService(BaseRequestService):
             google_config = request_data.extra_body.setdefault("google", {})
             thinking_config = google_config.setdefault("thinking_config", {})
 
-            if request_data.include_thoughts is not None:
+            if hasattr(request_data, "include_thoughts") and request_data.include_thoughts is not None:
                 thinking_config["include_thoughts"] = request_data.include_thoughts
                 del request_data.include_thoughts
 
-            if request_data.thinking_budget is not None:
+            if hasattr(request_data, "thinking_budget") and request_data.thinking_budget is not None:
                 thinking_config["thinking_budget"] = request_data.thinking_budget
                 del request_data.thinking_budget
                 # reasoning_effort 字段在 GeminiService 中处理，这里删除以避免冲突
