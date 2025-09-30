@@ -25,7 +25,7 @@ from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
-    from backend.app.services.key_managers.db_manager import KeyState
+    from backend.app.services.key_managers.schemas import KeyState
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
@@ -196,12 +196,10 @@ class KeyStateManager:
 
             if state.is_in_use:
                 status = "in_use"
-            elif cool_down_remaining > 0:
+            elif state.is_cooled_down:
                 status = "cooling_down"
             else:
                 status = "active"
-
-            # 从统计数据中获取当前 key_identifier 的 daily_usage，如果不存在则为空字典
 
             states_response.append(
                 KeyStatusResponse(

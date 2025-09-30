@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, List, Optional
 
 import aiosqlite
 
-from backend.app.services.key_managers.db_manager import DBManager, KeyState, KeyType
+from backend.app.services.key_managers.db_manager import DBManager
+from backend.app.services.key_managers.schemas import KeyState, KeyType
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
@@ -274,6 +275,7 @@ class SQLiteDBManager(DBManager):
             current_cool_down_seconds=row["current_cool_down_seconds"],
             last_usage_time=row["last_usage_time"],
             is_in_use=bool(row["is_in_use"]),
+            is_cooled_down=bool(row["is_cooled_down"]),
         )
 
     async def get_min_cool_down_until(self) -> Optional[float]:
