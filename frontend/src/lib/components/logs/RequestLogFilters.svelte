@@ -79,6 +79,7 @@
 			<select
 				class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
 				bind:value={filters.key_identifier}
+				disabled={true}
 			>
 				<option value={undefined}>全部</option>
 				{#if filter_choices.key_identifiers && filter_choices.key_identifiers.length > 0}
