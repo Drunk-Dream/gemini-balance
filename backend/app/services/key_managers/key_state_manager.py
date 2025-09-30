@@ -161,7 +161,7 @@ class KeyStateManager:
         else:  # 如果不需要冷却，则释放密钥
             await self._db_manager.release_key_from_use(key)
             app_logger.info(
-                f"Key {key.identifier} released from "
+                f"Key {key.brief} released from "
                 f"use after {error_type_str} without cooldown."
             )
 

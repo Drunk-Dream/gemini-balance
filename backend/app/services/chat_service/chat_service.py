@@ -278,9 +278,9 @@ class ChatService:
             log_level(
                 f"[Request ID: {request_id}] An unexpected error occurred with key {key.brief}: {e}. Deactivating and retrying..."
             )
-            raise HTTPException(
-                status_code=500, detail=f"An unexpected error occurred: {e}"
-            )
+            # raise HTTPException(
+            #     status_code=500, detail=f"An unexpected error occurred: {e}"
+            # )
 
         should_cool_down = await self._key_manager.mark_key_fail(key, error_type)
         if should_cool_down:
