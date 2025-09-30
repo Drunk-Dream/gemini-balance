@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { KeyStatus } from '$lib/types/key-management';
+	import { flip } from 'svelte/animate';
 	import KeyCard from './KeyCard.svelte';
 
 	let {
@@ -15,7 +16,9 @@
 
 <div class="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
 	{#each keyStatuses as keyStatus (keyStatus.key_identifier)}
-		<KeyCard {keyStatus} {resetKey} {deleteKey} />
+		<div animate:flip>
+			<KeyCard {keyStatus} {resetKey} {deleteKey} />
+		</div>
 	{/each}
 </div>
 
