@@ -38,6 +38,7 @@
 	},
 	"dependencies": {
 		"@date-fns/tz": "^1.4.1",
+		"@internationalized/date": "^3.9.0",
 		"bits-ui": "^2.11.4",
 		"date-fns": "^4.1.0"
 	}
