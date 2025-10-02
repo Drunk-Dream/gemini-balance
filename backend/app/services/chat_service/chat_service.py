@@ -146,6 +146,9 @@ class ChatService:
                 )
                 await asyncio.sleep(self._no_key_wait_seconds)
                 continue
+            logger.info(
+                f"[Request ID: {request_id}] Attempt {attempt + 1}/{max_retries}: Using key {key.brief}."
+            )
 
             # 启动一个定时任务，在超时后自动释放密钥
             self._background_task_manager.create_timeout_task(
