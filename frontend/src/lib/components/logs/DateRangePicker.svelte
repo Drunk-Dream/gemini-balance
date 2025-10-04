@@ -21,7 +21,7 @@
 		>选择日期范围</DateRangePicker.Label
 	>
 	<div
-		class="flex h-10 w-full select-none items-center rounded-md border border-gray-300 bg-white px-2 py-3 text-sm tracking-[0.01em] text-gray-900 shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 hover:border-gray-400"
+		class="flex h-10 w-full select-none items-center rounded-md border border-gray-300 bg-white px-2 py-3 text-sm tracking-[0.01em] text-gray-900 shadow-sm transition-colors focus-within:border-gray-500 focus-within:ring-1 focus-within:ring-gray-500 hover:border-gray-400"
 	>
 		{#each ['start', 'end'] as const as type (type)}
 			<DateRangePicker.Input {type}>
@@ -92,7 +92,7 @@
 												class="p-0! relative m-0 size-10 overflow-visible text-center text-sm focus-within:relative focus-within:z-20"
 											>
 												<DateRangePicker.Day
-													class="focus-visible:ring-blue-500! data-selection-end:rounded-lg data-selection-start:rounded-lg data-highlighted:bg-gray-100 data-selected:bg-blue-100 data-selection-end:bg-blue-500 data-selection-start:bg-blue-500 data-disabled:pointer-events-none data-disabled:text-gray-300 data-highlighted:rounded-none data-outside-month:pointer-events-none data-selected:font-medium data-selected:text-white data-selection-end:font-medium data-selection-end:text-white data-selection-start:font-medium data-selection-start:text-white data-selection-start:focus-visible:ring-2 data-selection-start:focus-visible:ring-offset-2! data-unavailable:line-through data-unavailable:text-gray-400 data-selected:[&:not([data-selection-start])]:[&:not([data-selection-end])]:rounded-none data-selected:[&:not([data-selection-start])]:[&:not([data-selection-end])]:focus-visible:ring-0! data-selected:[&:not([data-selection-start])]:[&:not([data-selection-end])]:focus-visible:ring-offset-0! group relative inline-flex size-10 items-center justify-center whitespace-nowrap rounded-lg border border-transparent bg-transparent p-0 text-sm font-normal text-gray-900 transition-all hover:border-blue-500"
+													class="focus-visible:ring-gray-500! data-selection-end:rounded-lg data-selection-start:rounded-lg data-highlighted:bg-gray-100 data-selected:bg-gray-200 data-selection-end:bg-gray-600 data-selection-start:bg-gray-600 data-disabled:pointer-events-none data-disabled:text-gray-300 data-highlighted:rounded-none data-outside-month:pointer-events-none data-selected:font-medium data-selected:text-white data-selection-end:font-medium data-selection-end:text-white data-selection-start:font-medium data-selection-start:text-white data-selection-start:focus-visible:ring-2 data-selection-start:focus-visible:ring-offset-2! data-unavailable:line-through data-unavailable:text-gray-400 data-selected:[&:not([data-selection-start])]:[&:not([data-selection-end])]:rounded-none data-selected:[&:not([data-selection-start])]:[&:not([data-selection-end])]:focus-visible:ring-0! data-selected:[&:not([data-selection-start])]:[&:not([data-selection-end])]:focus-visible:ring-offset-0! group relative inline-flex size-10 items-center justify-center whitespace-nowrap rounded-lg border border-transparent bg-transparent p-0 text-sm font-normal text-gray-900 transition-all hover:border-gray-500"
 												>
 													<div
 														class="group-data-selected:bg-white group-data-today:block absolute top-[5px] hidden size-1 rounded-full bg-gray-900 transition-all"
