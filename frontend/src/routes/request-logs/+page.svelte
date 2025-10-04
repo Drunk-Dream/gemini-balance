@@ -10,7 +10,7 @@
 		type RequestLog
 	} from '$lib/services/requestLogs';
 	import { TZDate } from '@date-fns/tz';
-	import { getLocalTimeZone, today } from '@internationalized/date';
+	import { fromDate, getLocalTimeZone, today } from '@internationalized/date';
 	import type { DateRange } from 'bits-ui';
 
 	let logs: RequestLog[] = $state([]);
@@ -20,6 +20,10 @@
 	let totalItems: number = $state(0);
 
 	let request_time_range: DateRange = $state({
+		start: today(getLocalTimeZone()),
+		end: today(getLocalTimeZone())
+	});
+	let request_time_limit: DateRange = $state({
 		start: today(getLocalTimeZone()),
 		end: today(getLocalTimeZone())
 	});
@@ -61,6 +65,12 @@
 			const response = await getRequestLogs(params);
 			logs = response.logs;
 			totalItems = response.total;
+			if (response.request_time_range) {
+				request_time_limit = {
+					start: fromDate(new Date(response.request_time_range[0]), getLocalTimeZone()),
+					end: fromDate(new Date(response.request_time_range[1]), getLocalTimeZone())
+				};
+			}
 		} catch (e: any) {
 			error = e.message;
 		}
@@ -77,7 +87,11 @@
 		<h1 class="mb-4 text-2xl font-bold">请求日志</h1>
 
 		<div class="mb-4">
-			<DateRangePicker value={request_time_range} onValueChange={handleDateRangeChange} />
+			<DateRangePicker
+				value={request_time_range}
+				limit={request_time_limit}
+				onValueChange={handleDateRangeChange}
+			/>
 		</div>
 
 		<Notification message={error} type="error" autoHide={false} />

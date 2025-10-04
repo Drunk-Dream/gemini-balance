@@ -6,14 +6,17 @@
 
 	let {
 		value,
+		limit,
 		onValueChange = () => {}
-	}: { value: DateRange; onValueChange?: (value: DateRange) => void } = $props();
+	}: { value: DateRange; limit: DateRange; onValueChange?: (value: DateRange) => void } = $props();
 </script>
 
 <DateRangePicker.Root
 	weekdayFormat="short"
 	fixedWeeks={true}
 	class="flex w-full max-w-[360px] flex-col gap-1.5"
+	minValue={limit.start}
+	maxValue={limit.end}
 	{value}
 	{onValueChange}
 >
