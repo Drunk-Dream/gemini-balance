@@ -29,7 +29,6 @@
 		request_time_range = newRange;
 		if (newRange.start && newRange.end) {
 			currentPage = 1;
-			fetchLogs();
 		}
 	}
 

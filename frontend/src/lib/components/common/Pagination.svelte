@@ -12,23 +12,9 @@
 		perPage: number;
 		totalItems: number;
 	} = $props();
-
-	let totalPages = Math.ceil(totalItems / perPage);
-	// Function to handle page changes from bits-ui and call the external goToPage prop
-	function handlePageChange(page: number) {
-		if (page >= 1 && page <= totalPages) {
-			currentPage = page;
-		}
-	}
 </script>
 
-<Pagination.Root
-	count={totalItems}
-	{perPage}
-	siblingCount={2}
-	bind:page={currentPage}
-	onPageChange={handlePageChange}
->
+<Pagination.Root count={totalItems} {perPage} siblingCount={2} bind:page={currentPage}>
 	{#snippet children({ pages, range })}
 		<div class="mt-4 flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
 			<Pagination.PrevButton
@@ -52,19 +38,9 @@
 				{/each}
 			</div>
 
-			<div class="flex items-center space-x-2 text-sm md:text-base">
-				<span class="whitespace-nowrap"
-					>第 <input
-						type="number"
-						min="1"
-						max={totalPages}
-						value={currentPage}
-						onchange={(e) => handlePageChange(parseInt((e.target as HTMLInputElement).value))}
-						class="h-6 w-16 rounded border px-3 py-1 text-center text-sm md:w-20 md:text-base"
-					/>
-					/ {totalPages} 页 (共 {totalItems} 条)</span
-				>
-			</div>
+			<p class="text-sm text-gray-700 dark:text-gray-300">
+				{range.start} - {range.end} of {totalItems}
+			</p>
 
 			<Pagination.NextButton
 				class="flex cursor-pointer items-center rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"

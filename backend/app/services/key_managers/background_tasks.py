@@ -64,7 +64,7 @@ class BackgroundTaskManager:
                     if (
                         state
                         and state.cool_down_until <= time.time()
-                        and await self.check_key_health(key)
+                        and await self._check_key_health(key)
                     ):
                         await self._key_manager.reactivate_key(key)
                         app_logger.info(f"API key {key.brief} reactivated.")
@@ -95,7 +95,7 @@ class BackgroundTaskManager:
                 )
                 await asyncio.sleep(self._default_check_cooled_down_seconds)
 
-    async def check_key_health(self, key: KeyType) -> bool:
+    async def _check_key_health(self, key: KeyType) -> bool:
         """
         检查密钥的健康状况，如果健康再从冷却中释放
         """
