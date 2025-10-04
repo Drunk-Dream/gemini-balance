@@ -30,7 +30,4 @@ class RequestLogsResponse(BaseModel):
 
     logs: List[RequestLog]
     request_time_range: Optional[Tuple[datetime, datetime]] = None
-    key_identifiers: Optional[List[str]] = None
-    auth_key_aliases: Optional[List[str]] = None
-    model_names: Optional[List[str]] = None
     total: int

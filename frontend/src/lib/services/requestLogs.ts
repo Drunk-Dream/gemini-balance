@@ -20,9 +20,6 @@ export interface RequestLog {
 interface RequestLogsResponse {
 	logs: RequestLog[];
 	total: number;
-	key_identifiers?: string[];
-	auth_key_aliases?: string[];
-	model_names?: string[];
 	request_time_range: [string, string] | null;
 }
 
