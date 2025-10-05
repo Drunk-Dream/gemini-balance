@@ -7,17 +7,18 @@
 	import type { KeyStatus } from '$lib/features/key-management/types';
 // 导入 Notification 组件
 	import { api } from '$lib/api';
+	import type { NotificationObject } from '$lib/components/types';
 	import { onMount } from 'svelte';
 
 	let keyStatuses: KeyStatus[] = $state([]);
-	let errorMessage: string | null = $state(null);
 	let loading = $state(true);
-	let notificationMessage: string | null = $state(null); // 新增通知消息
-	let notificationType: 'success' | 'error' = $state('success'); // 新增通知类型
+	let notificationObject: NotificationObject = $state({
+		message: '',
+		type: 'success'
+	});
 
 	async function fetchKeyStatuses() {
 		loading = true;
-		errorMessage = null;
 		try {
 			const data = await api.get<{ keys: KeyStatus[] }>('/status/keys');
 			if (!data) {
@@ -25,8 +26,10 @@
 			}
 			keyStatuses = data.keys;
 		} catch (error: any) {
-			notificationMessage = `获取密钥状态失败: ${error.message}`;
-			notificationType = 'error';
+			notificationObject = {
+				message: `获取密钥状态失败: ${error.message}`,
+				type: 'error'
+			};
 		} finally {
 			loading = false;
 		}
@@ -34,8 +37,10 @@
 
 	async function addKeys(keysInput: string) {
 		if (!keysInput.trim()) {
-			notificationMessage = '请输入密钥';
-			notificationType = 'error';
+			notificationObject = {
+				message: '请输入密钥',
+				type: 'error'
+			};
 			return;
 		}
 		const keysArray = keysInput
@@ -43,18 +48,24 @@
 			.map((key) => key.trim())
 			.filter((key) => key);
 		if (keysArray.length === 0) {
-			notificationMessage = '请输入有效的密钥';
-			notificationType = 'error';
+			notificationObject = {
+				message: '请输入有效的密钥',
+				type: 'error'
+			};
 			return;
 		}
 		try {
 			await api.post('/keys', { api_keys: keysArray });
-			notificationMessage = '密钥添加成功！';
-			notificationType = 'success';
+			notificationObject = {
+				message: '密钥添加成功！',
+				type: 'success'
+			};
 			fetchKeyStatuses();
 		} catch (error: any) {
-			notificationMessage = `添加密钥失败: ${error.message}`;
-			notificationType = 'error';
+			notificationObject = {
+				message: `添加密钥失败: ${error.message}`,
+				type: 'error'
+			};
 			console.error('添加密钥失败:', error);
 		}
 	}
@@ -65,12 +76,16 @@
 		}
 		try {
 			await api.delete(`/keys/${keyIdentifier}`);
-			notificationMessage = `密钥 "${keyIdentifier}" 删除成功！`;
-			notificationType = 'success';
+			notificationObject = {
+				message: `密钥 "${keyIdentifier}" 删除成功！`,
+				type: 'success'
+			};
 			fetchKeyStatuses();
 		} catch (error: any) {
-			notificationMessage = `删除密钥失败: ${error.message}`;
-			notificationType = 'error';
+			notificationObject = {
+				message: `删除密钥失败: ${error.message}`,
+				type: 'error'
+			};
 			console.error('删除密钥失败:', error);
 		}
 	}
@@ -81,12 +96,16 @@
 		}
 		try {
 			await api.post(`/keys/${keyIdentifier}/reset`, {});
-			notificationMessage = `密钥 "${keyIdentifier}" 状态重置成功！`;
-			notificationType = 'success';
+			notificationObject = {
+				message: `密钥 "${keyIdentifier}" 状态重置成功！`,
+				type: 'success'
+			};
 			fetchKeyStatuses();
 		} catch (error: any) {
-			notificationMessage = `重置密钥状态失败: ${error.message}`;
-			notificationType = 'error';
+			notificationObject = {
+				message: `重置密钥状态失败: ${error.message}`,
+				type: 'error'
+			};
 			console.error('重置密钥状态失败:', error);
 		}
 	}
@@ -97,12 +116,16 @@
 		}
 		try {
 			await api.post('/keys/reset', {});
-			notificationMessage = '所有密钥状态重置成功！';
-			notificationType = 'success';
+			notificationObject = {
+				message: '所有密钥状态重置成功！',
+				type: 'success'
+			};
 			fetchKeyStatuses();
 		} catch (error: any) {
-			notificationMessage = `重置所有密钥状态失败: ${error.message}`;
-			notificationType = 'error';
+			notificationObject = {
+				message: `重置所有密钥状态失败: ${error.message}`,
+				type: 'error'
+			};
 			console.error('重置所有密钥状态失败:', error);
 		}
 	}
@@ -120,13 +143,9 @@
 
 		<KeyActions {fetchKeyStatuses} {resetAllKeys} {addKeys} {loading} />
 
-		<Notification message={notificationMessage} type={notificationType} />
+		<Notification message={notificationObject.message} type={notificationObject.type} />
 
-		{#if errorMessage}
-			<Notification message={errorMessage} type="error" />
-		{:else}
-			<KeyStatusSummary {keyStatuses} />
-			<KeyList {keyStatuses} {resetKey} {deleteKey} />
-		{/if}
+		<KeyStatusSummary {keyStatuses} />
+		<KeyList {keyStatuses} {resetKey} {deleteKey} />
 	</div>
 </AuthGuard>
