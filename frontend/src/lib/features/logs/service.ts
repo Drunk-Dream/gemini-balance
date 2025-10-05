@@ -24,10 +24,6 @@ interface RequestLogsResponse {
 export interface GetRequestLogsParams {
 	request_time_start: string;
 	request_time_end: string;
-	key_identifier?: string;
-	auth_key_alias?: string;
-	model_name?: string;
-	is_success?: boolean;
 	limit?: number;
 	offset?: number;
 }

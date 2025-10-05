@@ -74,10 +74,6 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         self,
         request_time_start: Optional[datetime] = None,
         request_time_end: Optional[datetime] = None,
-        key_identifier: Optional[str] = None,
-        auth_key_alias: Optional[str] = None,
-        model_name: Optional[str] = None,
-        is_success: Optional[bool] = None,
     ) -> tuple[str, list]:
         """
         构建 WHERE 子句和参数列表。
@@ -91,18 +87,6 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         if request_time_end:
             query_parts.append("AND request_time <= ?")
             params.append(request_time_end.timestamp())
-        if key_identifier:
-            query_parts.append("AND key_identifier = ?")
-            params.append(key_identifier)
-        if auth_key_alias:
-            query_parts.append("AND auth_key_alias = ?")
-            params.append(auth_key_alias)
-        if model_name:
-            query_parts.append("AND model_name = ?")
-            params.append(model_name)
-        if is_success is not None:
-            query_parts.append("AND is_success = ?")
-            params.append(int(is_success))
 
         return " ".join(query_parts), params
 
@@ -110,10 +94,6 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         self,
         request_time_start: Optional[datetime] = None,
         request_time_end: Optional[datetime] = None,
-        key_identifier: Optional[str] = None,
-        auth_key_alias: Optional[str] = None,
-        model_name: Optional[str] = None,
-        is_success: Optional[bool] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> tuple[List[RequestLog], int]:
@@ -123,10 +103,6 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         filter_query, filter_params = self._build_filter_query(
             request_time_start,
             request_time_end,
-            key_identifier,
-            auth_key_alias,
-            model_name,
-            is_success,
         )
 
         async with aiosqlite.connect(self.db_path) as db:
@@ -278,34 +254,3 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 return min_time, max_time
 
             return None
-
-    async def get_distinct_values_for_filters(
-        self,
-    ) -> Tuple[List[str], List[str], List[str]]:
-        """
-        获取 key_identifier, auth_key_alias, model_name 列的所有不重复值。
-        """
-        key_identifiers: List[str] = []
-        auth_key_aliases: List[str] = []
-        model_names: List[str] = []
-
-        async with aiosqlite.connect(self.db_path) as db:
-            # 获取不重复的 key_identifier
-            cursor = await db.execute(
-                "SELECT DISTINCT key_identifier FROM request_logs ORDER BY key_identifier"
-            )
-            key_identifiers = [row[0] for row in await cursor.fetchall()]
-
-            # 获取不重复的 auth_key_alias
-            cursor = await db.execute(
-                "SELECT DISTINCT auth_key_alias FROM request_logs ORDER BY auth_key_alias"
-            )
-            auth_key_aliases = [row[0] for row in await cursor.fetchall()]
-
-            # 获取不重复的 model_name
-            cursor = await db.execute(
-                "SELECT DISTINCT model_name FROM request_logs ORDER BY model_name"
-            )
-            model_names = [row[0] for row in await cursor.fetchall()]
-
-        return key_identifiers, auth_key_aliases, model_names

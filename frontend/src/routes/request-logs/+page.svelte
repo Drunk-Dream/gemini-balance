@@ -44,19 +44,14 @@
 
 			const offset = (currentPage - 1) * itemsPerPage;
 
-			const filters = {
-				request_time_start: request_time_range.start
-					? request_time_range.start.toDate(getLocalTimeZone()).toISOString()
-					: '',
-				request_time_end: request_time_range.end
-					? request_time_range.end.add({ days: 1 }).toDate(getLocalTimeZone()).toISOString()
-					: ''
-			};
-
 			const params: GetRequestLogsParams = {
 				limit: itemsPerPage,
 				offset,
-				...filters
+				request_time_start: request_time_range.start.toDate(getLocalTimeZone()).toISOString(),
+				request_time_end: request_time_range.end
+					.add({ days: 1 })
+					.toDate(getLocalTimeZone())
+					.toISOString()
 			};
 
 			const response = await getRequestLogs(params);

@@ -42,10 +42,6 @@ class RequestLogManager:
         self,
         request_time_start: Optional[datetime] = None,
         request_time_end: Optional[datetime] = None,
-        key_identifier: Optional[str] = None,
-        auth_key_alias: Optional[str] = None,
-        model_name: Optional[str] = None,
-        is_success: Optional[bool] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> RequestLogsResponse:
@@ -55,10 +51,6 @@ class RequestLogManager:
         logs, total = await self._db_manager.get_request_logs_with_count(
             request_time_start=request_time_start,
             request_time_end=request_time_end,
-            key_identifier=key_identifier,
-            auth_key_alias=auth_key_alias,
-            model_name=model_name,
-            is_success=is_success,
             limit=limit,
             offset=offset,
         )

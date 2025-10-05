@@ -59,10 +59,3 @@ class RequestLogDBManager(abc.ABC):
         获取请求日志记录的时间范围。
         """
         raise NotImplementedError
-
-    @abc.abstractmethod
-    async def get_distinct_values_for_filters(self) -> Tuple[List[str], List[str], List[str]]:
-        """
-        获取 key_identifier, auth_key_alias, model_name 列的所有不重复值。
-        """
-        raise NotImplementedError
