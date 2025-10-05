@@ -22,13 +22,14 @@
 
 本项目采用分层架构，主要模块包括：
 
-- **前端层**: 使用 Svelte (已迁移至 Svelte 5 Runes) 构建用户界面，用于展示日志信息、管理 **服务密钥池** 和**用户个人 API 密钥**。前端已实现响应式布局、登录后自动跳转、统一的密钥添加输入框等功能，优化了用户体验。新增了 `LogViewer` 组件用于日志显示，并对认证密钥管理、登录表单、通知等功能进行了组件化重构。前端静态文件由后端 FastAPI 提供服务。
+- **前端层**: 使用 Svelte (已迁移至 Svelte 5 Runes) 构建用户界面，用于展示日志信息、管理 **服务密钥池** 和**用户个人 API 密钥**。前端已实现响应式布局、登录后自动跳转、统一的密钥添加输入框等功能，优化了用户体验。新增了 `LogViewer` 组件用于日志显示，并对认证密钥管理、登录表单、通知等功能进行了组件化重构。**新增了日期范围选择器，并根据实际日志数据限制可选范围，提升了日志筛选的准确性和用户体验。UI 配色方案已从蓝色更新为更统一的灰色调。**前端静态文件由后端 FastAPI 提供服务。
 - **API 层**: 使用 FastAPI 定义 RESTful API 端点，并按 `v1`,`v1beta` (转发) 和 `api` (管理) 进行版本化。
   - **认证端点 (`/api/auth`)**: 提供基于 JWT 的用户登录功能。
   - **用户密钥管理端点 (`/api/auth_keys`)**: 允许认证用户对自己的 API 密钥进行增删改查 (CRUD) 操作。
   - **服务密钥池管理端点 (`/api/keys`)**: 允许认证用户管理后端的服务密钥池。
   - **请求日志管理端点 (`/api/request_logs`)**: 提供查询和检索详细请求日志的功能。
   - **API 代理端点 (`/v1/chat`)**: 负责接收和验证客户端请求，并转发至相应的服务层。
+  - **API 代理端点 (`/v1beta`)**: 负责接收和验证客户端请求，并转发至 Gemini 格式的请求。
 - **服务层**:
   - **`auth_key_manager`**: 封装用户级 API 密钥的业务逻辑，支持 SQLite 作为后端，并扩展了完整的 CRUD 操作。
   - **`chat_service`**: 包含 `GeminiService` 和 `OpenAIService`，继承自通用的 `ApiService` 基类，负责处理对 Google Gemini 和 OpenAI API 的请求转发、函数调用和流式响应。引入了 HTTP 客户端自动重建机制和请求级上下文对象 `RequestInfo` 以增强韧性。
@@ -37,7 +38,7 @@
   - **JWT 认证**: 使用 `python-jose` 和 `passlib` 实现基于密码的登录认证和 JWT 令牌的生成与验证。
   - **依赖注入**: 通过 FastAPI 的 `Depends` 机制，对需要授权的 API 端点强制执行 JWT 令牌验证。
 - **密钥管理层 (服务密钥池)**: 高度模块化和可插拔的**服务密钥池**管理系统，位于 `backend/app/services/key_managers/`。
-  - **`KeyStateManager`**: 负责核心的 API 密钥状态管理逻辑，包括密钥的获取、归还、冷却、指数退避和失败计数。新增了**动态冷却检查间隔**和**处理卡死密钥的超时机制**，以提升系统的韧性。
+  - **`KeyStateManager`**: 负责核心的 API 密钥状态管理逻辑，包括密钥的获取、归还、冷却、指数退避和失败计数。新增了**动态冷却检查间隔**、**处理卡死密钥的超时机制**和**密钥冷却后自动健康检查**，以提升系统的韧性。
   - **`DBManager` (抽象基类)** 与具体实现 (`SQLiteDBManager`): 为 `KeyStateManager` 提供**异步 SQLite (`aiosqlite`)** 的持久化后端，实现了逻辑与存储的解耦。项目已**移除 Redis 支持**，全面转向并标准化使用 SQLite。
 - **数据库迁移系统**: 引入了基于 `BaseMigrationManager` 的**动态、可版本化**的数据库迁移系统，支持在应用启动时自动处理 SQLite 的版本化 schema 变更。
 - **核心配置层**: 使用 `pydantic-settings` 统一管理应用配置和日志设置。引入了多项可配置参数，如 `REQUEST_TIMEOUT_SECONDS` 和 `CONCURRENCY_TIMEOUT_SECONDS`。
@@ -47,7 +48,7 @@
 ## 关键技术栈
 
 - **后端框架**: FastAPI (Python)
-- **前端框架**: SvelteKit (Svelte 5)
+- **前端框架**: SvelteKit (Svelte 5), `bits-ui`, `@internationalized/date`
 - **异步**: Python `asyncio`, **`aiosqlite`**
 - **认证**: **`python-jose[cryptography]`**, **`passlib[bcrypt]`**
 - **HTTP 客户端**: httpx
