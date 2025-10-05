@@ -1,6 +1,6 @@
 <script lang="ts">
-	import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
-	import LogViewer from '$lib/components/logs/LogViewer.svelte';
+	import AuthGuard from '$lib/features/auth/components/AuthGuard.svelte';
+	import LogViewer from '$lib/features/logs/components/LogViewer.svelte';
 	import { onDestroy, onMount } from 'svelte';
 
 	let logs: string[] = $state([]);

@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import LoginForm from '$lib/components/auth/LoginForm.svelte';
-	import { authToken, isAuthenticated } from '$lib/stores';
+	import type { ResolvedPathname } from '$app/types';
+	import LoginForm from '$lib/features/auth/components/LoginForm.svelte';
+	import { authToken, isAuthenticated } from '$lib/features/auth/store';
 	import { onMount } from 'svelte';
 
 	let password = $state('');
 	let errorMessage: string | null = $state(null);
 	let loading = $state(false);
 
-	const redirectUrl = page.url.searchParams.get('redirect') ?? '/';
+	const redirectUrl = (page.url.searchParams.get('redirect') as ResolvedPathname) ?? resolve('/');
 
 	onMount(() => {
 		if ($isAuthenticated) {

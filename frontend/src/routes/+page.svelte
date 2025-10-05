@@ -1,12 +1,12 @@
 <script lang="ts">
-	import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
-	import Notification from '$lib/components/common/Notification.svelte';
-	import KeyActions from '$lib/components/key-management/KeyActions.svelte';
-	import KeyList from '$lib/components/key-management/KeyList.svelte';
-	import KeyStatusSummary from '$lib/components/key-management/KeyStatusSummary.svelte';
-	import type { KeyStatus } from '$lib/types/key-management';
+	import Notification from '$lib/components/Notification.svelte';
+	import AuthGuard from '$lib/features/auth/components/AuthGuard.svelte';
+	import KeyActions from '$lib/features/key-management/components/KeyActions.svelte';
+	import KeyList from '$lib/features/key-management/components/KeyList.svelte';
+	import KeyStatusSummary from '$lib/features/key-management/components/KeyStatusSummary.svelte';
+	import type { KeyStatus } from '$lib/features/key-management/types';
 // 导入 Notification 组件
-	import { api } from '$lib/utils/api';
+	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
 
 	let keyStatuses: KeyStatus[] = $state([]);

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import AddAuthKeyForm from '$lib/components/auth-keys/AddAuthKeyForm.svelte';
-	import AuthKeyTable from '$lib/components/auth-keys/AuthKeyTable.svelte';
-	import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
-	import Notification from '$lib/components/common/Notification.svelte';
-	import { api } from '$lib/utils/api';
+	import { api } from '$lib/api';
+	import Notification from '$lib/components/Notification.svelte';
+	import AddAuthKeyForm from '$lib/features/auth-keys/components/AddAuthKeyForm.svelte';
+	import AuthKeyTable from '$lib/features/auth-keys/components/AuthKeyTable.svelte';
+	import AuthGuard from '$lib/features/auth/components/AuthGuard.svelte';
 	import { onMount } from 'svelte';
 
 	interface AuthKey {

@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { authService } from '$lib/services/auth';
-    import { isAuthenticated } from '$lib/stores';
-    import { quintOut } from 'svelte/easing';
-    import { slide } from 'svelte/transition';
-    import NavLink from './NavLink.svelte';
+import { authService } from '$lib/features/auth/service';
+import { isAuthenticated } from '$lib/features/auth/store';
+import { quintOut } from 'svelte/easing';
+import { slide } from 'svelte/transition';
+import NavLink from './NavLink.svelte';
 
     let { sidebarOpen, toggleSidebar, isMobile } = $props();
 

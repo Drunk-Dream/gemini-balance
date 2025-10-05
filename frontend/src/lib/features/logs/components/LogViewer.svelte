@@ -1,7 +1,7 @@
 <script lang="ts">
 	// 导入 Notification 组件
-	import Notification from '$lib/components/common/Notification.svelte';
-	import { colorizeLog } from '$lib/utils/logUtils';
+	import Notification from '$lib/components/Notification.svelte';
+	import { colorizeLog } from '$lib/features/logs/utils';
 	import { tick } from 'svelte';
 
 	let { logs, errorMessage }: { logs: string[]; errorMessage: string | null } = $props();
@@ -31,9 +31,11 @@
 			showScrollToBottomButton = scrollHeight - scrollTop > clientHeight + 50;
 
 			// Disable auto-scroll if user scrolls up
-			if (scrollHeight - scrollTop > clientHeight + 100) { // A bit more buffer to disable auto-scroll
+			if (scrollHeight - scrollTop > clientHeight + 100) {
+				// A bit more buffer to disable auto-scroll
 				autoScroll = false;
-			} else if (scrollHeight - scrollTop <= clientHeight + 50) { // Re-enable if user scrolls back to bottom
+			} else if (scrollHeight - scrollTop <= clientHeight + 50) {
+				// Re-enable if user scrolls back to bottom
 				autoScroll = true;
 			}
 		}

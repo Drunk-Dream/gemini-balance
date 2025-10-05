@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { RequestLog } from '$lib/services/requestLogs';
+	import type { RequestLog } from '$lib/features/logs/service';
 
 	let {
 		logs

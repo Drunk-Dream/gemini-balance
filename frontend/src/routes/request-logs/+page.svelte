@@ -1,14 +1,14 @@
 <script lang="ts">
-	import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
-	import Notification from '$lib/components/common/Notification.svelte';
-	import Pagination from '$lib/components/common/Pagination.svelte';
-	import DateRangePicker from '$lib/components/logs/DateRangePicker.svelte';
-	import RequestLogTable from '$lib/components/logs/RequestLogTable.svelte';
+	import Notification from '$lib/components/Notification.svelte';
+	import Pagination from '$lib/components/Pagination.svelte';
+	import AuthGuard from '$lib/features/auth/components/AuthGuard.svelte';
+	import DateRangePicker from '$lib/features/logs/components/DateRangePicker.svelte';
+	import RequestLogTable from '$lib/features/logs/components/RequestLogTable.svelte';
 	import {
 		getRequestLogs,
 		type GetRequestLogsParams,
 		type RequestLog
-	} from '$lib/services/requestLogs';
+	} from '$lib/features/logs/service';
 	import { fromDate, getLocalTimeZone, today } from '@internationalized/date';
 	import type { DateRange } from 'bits-ui';
 

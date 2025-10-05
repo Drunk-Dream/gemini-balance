@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { KeyStatus } from '$lib/types/key-management';
+	import type { KeyStatus } from '$lib/features/key-management/types';
 	import { flip } from 'svelte/animate';
 	import { quintOut } from 'svelte/easing';
 	import KeyCard from './KeyCard.svelte';

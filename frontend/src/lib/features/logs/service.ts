@@ -1,4 +1,4 @@
-import { api } from '$lib/utils/api';
+import { api } from '$lib/api';
 
 export interface RequestLog {
 	id: number;

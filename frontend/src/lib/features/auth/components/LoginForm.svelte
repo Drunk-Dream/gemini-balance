@@ -1,6 +1,6 @@
 <script lang="ts">
 	// 导入 Notification 组件
-	import Notification from '$lib/components/common/Notification.svelte';
+	import Notification from '$lib/components/Notification.svelte';
 	let {
 		password = $bindable(),
 		handleLogin,

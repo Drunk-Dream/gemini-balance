@@ -1,4 +1,4 @@
-import { authToken } from '$lib/stores';
+import { authToken } from '$lib/features/auth/store';
 import { get } from 'svelte/store';
 
 const API_BASE_URL = '/api';
