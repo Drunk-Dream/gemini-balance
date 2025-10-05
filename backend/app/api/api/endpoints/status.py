@@ -23,7 +23,7 @@ async def get_api_key_status(
     - cool_down_entry_count: 该 Key 进入冷却状态的总次数。
     - current_cool_down_seconds: 当前 Key 的冷却时长。
     """
-    key_states = await key_manager.get_key_states()
+    key_states = await key_manager.get_all_key_states()
     daily_usage_stats = await request_log_manager.get_daily_model_usage_stats()
     for key_state in key_states:
         key_state.daily_usage = daily_usage_stats.get(key_state.key_identifier, {})

@@ -94,6 +94,7 @@ class KeyStateManager:
             self._max_cool_down_seconds,
         )
 
+    # --------------- Key Management ---------------
     @with_key_manager_lock
     async def add_key(self, api_key: str) -> str:
         key_identifier = self._get_key_identifier(api_key)
@@ -121,6 +122,44 @@ class KeyStateManager:
         await self._db_manager.reset_all_key_states()
         app_logger.info("Reset state for all API keys.")
 
+    # --------------- Get Key State ---------------
+    @with_key_manager_lock
+    async def get_key_state(self, key: KeyType) -> KeyState | None:
+        return await self._db_manager.get_key_state(key)
+
+    @with_key_manager_lock
+    async def get_all_key_states(self) -> List[KeyStatusResponse]:
+        states_response = []
+        now = time.time()
+        states = await self._db_manager.get_all_key_states()
+
+        for state in states:
+            key_identifier = state.key_identifier
+            key_brief = self._db_manager.key_to_brief(state.api_key)
+            cool_down_remaining = max(0, state.cool_down_until - now)
+
+            if state.is_in_use:
+                status = "in_use"
+            elif state.is_cooled_down:
+                status = "cooling_down"
+            else:
+                status = "active"
+
+            states_response.append(
+                KeyStatusResponse(
+                    key_identifier=key_identifier,
+                    key_brief=key_brief,
+                    status=status,
+                    cool_down_seconds_remaining=round(cool_down_remaining),
+                    daily_usage={},  # 由RequestLogManager提供，在请求端点处添加
+                    failure_count=state.request_fail_count,
+                    cool_down_entry_count=state.cool_down_entry_count,
+                    current_cool_down_seconds=self._calculate_cool_down_seconds(state),
+                    is_in_use=state.is_in_use,
+                )
+            )
+        return states_response
+
     @with_key_manager_lock
     async def get_next_key(self) -> Optional[KeyType]:
         key = await self._db_manager.get_next_available_key()
@@ -129,6 +168,24 @@ class KeyStateManager:
         await self._db_manager.move_to_use(key)
         return key
 
+    @with_key_manager_lock
+    async def get_releasable_keys(self) -> List[KeyType]:
+        return await self._db_manager.get_releasable_keys()
+
+    @with_key_manager_lock
+    async def get_keys_in_use(self) -> List[KeyType]:
+        return await self._db_manager.get_keys_in_use()
+
+    @with_key_manager_lock
+    async def get_available_keys_count(self) -> int:
+        counts = await self._db_manager.get_available_keys_count()
+        return counts
+
+    @with_key_manager_lock
+    async def get_min_cool_down_until(self) -> float | None:
+        return await self._db_manager.get_min_cool_down_until()
+
+    # --------------- Change Key State ---------------
     @with_key_manager_lock
     async def mark_key_fail(self, key: KeyType, error_type: ErrorType):
         error_type_str = error_type.value
@@ -184,62 +241,8 @@ class KeyStateManager:
         await self._db_manager.reactivate_key(key)
 
     @with_key_manager_lock
-    async def get_key_states(self) -> List[KeyStatusResponse]:
-        states_response = []
-        now = time.time()
-        states = await self._db_manager.get_all_key_states()
-
-        for state in states:
-            key_identifier = state.key_identifier
-            key_brief = self._db_manager.key_to_brief(state.api_key)
-            cool_down_remaining = max(0, state.cool_down_until - now)
-
-            if state.is_in_use:
-                status = "in_use"
-            elif state.is_cooled_down:
-                status = "cooling_down"
-            else:
-                status = "active"
-
-            states_response.append(
-                KeyStatusResponse(
-                    key_identifier=key_identifier,
-                    key_brief=key_brief,
-                    status=status,
-                    cool_down_seconds_remaining=round(cool_down_remaining, 2),
-                    daily_usage={},  # 由RequestLogManager提供，在请求端点处添加
-                    failure_count=state.request_fail_count,
-                    cool_down_entry_count=state.cool_down_entry_count,
-                    current_cool_down_seconds=self._calculate_cool_down_seconds(state),
-                    is_in_use=state.is_in_use,
-                )
-            )
-        return states_response
-
-    @with_key_manager_lock
-    async def get_available_keys_count(self) -> int:
-        counts = await self._db_manager.get_available_keys_count()
-        return counts
-
-    @with_key_manager_lock
-    async def get_releasable_keys(self) -> List[KeyType]:
-        return await self._db_manager.get_releasable_keys()
-
-    @with_key_manager_lock
-    async def get_key_state(self, key: KeyType) -> KeyState | None:
-        return await self._db_manager.get_key_state(key)
-
-    @with_key_manager_lock
-    async def get_min_cool_down_until(self) -> float | None:
-        return await self._db_manager.get_min_cool_down_until()
-
-    @with_key_manager_lock
     async def reactivate_key(self, key: KeyType):
         await self._db_manager.reactivate_key(key)
-
-    @with_key_manager_lock
-    async def get_keys_in_use(self) -> List[KeyType]:
-        return await self._db_manager.get_keys_in_use()
 
     @with_key_manager_lock
     async def release_key_from_use(self, key: KeyType):

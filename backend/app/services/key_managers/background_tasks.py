@@ -49,6 +49,7 @@ class BackgroundTaskManager:
             cls._instance = cls(settings)
         return cls._instance
 
+    # --------------- Release Key From Cool Down ---------------
     async def _release_cooled_down_keys(
         self,
     ):
@@ -127,6 +128,43 @@ class BackgroundTaskManager:
 
         return True
 
+    async def start_background_task(self):
+        """
+        启动后台任务，用于定期释放冷却中的密钥。
+        """
+        if self._background_task is None or self._background_task.done():
+            app_logger.info("Starting background task for releasing cooled down keys.")
+            self._background_task = asyncio.create_task(
+                self._release_cooled_down_keys()
+            )
+
+    def stop_background_task(self):
+        """
+        停止后台任务。
+        """
+        if self._background_task:
+            app_logger.info("Stopping background task for releasing cooled down keys.")
+            self._background_task.cancel()
+            self._background_task = None
+
+        for key_identifier, task in list(self.timeout_tasks.items()):
+            if not task.done():
+                task.cancel()
+                app_logger.debug(f"Cancelled timeout task for key {key_identifier}.")
+            del self.timeout_tasks[key_identifier]
+        app_logger.info("All timeout tasks cancelled.")
+
+    # --------------- Release Key From Use ---------------
+    async def initialize_key_states(self):
+        """
+        应用启动时初始化密钥状态，释放所有处于“使用中”状态的密钥。
+        """
+        keys_in_use = await self._key_manager.get_keys_in_use()
+        for key in keys_in_use:
+            app_logger.warning(f"Releasing {key.brief} from use due to initialization.")
+            await self._key_manager.release_key_from_use(key)
+        app_logger.info("Key states initialized: all 'in_use' keys released.")
+
     async def _timeout_release_key(
         self,
         key: KeyType,
@@ -174,42 +212,6 @@ class BackgroundTaskManager:
             if not task.done():
                 task.cancel()
                 app_logger.debug(f"Cancelled timeout task for key {key.brief}.")
-
-    async def initialize_key_states(self):
-        """
-        应用启动时初始化密钥状态，释放所有处于“使用中”状态的密钥。
-        """
-        keys_in_use = await self._key_manager.get_keys_in_use()
-        for key in keys_in_use:
-            app_logger.warning(f"Releasing {key.brief} from use due to initialization.")
-            await self._key_manager.release_key_from_use(key)
-        app_logger.info("Key states initialized: all 'in_use' keys released.")
-
-    async def start_background_task(self):
-        """
-        启动后台任务，用于定期释放冷却中的密钥。
-        """
-        if self._background_task is None or self._background_task.done():
-            app_logger.info("Starting background task for releasing cooled down keys.")
-            self._background_task = asyncio.create_task(
-                self._release_cooled_down_keys()
-            )
-
-    def stop_background_task(self):
-        """
-        停止后台任务。
-        """
-        if self._background_task:
-            app_logger.info("Stopping background task for releasing cooled down keys.")
-            self._background_task.cancel()
-            self._background_task = None
-
-        for key_identifier, task in list(self.timeout_tasks.items()):
-            if not task.done():
-                task.cancel()
-                app_logger.debug(f"Cancelled timeout task for key {key_identifier}.")
-            del self.timeout_tasks[key_identifier]
-        app_logger.info("All timeout tasks cancelled.")
 
 
 def get_background_task_manager(request: Request) -> BackgroundTaskManager:
