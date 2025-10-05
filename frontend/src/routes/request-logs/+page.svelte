@@ -9,7 +9,6 @@
 		type GetRequestLogsParams,
 		type RequestLog
 	} from '$lib/services/requestLogs';
-	import { TZDate } from '@date-fns/tz';
 	import { fromDate, getLocalTimeZone, today } from '@internationalized/date';
 	import type { DateRange } from 'bits-ui';
 
@@ -47,12 +46,10 @@
 
 			const filters = {
 				request_time_start: request_time_range.start
-					? new TZDate(request_time_range.start.toDate(getLocalTimeZone())).toISOString()
+					? request_time_range.start.toDate(getLocalTimeZone()).toISOString()
 					: '',
 				request_time_end: request_time_range.end
-					? new TZDate(
-							request_time_range.end.add({ days: 1 }).toDate(getLocalTimeZone())
-						).toISOString()
+					? request_time_range.end.add({ days: 1 }).toDate(getLocalTimeZone()).toISOString()
 					: ''
 			};
 
