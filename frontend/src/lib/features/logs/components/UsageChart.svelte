@@ -46,11 +46,13 @@
 						containLabel: true
 					},
 					xAxis: {
-						type: 'value'
+						type: 'value',
+						position: 'top' // 将 x 轴放在顶部
 					},
 					yAxis: {
 						type: 'category',
-						data: chartData.labels // key_identifier 作为 Y 轴
+						data: chartData.labels, // key_identifier 作为 Y 轴
+						inverse: true // Y 轴数据从上到下排列
 					},
 					series: series
 				};

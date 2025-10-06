@@ -4,7 +4,7 @@
 	import UsageChart from '$lib/features/logs/components/UsageChart.svelte';
 
 	// 假设我们从某个地方获取时区，这里暂时硬编码
-	const timezone_str = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const timezone_str = "America/New_York";
 </script>
 
 <AuthGuard>
