@@ -11,13 +11,13 @@ from fastapi import Request
 from backend.app.core.config import Settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
-from backend.app.services.key_managers.key_state_manager import (
+from backend.app.services.request_key_manager.key_state_manager import (
     KeyStateManager,
     get_key_db_manager,
 )
 
 if TYPE_CHECKING:
-    from backend.app.services.key_managers.db_manager import KeyType
+    from backend.app.services.request_key_manager.db_manager import KeyType
 
 
 class BackgroundTaskManager:

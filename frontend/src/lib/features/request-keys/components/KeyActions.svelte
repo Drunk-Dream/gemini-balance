@@ -2,12 +2,12 @@
 	import { Dialog } from 'bits-ui';
 
 	let {
-		fetchKeyStatuses,
+		fetchKeyStatusResponse,
 		resetAllKeys,
 		addKeys,
 		loading
 	}: {
-		fetchKeyStatuses: () => Promise<void>;
+		fetchKeyStatusResponse: () => Promise<void>;
 		resetAllKeys: () => Promise<void>;
 		addKeys: (keysInput: string) => Promise<void>;
 		loading: boolean;
@@ -25,7 +25,7 @@
 
 <div class="mb-6 flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
 	<button
-		onclick={fetchKeyStatuses}
+		onclick={fetchKeyStatusResponse}
 		class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none sm:text-base"
 		disabled={loading}
 	>

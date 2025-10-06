@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, List, Optional
 
 import aiosqlite
 
-from backend.app.services.key_managers.db_manager import DBManager
-from backend.app.services.key_managers.schemas import KeyState, KeyType
+from backend.app.services.request_key_manager.db_manager import DBManager
+from backend.app.services.request_key_manager.schemas import KeyState, KeyType
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
@@ -220,6 +220,31 @@ class SQLiteDBManager(DBManager):
         async with aiosqlite.connect(self.sqlite_db) as db:
             cursor = await db.execute(
                 "SELECT COUNT(*) FROM key_states WHERE is_in_use = 0 AND is_cooled_down = 0"
+            )
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+
+    async def get_total_keys_count(self) -> int:
+        """Get the total count of all keys."""
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM key_states")
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+
+    async def get_in_use_keys_count(self) -> int:
+        """Get the count of keys that are currently in use."""
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM key_states WHERE is_in_use = 1"
+            )
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+
+    async def get_cooled_down_keys_count(self) -> int:
+        """Get the count of keys that are currently cooled down."""
+        async with aiosqlite.connect(self.sqlite_db) as db:
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM key_states WHERE is_cooled_down = 1"
             )
             row = await cursor.fetchone()
             return row[0] if row else 0

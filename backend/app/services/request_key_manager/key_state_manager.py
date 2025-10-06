@@ -7,7 +7,6 @@ from typing import (
     TYPE_CHECKING,
     Awaitable,
     Callable,
-    Dict,
     List,
     Optional,
     ParamSpec,
@@ -15,35 +14,23 @@ from typing import (
 )
 
 from fastapi import Depends
-from pydantic import BaseModel
 
+from backend.app.api.api.schemas.request_keys import KeyStatus, KeyStatusResponse
 from backend.app.core.config import get_settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
-from backend.app.services.key_managers.db_manager import DBManager, KeyType
-from backend.app.services.key_managers.sqlite_manager import SQLiteDBManager
+from backend.app.services.request_key_manager.db_manager import DBManager, KeyType
+from backend.app.services.request_key_manager.sqlite_manager import SQLiteDBManager
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
-    from backend.app.services.key_managers.schemas import KeyState
+    from backend.app.services.request_key_manager.schemas import KeyState
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
 
 # 在模块级别创建全局锁
 key_manager_lock = asyncio.Lock()
-
-
-class KeyStatusResponse(BaseModel):
-    key_identifier: str
-    key_brief: str
-    status: str
-    cool_down_seconds_remaining: float
-    daily_usage: Dict[str, int]
-    failure_count: int
-    cool_down_entry_count: int
-    current_cool_down_seconds: int
-    is_in_use: bool  # 新增字段
 
 
 def get_key_db_manager(
@@ -128,8 +115,8 @@ class KeyStateManager:
         return await self._db_manager.get_key_state(key)
 
     @with_key_manager_lock
-    async def get_all_key_states(self) -> List[KeyStatusResponse]:
-        states_response = []
+    async def get_all_key_status(self) -> KeyStatusResponse:
+        states_response: List[KeyStatus] = []
         now = time.time()
         states = await self._db_manager.get_all_key_states()
 
@@ -146,19 +133,28 @@ class KeyStateManager:
                 status = "active"
 
             states_response.append(
-                KeyStatusResponse(
+                KeyStatus(
                     key_identifier=key_identifier,
                     key_brief=key_brief,
                     status=status,
                     cool_down_seconds_remaining=round(cool_down_remaining),
-                    daily_usage={},  # 由RequestLogManager提供，在请求端点处添加
                     failure_count=state.request_fail_count,
                     cool_down_entry_count=state.cool_down_entry_count,
                     current_cool_down_seconds=self._calculate_cool_down_seconds(state),
-                    is_in_use=state.is_in_use,
                 )
             )
-        return states_response
+
+        total_keys_count = await self._db_manager.get_total_keys_count()
+        in_use_keys_count = await self._db_manager.get_in_use_keys_count()
+        cooled_down_keys_count = await self._db_manager.get_cooled_down_keys_count()
+        available_keys_count = await self._db_manager.get_available_keys_count()
+        return KeyStatusResponse(
+            keys=states_response,
+            total_keys_count=total_keys_count,
+            in_use_keys_count=in_use_keys_count,
+            cooled_down_keys_count=cooled_down_keys_count,
+            available_keys_count=available_keys_count,
+        )
 
     @with_key_manager_lock
     async def get_next_key(self) -> Optional[KeyType]:

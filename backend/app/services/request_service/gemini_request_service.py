@@ -12,7 +12,7 @@ from backend.app.services.request_service.base_request_service import BaseReques
 
 if TYPE_CHECKING:
     from backend.app.services.chat_service.types import RequestInfo
-    from backend.app.services.key_managers.db_manager import KeyType
+    from backend.app.services.request_key_manager.db_manager import KeyType
 
 
 def get_gemini_request_service(request: Request) -> GeminiRequestService:

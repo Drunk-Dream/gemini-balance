@@ -14,15 +14,6 @@
 		resetKey: (keyIdentifier: string) => Promise<void>;
 		deleteKey: (keyIdentifier: string) => Promise<void>;
 	} = $props();
-
-	function formatDailyUsage(usage: { [model: string]: number }): string {
-		const entries = Object.entries(usage);
-		if (entries.length === 0) {
-			return '无';
-		}
-		entries.sort(([modelA], [modelB]) => modelA.localeCompare(modelB));
-		return entries.map(([model, count]) => `${model}: ${count}`).join('<br>');
-	}
 </script>
 
 <div class="rounded-lg bg-white p-4 shadow-md">
@@ -47,10 +38,10 @@
 		<h3 class="text-md font-semibold text-gray-800">剩余冷却时间:</h3>
 		<p class="text-sm text-gray-900">{keyStatus.cool_down_seconds_remaining} 秒</p>
 	</div>
-	<div class="mb-2 flex items-center justify-between">
+	<!-- <div class="mb-2 flex items-center justify-between">
 		<h3 class="text-md font-semibold text-gray-800">今日用量:</h3>
 		<div class="text-sm text-gray-900">{@html formatDailyUsage(keyStatus.daily_usage)}</div>
-	</div>
+	</div> -->
 	<div class="mb-2 flex items-center justify-between">
 		<h3 class="text-md font-semibold text-gray-800">连续失败次数:</h3>
 		<p class="text-sm text-gray-900">{keyStatus.failure_count}</p>

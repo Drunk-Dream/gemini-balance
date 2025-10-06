@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
     from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
     from backend.app.services.chat_service.types import RequestInfo
-    from backend.app.services.key_managers.db_manager import KeyType
+    from backend.app.services.request_key_manager.db_manager import KeyType
 
 
 class BaseRequestService(ABC):

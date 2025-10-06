@@ -26,12 +26,12 @@ from backend.app.core.errors import ErrorType, StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
 from backend.app.services.chat_service.types import RequestInfo
-from backend.app.services.key_managers.background_tasks import (
+from backend.app.services.request_key_manager.background_tasks import (
     BackgroundTaskManager,
     get_background_task_manager,
 )
-from backend.app.services.key_managers.db_manager import KeyType
-from backend.app.services.key_managers.key_state_manager import KeyStateManager
+from backend.app.services.request_key_manager.db_manager import KeyType
+from backend.app.services.request_key_manager.key_state_manager import KeyStateManager
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLog
 from backend.app.services.request_service.base_request_service import BaseRequestService

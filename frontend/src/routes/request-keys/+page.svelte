@@ -7,24 +7,30 @@
 	import KeyActions from '$lib/features/request-keys/components/KeyActions.svelte';
 	import KeyList from '$lib/features/request-keys/components/KeyList.svelte';
 	import KeyStatusSummary from '$lib/features/request-keys/components/KeyStatusSummary.svelte';
-	import type { KeyStatus } from '$lib/features/request-keys/types';
+	import type { KeyStatusResponse } from '$lib/features/request-keys/types';
 	import { onMount } from 'svelte';
 
-	let keyStatuses: KeyStatus[] = $state([]);
+	let keyStatusResponse: KeyStatusResponse = $state({
+		keys: [],
+		total_keys_count: 0,
+		in_use_keys_count: 0,
+		cooled_down_keys_count: 0,
+		available_keys_count: 0
+	});
 	let loading = $state(true);
 	let notificationObject: NotificationObject = $state({
 		message: '',
 		type: 'success'
 	});
 
-	async function fetchKeyStatuses() {
+	async function fetchKeyStatusResponse() {
 		loading = true;
 		try {
-			const data = await api.get<{ keys: KeyStatus[] }>('/status/keys');
+			const data = await api.get<KeyStatusResponse>('/keys/status');
 			if (!data) {
 				throw new Error('No response from the server');
 			}
-			keyStatuses = data.keys;
+			keyStatusResponse = data;
 		} catch (error: any) {
 			notificationObject = {
 				message: `获取密钥状态失败: ${error.message}`,
@@ -60,7 +66,7 @@
 				message: '密钥添加成功！',
 				type: 'success'
 			};
-			fetchKeyStatuses();
+			fetchKeyStatusResponse();
 		} catch (error: any) {
 			notificationObject = {
 				message: `添加密钥失败: ${error.message}`,
@@ -80,7 +86,7 @@
 				message: `密钥 "${keyIdentifier}" 删除成功！`,
 				type: 'success'
 			};
-			fetchKeyStatuses();
+			fetchKeyStatusResponse();
 		} catch (error: any) {
 			notificationObject = {
 				message: `删除密钥失败: ${error.message}`,
@@ -100,7 +106,7 @@
 				message: `密钥 "${keyIdentifier}" 状态重置成功！`,
 				type: 'success'
 			};
-			fetchKeyStatuses();
+			fetchKeyStatusResponse();
 		} catch (error: any) {
 			notificationObject = {
 				message: `重置密钥状态失败: ${error.message}`,
@@ -120,7 +126,7 @@
 				message: '所有密钥状态重置成功！',
 				type: 'success'
 			};
-			fetchKeyStatuses();
+			fetchKeyStatusResponse();
 		} catch (error: any) {
 			notificationObject = {
 				message: `重置所有密钥状态失败: ${error.message}`,
@@ -131,19 +137,19 @@
 	}
 
 	onMount(() => {
-		fetchKeyStatuses();
-		const interval = setInterval(fetchKeyStatuses, 5000);
+		fetchKeyStatusResponse();
+		const interval = setInterval(fetchKeyStatusResponse, 5000);
 		return () => clearInterval(interval);
 	});
 </script>
 
 <AuthGuard>
-	<Container header="“管理请求密钥”">
-		<KeyActions {fetchKeyStatuses} {resetAllKeys} {addKeys} {loading} />
+	<Container header="管理请求密钥">
+		<KeyActions {fetchKeyStatusResponse} {resetAllKeys} {addKeys} {loading} />
 
 		<Notification message={notificationObject.message} type={notificationObject.type} />
 
-		<KeyStatusSummary {keyStatuses} />
-		<KeyList {keyStatuses} {resetKey} {deleteKey} />
+		<KeyStatusSummary {keyStatusResponse} />
+		<KeyList keyStatuses={keyStatusResponse.keys} {resetKey} {deleteKey} />
 	</Container>
 </AuthGuard>

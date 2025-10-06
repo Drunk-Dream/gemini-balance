@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from backend.app.services.key_managers.schemas import KeyState, KeyType
+from backend.app.services.request_key_manager.schemas import KeyState, KeyType
 
 
 class DBManager(ABC):
@@ -63,6 +63,21 @@ class DBManager(ABC):
     @abstractmethod
     async def get_available_keys_count(self) -> int:
         """Get the count of available keys."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_total_keys_count(self) -> int:
+        """Get the total count of all keys."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_in_use_keys_count(self) -> int:
+        """Get the count of keys that are currently in use."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_cooled_down_keys_count(self) -> int:
+        """Get the count of keys that are currently cooled down."""
         raise NotImplementedError
 
     @abstractmethod

@@ -62,14 +62,6 @@ class RequestLogManager:
             request_time_range=request_time_range,
         )
 
-    async def get_daily_model_usage_stats(
-        self, timezone_str: str = "America/New_York"
-    ) -> Dict[str, Dict[str, int]]:
-        """
-        获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数。
-        """
-        return await self._db_manager.get_daily_model_usage_stats(timezone_str)
-
     async def get_daily_model_usage_chart_stats(
         self, timezone_str: str = "America/New_York"
     ) -> ChartData:

@@ -7,10 +7,9 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.api.endpoints.auth import router as auth_router
 from backend.app.api.api.endpoints.auth_keys import router as auth_keys_router
-from backend.app.api.api.endpoints.keys import router as keys_router
-from backend.app.api.api.endpoints.logs import router as logs_router
+from backend.app.api.api.endpoints.realtime_logs import router as realtime_logs_router
+from backend.app.api.api.endpoints.request_keys import router as request_keys_router
 from backend.app.api.api.endpoints.request_logs import router as request_logs_router
-from backend.app.api.api.endpoints.status import router as status_router
 from backend.app.api.v1.endpoints.chat import router as openai_chat_router
 from backend.app.api.v1beta.endpoints.gemini import router as gemini_router
 from backend.app.core.concurrency import ConcurrencyManager
@@ -18,7 +17,9 @@ from backend.app.core.config import Settings, print_non_sensitive_settings
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import initialize_logging
 from backend.app.db import get_migration_manager
-from backend.app.services.key_managers.background_tasks import BackgroundTaskManager
+from backend.app.services.request_key_manager.background_tasks import (
+    BackgroundTaskManager,
+)
 from backend.app.services.request_service.gemini_request_service import (
     GeminiRequestService,
 )
@@ -81,11 +82,10 @@ def create_app() -> FastAPI:
     app.include_router(gemini_router, prefix="/v1beta", tags=["Gemini"])
     app.include_router(openai_chat_router, prefix="/v1", tags=["OpenAI"])
     app.include_router(auth_router, prefix="/api", tags=["Auth"])
-    app.include_router(status_router, prefix="/api", tags=["Status"])
     app.include_router(auth_keys_router, prefix="/api", tags=["Auth Keys"])
-    app.include_router(logs_router, prefix="/api", tags=["Logs"])
+    app.include_router(realtime_logs_router, prefix="/api", tags=["Realtime Logs"])
     app.include_router(request_logs_router, prefix="/api", tags=["Request Logs"])
-    app.include_router(keys_router, prefix="/api", tags=["Keys"])
+    app.include_router(request_keys_router, prefix="/api", tags=["Request Keys"])
 
     frontend_dir = Path("frontend/build")
 
