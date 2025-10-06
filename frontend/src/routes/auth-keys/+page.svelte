@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api } from '$lib/api';
+	import Container from '$lib/components/Container.svelte';
 	import Notification from '$lib/components/Notification.svelte';
 	import type { NotificationObject } from '$lib/components/types';
 	import AddAuthKeyForm from '$lib/features/auth-keys/components/AddAuthKeyForm.svelte';
@@ -140,9 +141,7 @@
 </script>
 
 <AuthGuard>
-	<div class="container mx-auto p-4 md:p-8">
-		<h1 class="mb-6 text-2xl font-bold">管理认证密钥</h1>
-
+	<Container header="管理认证密钥">
 		<Notification message={notificationObject.message} type={notificationObject.type} />
 
 		<AddAuthKeyForm bind:newAlias {createAuthKey} />
@@ -156,5 +155,5 @@
 			{cancelEdit}
 			{deleteAuthKey}
 		/>
-	</div>
+	</Container>
 </AuthGuard>

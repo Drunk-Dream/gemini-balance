@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { KeyStatus } from '$lib/features/key-management/types';
+	import type { KeyStatus } from '$lib/features/request-keys/types';
 	const statusMap = new Map<string, { text: string; colorClass: string }>();
 	statusMap.set('active', { text: '活跃', colorClass: 'bg-green-200' });
 	statusMap.set('cooling_down', { text: '冷却中', colorClass: 'bg-yellow-200' });

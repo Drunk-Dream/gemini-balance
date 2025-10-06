@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getDailyUsageChart, type ChartData } from '$lib/features/logs/service';
+	import { getDailyUsageChart, type ChartData } from '$lib/features/stats/service';
 	import type { BarSeriesOption, EChartsOption } from 'echarts';
 	import * as echarts from 'echarts';
 	import { onMount } from 'svelte';

@@ -1,6 +1,8 @@
 <script lang="ts">
+	import Container from '$lib/components/Container.svelte';
+	import Notification from '$lib/components/Notification.svelte';
 	import AuthGuard from '$lib/features/auth/components/AuthGuard.svelte';
-	import LogViewer from '$lib/features/logs/components/LogViewer.svelte';
+	import LogViewer from '$lib/features/realtime-logs/components/LogViewer.svelte';
 	import { onDestroy, onMount } from 'svelte';
 
 	let logs: string[] = $state([]);
@@ -67,5 +69,9 @@
 </script>
 
 <AuthGuard>
-	<LogViewer {logs} {errorMessage} />
+	<Container header="实时日志">
+		<Notification message={errorMessage} type="error" autoHide={false} />
+
+		<LogViewer {logs} />
+	</Container>
 </AuthGuard>

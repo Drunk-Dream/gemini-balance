@@ -1,14 +1,15 @@
 <script lang="ts">
+	import Container from '$lib/components/Container.svelte';
 	import Notification from '$lib/components/Notification.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import AuthGuard from '$lib/features/auth/components/AuthGuard.svelte';
-	import DateRangePicker from '$lib/features/logs/components/DateRangePicker.svelte';
-	import RequestLogTable from '$lib/features/logs/components/RequestLogTable.svelte';
+	import DateRangePicker from '$lib/features/request-logs/components/DateRangePicker.svelte';
+	import RequestLogTable from '$lib/features/request-logs/components/RequestLogTable.svelte';
 	import {
 		getRequestLogs,
 		type GetRequestLogsParams,
 		type RequestLog
-	} from '$lib/features/logs/service';
+	} from '$lib/features/request-logs/service';
 	import { fromDate, getLocalTimeZone, today } from '@internationalized/date';
 	import type { DateRange } from 'bits-ui';
 
@@ -75,9 +76,7 @@
 </script>
 
 <AuthGuard>
-	<div class="container mx-auto p-4">
-		<h1 class="mb-4 text-2xl font-bold">请求日志</h1>
-
+	<Container header="请求日志">
 		<div class="mb-4">
 			<DateRangePicker
 				value={request_time_range}
@@ -95,5 +94,5 @@
 
 			<Pagination bind:currentPage perPage={itemsPerPage} {totalItems} />
 		{/if}
-	</div>
+	</Container>
 </AuthGuard>
