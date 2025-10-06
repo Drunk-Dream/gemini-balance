@@ -1,19 +1,12 @@
 <script lang="ts">
 	import { authService } from '$lib/features/auth/service';
 	import { isAuthenticated } from '$lib/features/auth/store';
+	import { navLinks } from "$lib/layout/navLinks";
 	import { quintOut } from 'svelte/easing';
 	import { slide } from 'svelte/transition';
 	import NavLink from './NavLink.svelte';
 
 	let { sidebarOpen, toggleSidebar, isMobile } = $props();
-
-	const navLinks = [
-		{ name: '请求密钥', href: '/request-keys' },
-		{ name: '认证密钥', href: '/auth-keys' },
-		{ name: '实时日志', href: '/realtime-logs' },
-		{ name: '请求日志', href: '/request-logs' },
-		{ name: '统计看板', href: '/stats' } // 新增链接
-	];
 
 	function handleLogout() {
 		authService.logout();
