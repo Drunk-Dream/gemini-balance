@@ -11,7 +11,8 @@ import NavLink from './NavLink.svelte';
         { name: '密钥管理', href: '/' },
         { name: '认证管理', href: '/auth-keys' },
         { name: '应用日志', href: '/logs' },
-        { name: '请求日志', href: '/request-logs' }
+        { name: '请求日志', href: '/request-logs' },
+        { name: '统计看板', href: '/stats' } // 新增链接
     ];
 
     function handleLogout() {

@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 import aiosqlite
 
+from backend.app.api.api.schemas.request_logs import ChartData, ChartDataset
 from backend.app.core.config import Settings
 from backend.app.core.logging import app_logger
 from backend.app.services.request_logs.db_manager import RequestLogDBManager
@@ -203,6 +204,93 @@ class SQLiteRequestLogManager(RequestLogDBManager):
 
         # 将 defaultdict 转换为普通的 dict
         return {k: dict(v) for k, v in stats.items()}
+
+    async def get_daily_model_usage_chart_stats(self, timezone_str: str) -> ChartData:
+        """
+        获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数，
+        按 key_identifier 的总使用量降序排序，并格式化为图表数据。
+        """
+        try:
+            target_timezone = ZoneInfo(timezone_str)
+        except Exception:
+            app_logger.error(f"Invalid timezone string: {timezone_str}")
+            return ChartData(labels=[], datasets=[])
+
+        now_in_tz = datetime.now(target_timezone)
+        start_of_day_in_tz = now_in_tz.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        end_of_day_in_tz = (
+            start_of_day_in_tz + timedelta(days=1) - timedelta(microseconds=1)
+        )
+
+        start_timestamp_utc = start_of_day_in_tz.astimezone(ZoneInfo("UTC")).timestamp()
+        end_timestamp_utc = end_of_day_in_tz.astimezone(ZoneInfo("UTC")).timestamp()
+
+        app_logger.debug(
+            f"Fetching daily chart stats for timezone {timezone_str}: "
+            f"UTC start={start_timestamp_utc}, UTC end={end_timestamp_utc}"
+        )
+
+        query = """
+            WITH KeyUsage AS (
+                SELECT
+                    key_identifier,
+                    model_name,
+                    COUNT(*) as usage_count
+                FROM request_logs
+                WHERE is_success = 1 AND request_time >= ? AND request_time <= ?
+                GROUP BY key_identifier, model_name
+            ),
+            KeyTotalUsage AS (
+                SELECT
+                    key_identifier,
+                    SUM(usage_count) as total_usage
+                FROM KeyUsage
+                GROUP BY key_identifier
+            )
+            SELECT
+                ku.key_identifier,
+                ku.model_name,
+                ku.usage_count
+            FROM KeyUsage ku
+            JOIN KeyTotalUsage ktu ON ku.key_identifier = ktu.key_identifier
+            ORDER BY
+                ktu.total_usage DESC,
+                ku.key_identifier ASC
+        """
+        params = [start_timestamp_utc, end_timestamp_utc]
+
+        labels: List[str] = []
+        model_data: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        all_model_names: set[str] = set()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, params)
+            rows = await cursor.fetchall()
+
+            current_key_identifier: Optional[str] = None
+            for row in rows:
+                key_identifier = row["key_identifier"]
+                model_name = row["model_name"]
+                usage_count = row["usage_count"]
+
+                if key_identifier != current_key_identifier:
+                    labels.append(key_identifier)
+                    current_key_identifier = key_identifier
+
+                model_data[key_identifier][model_name] = usage_count
+                all_model_names.add(model_name)
+
+        datasets: List[ChartDataset] = []
+        for model_name in sorted(list(all_model_names)):
+            data_points: List[int] = []
+            for key_label in labels:
+                data_points.append(model_data[key_label].get(model_name, 0))
+            datasets.append(ChartDataset(label=model_name, data=data_points))
+
+        return ChartData(labels=labels, datasets=datasets)
 
     async def get_auth_key_usage_stats(self) -> Dict[str, int]:
         """
