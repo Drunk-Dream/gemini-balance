@@ -42,7 +42,8 @@
 					grid: {
 						left: '3%',
 						right: '4%',
-						bottom: '10%', // 为 legend 留出空间
+						top: '5%', // 减小上边距
+						bottom: '10%', // 为 legend 留出更多空间
 						containLabel: true
 					},
 					xAxis: {
