@@ -21,8 +21,9 @@
 					name: ds.label,
 					type: 'bar',
 					stack: 'total', // 堆叠
-					focus: 'series', // 将 focus 移到这里
-					// emphasis: { } // 如果不需要自定义高亮样式，可以移除 emphasis 属性
+					emphasis: {
+						focus: 'series'
+					},
 					data: ds.data
 				}));
 
