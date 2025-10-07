@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getDailyUsageChart, type ChartData } from '$lib/features/stats/service';
 	import type { BarSeriesOption, EChartsOption } from 'echarts';
-	import * as echarts from 'echarts';
+	import { init } from 'echarts';
 	import { onMount } from 'svelte';
 	import { Chart } from 'svelte-echarts';
 
@@ -9,7 +9,7 @@
 	let loading = $state(true);
 	let error: string | null = $state(null);
 
-	let option: EChartsOption = $state({});
+	let options: EChartsOption = $state({});
 
 	onMount(async () => {
 		try {
@@ -27,7 +27,7 @@
 					data: ds.data
 				}));
 
-				option = {
+				options = {
 					tooltip: {
 						trigger: 'axis',
 						axisPointer: {
@@ -71,7 +71,7 @@
 {:else if error}
 	<p class="text-red-500">错误: {error}</p>
 {:else if chartData && chartData.labels.length > 0}
-	<Chart init={echarts.init} options={option} style="width: 100%; height: 100%;" />
+	<Chart {init} {options} style="width: 100%; height: 100%;" />
 {:else}
 	<p>暂无数据。</p>
 {/if}

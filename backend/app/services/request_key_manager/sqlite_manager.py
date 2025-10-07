@@ -148,7 +148,13 @@ class SQLiteDBManager(DBManager):
         async with aiosqlite.connect(self.sqlite_db) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
-                "SELECT * FROM key_states ORDER BY last_usage_time DESC"
+                """
+                SELECT * FROM key_states
+                ORDER BY
+                    is_cooled_down ASC,
+                    is_in_use DESC,
+                    last_usage_time DESC
+                """
             )
             rows = await cursor.fetchall()
             return [self._row_to_key_state(row) for row in rows]
