@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from backend.app.api.api.schemas.request_logs import ChartData  # 新增导入
+from backend.app.api.api.schemas.request_logs import DailyUsageChartData  # 新增导入
 from backend.app.core.security import get_current_user
 from backend.app.services.request_key_manager.key_state_manager import KeyStateManager
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
@@ -42,7 +42,7 @@ async def get_request_logs_endpoint(
 
 @router.get(
     "/request_logs/daily_usage_chart",
-    response_model=ChartData,
+    response_model=DailyUsageChartData,
     summary="获取每日模型使用统计图表数据",
 )
 async def get_daily_model_usage_chart_endpoint(
@@ -52,7 +52,7 @@ async def get_daily_model_usage_chart_endpoint(
     current_user: str = Depends(get_current_user),
     request_logs_manager: RequestLogManager = Depends(RequestLogManager),
     key_state_manager: KeyStateManager = Depends(KeyStateManager),
-) -> ChartData:
+) -> DailyUsageChartData:
     """
     获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数，
     按 key_identifier 的总使用量降序排序，并格式化为图表数据。

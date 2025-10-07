@@ -2,7 +2,7 @@
 	import Container from '$lib/components/Container.svelte';
 	import AuthGuard from '$lib/features/auth/components/AuthGuard.svelte';
 	import ChartCard from '$lib/features/stats/components/ChartCard.svelte';
-	import UsageChart from '$lib/features/stats/components/UsageChart.svelte';
+	import DailyUsageChart from '$lib/features/stats/components/DailyUsageChart.svelte';
 
 </script>
 
@@ -15,7 +15,7 @@
 					<p class="text-sm text-gray-500">按服务密钥总使用量排序</p>
 				{/snippet}
 				{#snippet children()}
-					<UsageChart  />
+					<DailyUsageChart  />
 				{/snippet}
 			</ChartCard>
 

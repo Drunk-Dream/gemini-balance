@@ -1,11 +1,17 @@
 <script lang="ts">
-	import { getDailyUsageChart, type ChartData } from '$lib/features/stats/service';
+	import { getDailyUsageChart, type DailyUsageChartData } from '$lib/features/stats/service';
 	import type { BarSeriesOption, EChartsOption } from 'echarts';
-	import { init } from 'echarts';
+	import { BarChart } from 'echarts/charts';
+	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
+	import { init, use } from 'echarts/core';
+	import { CanvasRenderer } from 'echarts/renderers';
 	import { onMount } from 'svelte';
 	import { Chart } from 'svelte-echarts';
 
-	let chartData: ChartData | null = $state(null);
+	// 注册 ECharts 组件
+	use([BarChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer]);
+
+	let chartData: DailyUsageChartData | null = $state(null);
 	let loading = $state(true);
 	let error: string | null = $state(null);
 

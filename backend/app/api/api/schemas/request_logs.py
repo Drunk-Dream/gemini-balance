@@ -12,6 +12,6 @@ class ChartDataset(BaseModel):
     # borderWidth: Optional[int] = None
 
 
-class ChartData(BaseModel):
+class DailyUsageChartData(BaseModel):
     labels: List[str]
     datasets: List[ChartDataset]

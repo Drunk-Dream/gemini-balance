@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 import aiosqlite
 
-from backend.app.api.api.schemas.request_logs import ChartData, ChartDataset
+from backend.app.api.api.schemas.request_logs import ChartDataset, DailyUsageChartData
 from backend.app.core.config import Settings
 from backend.app.core.logging import app_logger
 from backend.app.services.request_logs.db_manager import RequestLogDBManager
@@ -139,7 +139,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             ]
             return logs, total_count
 
-    async def get_daily_model_usage_chart_stats(self, timezone_str: str) -> ChartData:
+    async def get_daily_model_usage_chart_stats(self, timezone_str: str) -> DailyUsageChartData:
         """
         获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数，
         按 key_identifier 的总使用量降序排序，并格式化为图表数据。
@@ -148,7 +148,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             target_timezone = ZoneInfo(timezone_str)
         except Exception:
             app_logger.error(f"Invalid timezone string: {timezone_str}")
-            return ChartData(labels=[], datasets=[])
+            return DailyUsageChartData(labels=[], datasets=[])
 
         now_in_tz = datetime.now(target_timezone)
         start_of_day_in_tz = now_in_tz.replace(
@@ -224,7 +224,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 data_points.append(model_data[key_label].get(model_name, 0))
             datasets.append(ChartDataset(label=model_name, data=data_points))
 
-        return ChartData(labels=labels, datasets=datasets)
+        return DailyUsageChartData(labels=labels, datasets=datasets)
 
     async def get_auth_key_usage_stats(self) -> Dict[str, int]:
         """

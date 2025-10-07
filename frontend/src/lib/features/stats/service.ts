@@ -5,19 +5,19 @@ export interface ChartDataset {
 	data: number[];
 }
 
-export interface ChartData {
+export interface DailyUsageChartData {
 	labels: string[];
 	datasets: ChartDataset[];
 }
 
-export async function getDailyUsageChart(timezone_str?: string): Promise<ChartData> {
+export async function getDailyUsageChart(timezone_str?: string): Promise<DailyUsageChartData> {
 	const queryParams = new URLSearchParams();
 	if (timezone_str) {
 		queryParams.append('timezone_str', timezone_str);
 	}
 
 	try {
-		const response = await api.get<ChartData>(
+		const response = await api.get<DailyUsageChartData>(
 			`/request_logs/daily_usage_chart?${queryParams.toString()}`
 		);
 		if (!response) {
