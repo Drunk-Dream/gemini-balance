@@ -153,7 +153,7 @@ class SQLiteDBManager(DBManager):
                 ORDER BY
                     is_cooled_down ASC,
                     is_in_use DESC,
-                    last_usage_time DESC
+                    last_usage_time ASC
                 """
             )
             rows = await cursor.fetchall()
