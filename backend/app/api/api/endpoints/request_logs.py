@@ -3,7 +3,11 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from backend.app.api.api.schemas.request_logs import DailyUsageChartData  # 新增导入
+from backend.app.api.api.schemas.request_logs import (
+    DailyUsageChartData,
+    UsageStatsData,
+    UsageStatsUnit,
+)
 from backend.app.core.security import get_current_user
 from backend.app.services.request_key_manager.key_state_manager import KeyStateManager
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
@@ -63,3 +67,32 @@ async def get_daily_model_usage_chart_endpoint(
     mapping = await key_state_manager.get_key_identifier_to_brief_dict()
     request_logs.labels = [mapping.get(label, label) for label in request_logs.labels]
     return request_logs
+
+
+@router.get(
+    "/request_logs/usage_stats",
+    response_model=UsageStatsData,
+    summary="获取模型使用统计趋势图表数据",
+)
+async def get_usage_stats_endpoint(
+    unit: UsageStatsUnit = Query(
+        UsageStatsUnit.DAY, description="统计单位：'day', 'week', 'month'"
+    ),
+    offset: int = Query(
+        0, description="时间偏移量，0表示当前周期，-1表示上一周期，以此类推"
+    ),
+    timezone_str: str = Query(
+        "America/New_York", description="目标时区字符串，例如 'Asia/Shanghai'"
+    ),
+    current_user: str = Depends(get_current_user),
+    request_logs_manager: RequestLogManager = Depends(RequestLogManager),
+    key_state_manager: KeyStateManager = Depends(KeyStateManager),
+) -> UsageStatsData:
+    """
+    根据指定的时间单位（日、周、月）和偏移量，获取模型使用统计数据。
+    """
+    usage_stats = await request_logs_manager.get_usage_stats_by_period(
+        unit=unit, offset=offset, timezone_str=timezone_str
+    )
+    # 这里不需要 key_identifier 到 key_brief 的映射，因为趋势图是按时间轴和 model_name 统计的
+    return usage_stats

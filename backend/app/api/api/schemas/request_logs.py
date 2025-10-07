@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List
 
 from pydantic import BaseModel
@@ -15,3 +16,16 @@ class ChartDataset(BaseModel):
 class DailyUsageChartData(BaseModel):
     labels: List[str]
     datasets: List[ChartDataset]
+
+
+class UsageStatsUnit(str, Enum):
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+
+
+class UsageStatsData(BaseModel):
+    labels: List[str]
+    datasets: List[ChartDataset]
+    start_date: str
+    end_date: str

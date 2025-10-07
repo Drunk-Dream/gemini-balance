@@ -3,7 +3,7 @@
 	import AuthGuard from '$lib/features/auth/components/AuthGuard.svelte';
 	import ChartCard from '$lib/features/stats/components/ChartCard.svelte';
 	import DailyUsageChart from '$lib/features/stats/components/DailyUsageChart.svelte';
-
+	import UsageTrendChart from '$lib/features/stats/components/UsageTrendChart.svelte';
 </script>
 
 <AuthGuard>
@@ -15,19 +15,19 @@
 					<p class="text-sm text-gray-500">按服务密钥总使用量排序</p>
 				{/snippet}
 				{#snippet children()}
-					<DailyUsageChart  />
+					<DailyUsageChart />
 				{/snippet}
 			</ChartCard>
 
-			<!-- 为未来添加新图表预留空间 -->
-			<!--
-			<ChartCard>
-				<div slot="header">
-					<h2 class="text-lg font-semibold">另一个图表</h2>
-				</div>
-				<p>图表内容...</p>
+			<ChartCard className="lg:col-span-1">
+				{#snippet header()}
+					<h2 class="text-lg font-semibold">模型使用趋势</h2>
+					<p class="text-sm text-gray-500">按日、周、月统计模型请求次数</p>
+				{/snippet}
+				{#snippet children()}
+					<UsageTrendChart />
+				{/snippet}
 			</ChartCard>
-			-->
 		</div>
 	</Container>
 </AuthGuard>
