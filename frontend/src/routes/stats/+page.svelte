@@ -4,8 +4,6 @@
 	import ChartCard from '$lib/features/stats/components/ChartCard.svelte';
 	import UsageChart from '$lib/features/stats/components/UsageChart.svelte';
 
-	// 假设我们从某个地方获取时区，这里暂时硬编码
-	const timezone_str = 'America/New_York';
 </script>
 
 <AuthGuard>
@@ -17,7 +15,7 @@
 					<p class="text-sm text-gray-500">按服务密钥总使用量排序</p>
 				{/snippet}
 				{#snippet children()}
-					<UsageChart {timezone_str} />
+					<UsageChart  />
 				{/snippet}
 			</ChartCard>
 

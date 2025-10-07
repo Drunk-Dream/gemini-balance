@@ -46,7 +46,9 @@ async def get_request_logs_endpoint(
     summary="获取每日模型使用统计图表数据",
 )
 async def get_daily_model_usage_chart_endpoint(
-    timezone_str: str = Query(..., description="目标时区字符串，例如 'Asia/Shanghai'"),
+    timezone_str: str = Query(
+        "America/New_York", description="目标时区字符串，例如 'Asia/Shanghai'"
+    ),
     current_user: str = Depends(get_current_user),
     request_logs_manager: RequestLogManager = Depends(RequestLogManager),
     key_state_manager: KeyStateManager = Depends(KeyStateManager),

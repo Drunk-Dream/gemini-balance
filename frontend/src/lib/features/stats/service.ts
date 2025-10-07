@@ -10,9 +10,11 @@ export interface ChartData {
 	datasets: ChartDataset[];
 }
 
-export async function getDailyUsageChart(timezone_str: string): Promise<ChartData> {
+export async function getDailyUsageChart(timezone_str?: string): Promise<ChartData> {
 	const queryParams = new URLSearchParams();
-	queryParams.append('timezone_str', timezone_str);
+	if (timezone_str) {
+		queryParams.append('timezone_str', timezone_str);
+	}
 
 	try {
 		const response = await api.get<ChartData>(

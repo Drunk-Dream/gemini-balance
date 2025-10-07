@@ -5,8 +5,6 @@
 	import { onMount } from 'svelte';
 	import { Chart } from 'svelte-echarts';
 
-	let { timezone_str }: { timezone_str: string } = $props();
-
 	let chartData: ChartData | null = $state(null);
 	let loading = $state(true);
 	let error: string | null = $state(null);
@@ -15,7 +13,7 @@
 
 	onMount(async () => {
 		try {
-			chartData = await getDailyUsageChart(timezone_str);
+			chartData = await getDailyUsageChart();
 			if (chartData) {
 				const modelNames = chartData.datasets.map((ds) => ds.label);
 				const series: BarSeriesOption[] = chartData.datasets.map((ds) => ({
