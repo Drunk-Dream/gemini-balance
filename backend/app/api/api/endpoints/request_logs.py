@@ -55,7 +55,7 @@ async def get_daily_model_usage_chart_endpoint(
     ),
     current_user: str = Depends(get_current_user),
     request_logs_manager: RequestLogManager = Depends(RequestLogManager),
-    key_state_manager: KeyStateManager = Depends(KeyStateManager),
+    # key_state_manager: KeyStateManager = Depends(KeyStateManager),
 ) -> DailyUsageChartData:
     """
     获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数，
@@ -64,8 +64,8 @@ async def get_daily_model_usage_chart_endpoint(
     request_logs = await request_logs_manager.get_daily_model_usage_chart_stats(
         timezone_str=timezone_str
     )
-    mapping = await key_state_manager.get_key_identifier_to_brief_dict()
-    request_logs.labels = [mapping.get(label, label) for label in request_logs.labels]
+    # mapping = await key_state_manager.get_key_identifier_to_brief_dict()
+    # request_logs.labels = [mapping.get(label, label) for label in request_logs.labels]
     return request_logs
 
 

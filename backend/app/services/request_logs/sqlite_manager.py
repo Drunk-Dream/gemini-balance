@@ -313,6 +313,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             WITH KeyUsage AS (
                 SELECT
                     key_identifier,
+                    key_brief,
                     model_name,
                     COUNT(*) as usage_count
                 FROM request_logs
@@ -328,19 +329,22 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             )
             SELECT
                 ku.key_identifier,
+                ku.key_brief,
                 ku.model_name,
                 ku.usage_count
             FROM KeyUsage ku
             JOIN KeyTotalUsage ktu ON ku.key_identifier = ktu.key_identifier
             ORDER BY
                 ktu.total_usage DESC,
-                ku.key_identifier ASC
+                ku.key_identifier ASC,
+                ku.model_name DESC
         """
         params = [start_timestamp_utc, end_timestamp_utc]
 
         labels: List[str] = []
         model_data: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
         all_model_names: set[str] = set()
+        key_identifier_to_key_brief: Dict[str, str] = {}
 
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
@@ -352,9 +356,11 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 key_identifier = row["key_identifier"]
                 model_name = row["model_name"]
                 usage_count = row["usage_count"]
+                key_brief = row["key_brief"] if row["key_brief"] is not None else "null"
 
                 if key_identifier != current_key_identifier:
                     labels.append(key_identifier)
+                    key_identifier_to_key_brief[key_identifier] = key_brief
                     current_key_identifier = key_identifier
 
                 model_data[key_identifier][model_name] = usage_count
@@ -367,7 +373,9 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 data_points.append(model_data[key_label].get(model_name, 0))
             datasets.append(ChartDataset(label=model_name, data=data_points))
 
-        return DailyUsageChartData(labels=labels, datasets=datasets)
+        label_briefs = [key_identifier_to_key_brief[label] for label in labels]
+
+        return DailyUsageChartData(labels=label_briefs, datasets=datasets)
 
     async def get_auth_key_usage_stats(self) -> Dict[str, int]:
         """

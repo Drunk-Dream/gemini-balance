@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Union
 import httpx
 import httpx_sse
 
-from backend.app.core.config import Settings
 from backend.app.core.errors import StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
@@ -15,6 +14,7 @@ from backend.app.core.logging import transaction_logger
 if TYPE_CHECKING:
     from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
     from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
+    from backend.app.core.config import Settings
     from backend.app.services.chat_service.types import RequestInfo
     from backend.app.services.request_key_manager.db_manager import KeyType
 
