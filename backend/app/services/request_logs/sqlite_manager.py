@@ -257,7 +257,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 model_data[key_identifier][model_name] = usage_count
                 all_model_names.add(model_name)
 
-        datasets: List[ChartDataset] = []
+        datasets: List["ChartDataset"] = []
         for model_name in sorted(list(all_model_names)):
             data_points: List[int] = []
             for key_label in labels:
@@ -364,8 +364,8 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             current_week_start = (now_in_tz + timedelta(weeks=offset)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ) - timedelta(
-                days=(now_in_tz.weekday() + 1) % 7
-            )  # Monday is 0, Sunday is 6. Make Sunday the start of the week.
+                days=now_in_tz.weekday()
+            )  # Monday is 0, Sunday is 6. Make Monday the start of the week.
             start_of_range = current_week_start - timedelta(weeks=num_periods - 1)
             end_of_range = (current_week_start + timedelta(days=6)).replace(
                 hour=23, minute=59, second=59, microsecond=999999
@@ -460,7 +460,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                     db_model_data[period_label][model_name] = request_count
                     all_model_names.add(model_name)
 
-        datasets: List[ChartDataset] = []
+        datasets: List["ChartDataset"] = []
         for model_name in sorted(list(all_model_names)):
             data_points: List[int] = []
             for label in period_labels:

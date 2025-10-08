@@ -15,7 +15,7 @@ class ChartDataset(BaseModel):
 
 class DailyUsageChartData(BaseModel):
     labels: List[str]
-    datasets: List[ChartDataset]
+    datasets: List["ChartDataset"]
 
 
 class UsageStatsUnit(str, Enum):
@@ -26,6 +26,6 @@ class UsageStatsUnit(str, Enum):
 
 class UsageStatsData(BaseModel):
     labels: List[str]
-    datasets: List[ChartDataset]
+    datasets: List["ChartDataset"]
     start_date: str
     end_date: str
