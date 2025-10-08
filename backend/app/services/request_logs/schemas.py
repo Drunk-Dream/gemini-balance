@@ -31,3 +31,14 @@ class RequestLogsResponse(BaseModel):
     logs: List[RequestLog]
     request_time_range: Optional[Tuple[datetime, datetime]] = None
     total: int
+
+
+class TimePeriodDetails(BaseModel):
+    """
+    时间段计算结果的 Pydantic 模型。
+    """
+    start_of_range: datetime
+    end_of_range: datetime
+    period_labels: List[str]
+    date_format: str
+    group_by_format: str

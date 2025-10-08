@@ -16,7 +16,7 @@ from backend.app.api.api.schemas.request_logs import (
 from backend.app.core.config import Settings
 from backend.app.core.logging import app_logger
 from backend.app.services.request_logs.db_manager import RequestLogDBManager
-from backend.app.services.request_logs.schemas import RequestLog
+from backend.app.services.request_logs.schemas import RequestLog, TimePeriodDetails
 
 
 class SQLiteRequestLogManager(RequestLogDBManager):
@@ -128,6 +128,109 @@ class SQLiteRequestLogManager(RequestLogDBManager):
                 f"Error converting timezone '{timezone_str}' to offset: {e}"
             )
             return "+00:00"  # 默认返回 UTC
+
+    def _calculate_time_period_details(
+        self, unit: UsageStatsUnit, offset: int, now_in_tz: datetime
+    ) -> TimePeriodDetails:
+        """
+        根据指定的时间单位（日、周、月）和偏移量，计算时间段的详细信息。
+        """
+        start_date_display: datetime
+        end_date_display: datetime
+        period_labels: List[str] = []
+        date_format: str
+        group_by_format: str
+
+        if unit == UsageStatsUnit.DAY:
+            num_periods = 7
+            current_period_start = (now_in_tz + timedelta(days=offset)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            start_of_range = current_period_start - timedelta(days=num_periods - 1)
+            end_of_range = current_period_start.replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            )
+            date_format = "%Y-%m-%d"
+            group_by_format = "%Y-%m-%d"
+
+            for i in range(num_periods):
+                date = start_of_range + timedelta(days=i)
+                period_labels.append(date.strftime(date_format))
+
+            start_date_display = start_of_range
+            end_date_display = end_of_range
+
+        elif unit == UsageStatsUnit.WEEK:
+            num_periods = 7
+            current_week_start = (now_in_tz + timedelta(weeks=offset)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) - timedelta(
+                days=now_in_tz.weekday()
+            )  # Monday is 0, Sunday is 6. Make Monday the start of the week.
+            start_of_range = current_week_start - timedelta(weeks=num_periods - 1)
+            end_of_range = (current_week_start + timedelta(days=6)).replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            )
+            date_format = "%Y-%m-%d"
+            group_by_format = (
+                "%Y-%W"  # %W for week number (Sunday as first day of week)
+            )
+
+            for i in range(num_periods):
+                week_start = start_of_range + timedelta(weeks=i)
+                period_labels.append(week_start.strftime(group_by_format))
+
+            start_date_display = start_of_range
+            end_date_display = end_of_range
+
+        elif unit == UsageStatsUnit.MONTH:
+            num_periods = 6
+            current_month_start = (now_in_tz + timedelta(days=30 * offset)).replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            # Adjust to the correct month if timedelta(days=30*offset) overshoots
+            while current_month_start.month != (now_in_tz.month + offset - 1) % 12 + 1:
+                current_month_start = (current_month_start - timedelta(days=1)).replace(
+                    day=1
+                )
+
+            start_of_range = current_month_start
+            for _ in range(num_periods - 1):
+                start_of_range = (start_of_range - timedelta(days=1)).replace(day=1)
+
+            end_of_range = (
+                current_month_start.replace(day=28) + timedelta(days=4)
+            ).replace(hour=23, minute=59, second=59, microsecond=999999)
+            end_of_range = end_of_range - timedelta(days=end_of_range.day)
+            date_format = "%Y-%m"
+            group_by_format = "%Y-%m"
+
+            current_label_date = start_of_range
+            for _ in range(num_periods):
+                period_labels.append(current_label_date.strftime(date_format))
+                # Move to the first day of the next month
+                if current_label_date.month == 12:
+                    current_label_date = current_label_date.replace(
+                        year=current_label_date.year + 1, month=1, day=1
+                    )
+                else:
+                    current_label_date = current_label_date.replace(
+                        month=current_label_date.month + 1, day=1
+                    )
+
+            start_date_display = start_of_range
+            end_date_display = end_of_range
+
+        else:
+            raise ValueError(f"Unsupported unit: {unit}")
+
+        return TimePeriodDetails(
+            start_of_range=start_date_display,
+            end_of_range=end_date_display,
+            period_labels=period_labels,
+            date_format=date_format,
+            group_by_format=group_by_format,
+        )
 
     async def get_request_logs_with_count(
         self,
@@ -336,92 +439,15 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             )
 
         now_in_tz = datetime.now(target_timezone)
-        start_date_display: datetime
-        end_date_display: datetime
-        period_labels: List[str] = []
+        time_period_details = self._calculate_time_period_details(
+            unit, offset, now_in_tz
+        )
 
-        if unit == UsageStatsUnit.DAY:
-            num_periods = 7
-            current_period_start = (now_in_tz + timedelta(days=offset)).replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
-            start_of_range = current_period_start - timedelta(days=num_periods - 1)
-            end_of_range = current_period_start.replace(
-                hour=23, minute=59, second=59, microsecond=999999
-            )
-            date_format = "%Y-%m-%d"
-            group_by_format = "%Y-%m-%d"
-
-            for i in range(num_periods):
-                date = start_of_range + timedelta(days=i)
-                period_labels.append(date.strftime(date_format))
-
-            start_date_display = start_of_range
-            end_date_display = end_of_range
-
-        elif unit == UsageStatsUnit.WEEK:
-            num_periods = 7
-            current_week_start = (now_in_tz + timedelta(weeks=offset)).replace(
-                hour=0, minute=0, second=0, microsecond=0
-            ) - timedelta(
-                days=now_in_tz.weekday()
-            )  # Monday is 0, Sunday is 6. Make Monday the start of the week.
-            start_of_range = current_week_start - timedelta(weeks=num_periods - 1)
-            end_of_range = (current_week_start + timedelta(days=6)).replace(
-                hour=23, minute=59, second=59, microsecond=999999
-            )
-            date_format = "%Y-%m-%d"
-            group_by_format = (
-                "%Y-%W"  # %W for week number (Sunday as first day of week)
-            )
-
-            for i in range(num_periods):
-                week_start = start_of_range + timedelta(weeks=i)
-                period_labels.append(week_start.strftime(group_by_format))
-
-            start_date_display = start_of_range
-            end_date_display = end_of_range
-
-        elif unit == UsageStatsUnit.MONTH:
-            num_periods = 6
-            current_month_start = (now_in_tz + timedelta(days=30 * offset)).replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
-            # Adjust to the correct month if timedelta(days=30*offset) overshoots
-            while current_month_start.month != (now_in_tz.month + offset - 1) % 12 + 1:
-                current_month_start = (current_month_start - timedelta(days=1)).replace(
-                    day=1
-                )
-
-            start_of_range = current_month_start
-            for _ in range(num_periods - 1):
-                start_of_range = (start_of_range - timedelta(days=1)).replace(day=1)
-
-            end_of_range = (
-                current_month_start.replace(day=28) + timedelta(days=4)
-            ).replace(hour=23, minute=59, second=59, microsecond=999999)
-            end_of_range = end_of_range - timedelta(days=end_of_range.day)
-            date_format = "%Y-%m"
-            group_by_format = "%Y-%m"
-
-            current_label_date = start_of_range
-            for _ in range(num_periods):
-                period_labels.append(current_label_date.strftime(date_format))
-                # Move to the first day of the next month
-                if current_label_date.month == 12:
-                    current_label_date = current_label_date.replace(
-                        year=current_label_date.year + 1, month=1, day=1
-                    )
-                else:
-                    current_label_date = current_label_date.replace(
-                        month=current_label_date.month + 1, day=1
-                    )
-
-            start_date_display = start_of_range
-            end_date_display = end_of_range
-
-        else:
-            raise ValueError(f"Unsupported unit: {unit}")
+        start_of_range = time_period_details.start_of_range
+        end_of_range = time_period_details.end_of_range
+        period_labels = time_period_details.period_labels
+        date_format = time_period_details.date_format
+        group_by_format = time_period_details.group_by_format
 
         start_timestamp_utc = start_of_range.astimezone(ZoneInfo("UTC")).timestamp()
         end_timestamp_utc = end_of_range.astimezone(ZoneInfo("UTC")).timestamp()
@@ -470,6 +496,6 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         return UsageStatsData(
             labels=period_labels,
             datasets=datasets,
-            start_date=start_date_display.strftime(date_format),
-            end_date=end_date_display.strftime(date_format),
+            start_date=start_of_range.strftime(date_format),
+            end_date=end_of_range.strftime(date_format),
         )
