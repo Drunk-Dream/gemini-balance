@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import UsageUnitToggle from '$lib/components/UnitToggle.svelte';
 	import { getUsageStats, UsageStatsUnit, type UsageStatsData } from '$lib/features/stats/service';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { LineChart } from 'echarts/charts';
 	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 	import { init, use } from 'echarts/core';
 	import { CanvasRenderer } from 'echarts/renderers';
-	import { onMount } from 'svelte';
+	import CaretLeft from 'phosphor-svelte/lib/CaretLeft';
+	import CaretRight from 'phosphor-svelte/lib/CaretRight';
 	import { Chart } from 'svelte-echarts';
 
 	// 注册 ECharts 组件
@@ -18,6 +20,7 @@
 
 	let options: EChartsOption = $state({});
 
+	let previousUnit: UsageStatsUnit = $state(UsageStatsUnit.DAY);
 	let currentUnit: UsageStatsUnit = $state(UsageStatsUnit.DAY);
 	let currentOffset: number = $state(0);
 	let timezone: string = $state('Asia/Shanghai'); // 默认时区
@@ -31,11 +34,13 @@
 
 	async function fetchData() {
 		loading = true;
-		error = null;
+		if (previousUnit !== currentUnit) {
+			currentOffset = 0;
+			previousUnit = currentUnit;
+		}
 		try {
-			periodText = '加载中...';
 			chartData = await getUsageStats(currentUnit, currentOffset, timezone);
-			periodText = chartData ? `${chartData.start_date} 至 ${chartData.end_date}` : '加载中...';
+			periodText = chartData ? `${chartData.start_date} 至 ${chartData.end_date}` : 'null';
 			if (chartData) {
 				const modelNames = Array.from(new Set(chartData.datasets.map((ds) => ds.label)));
 				const series: LineSeriesOption[] = chartData.datasets.map((ds) => ({
@@ -86,19 +91,10 @@
 		}
 	}
 
-	onMount(() => {
-		fetchData();
-	});
-
 	// 响应式地重新获取数据
 	$effect(() => {
 		fetchData();
 	});
-
-	function changeUnit(unit: UsageStatsUnit) {
-		currentUnit = unit;
-		currentOffset = 0; // 切换单位时重置偏移量
-	}
 
 	function changeOffset(delta: number) {
 		currentOffset += delta;
@@ -107,51 +103,14 @@
 
 <div class="flex h-full flex-col">
 	<div class="mb-4 flex items-center justify-between">
-		<div class="flex space-x-2">
-			<button
-				class="btn {currentUnit === UsageStatsUnit.DAY ? 'btn-primary' : 'btn-ghost'}"
-				onclick={() => changeUnit(UsageStatsUnit.DAY)}
-			>
-				日
-			</button>
-			<button
-				class="btn {currentUnit === UsageStatsUnit.WEEK ? 'btn-primary' : 'btn-ghost'}"
-				onclick={() => changeUnit(UsageStatsUnit.WEEK)}
-			>
-				周
-			</button>
-			<button
-				class="btn {currentUnit === UsageStatsUnit.MONTH ? 'btn-primary' : 'btn-ghost'}"
-				onclick={() => changeUnit(UsageStatsUnit.MONTH)}
-			>
-				月
-			</button>
-		</div>
+		<UsageUnitToggle bind:currentUnit />
 		<div class="flex items-center space-x-2">
 			<button class="btn btn-ghost btn-sm" onclick={() => changeOffset(-1)} aria-label="上一时间段">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke-width="1.5"
-					stroke="currentColor"
-					class="h-4 w-4"
-				>
-					<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-				</svg>
+				<CaretLeft class="h-4 w-4" />
 			</button>
 			<span class="text-sm text-gray-600">{periodText}</span>
 			<button class="btn btn-ghost btn-sm" onclick={() => changeOffset(1)} aria-label="下一时间段">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke-width="1.5"
-					stroke="currentColor"
-					class="h-4 w-4"
-				>
-					<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-				</svg>
+				<CaretRight class="h-4 w-4" />
 			</button>
 		</div>
 	</div>
