@@ -106,11 +106,11 @@
 		<UsageUnitToggle bind:currentUnit />
 		<div class="flex items-center space-x-2">
 			<button class="btn btn-ghost btn-sm" onclick={() => changeOffset(-1)} aria-label="上一时间段">
-				<CaretLeft class="h-4 w-4" />
+				<CaretLeft class="size-4" />
 			</button>
 			<span class="text-sm text-gray-600">{periodText}</span>
 			<button class="btn btn-ghost btn-sm" onclick={() => changeOffset(1)} aria-label="下一时间段">
-				<CaretRight class="h-4 w-4" />
+				<CaretRight class="size-4" />
 			</button>
 		</div>
 	</div>

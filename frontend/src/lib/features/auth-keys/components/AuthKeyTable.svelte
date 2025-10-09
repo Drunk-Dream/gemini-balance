@@ -78,28 +78,17 @@
 						</td>
 						<td class="space-x-2 whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
 							{#if editingKey?.api_key === key.api_key}
-								<button
-									onclick={updateAuthKey}
-									class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-3 py-1 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none"
-								>
+								<button onclick={updateAuthKey} class="btn btn-primary btn-sm btn-soft">
 									保存
 								</button>
-								<button
-									onclick={cancelEdit}
-									class="focus:shadow-outline cursor-pointer rounded bg-gray-500 px-3 py-1 text-sm font-bold text-white hover:bg-gray-700 focus:outline-none"
-								>
-									取消
-								</button>
+								<button onclick={cancelEdit} class="btn btn-neutral btn-sm btn-soft"> 取消 </button>
 							{:else}
-								<button
-									onclick={() => startEdit(key)}
-									class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-3 py-1 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none"
-								>
+								<button onclick={() => startEdit(key)} class="btn btn-primary btn-sm btn-soft">
 									编辑
 								</button>
 								<button
 									onclick={() => deleteAuthKey(key.api_key)}
-									class="focus:shadow-outline cursor-pointer rounded bg-red-500 px-3 py-1 text-sm font-bold text-white hover:bg-red-700 focus:outline-none"
+									class="btn btn-error btn-sm btn-soft"
 								>
 									删除
 								</button>

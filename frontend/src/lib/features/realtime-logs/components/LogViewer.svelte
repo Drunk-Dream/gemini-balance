@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { colorizeLog } from '$lib/features/realtime-logs/utils';
+	import ArrowDown from 'phosphor-svelte/lib/ArrowDown';
 	import { tick } from 'svelte';
 
 	let { logs }: { logs: string[] } = $props();
@@ -73,22 +74,9 @@
 {#if showScrollToBottomButton}
 	<button
 		onclick={forceScrollToBottom}
-		class="fixed bottom-4 right-4 cursor-pointer rounded-full bg-blue-600 p-3 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+		class="btn btn-circle btn-primary fixed right-4 bottom-4"
 		aria-label="Scroll to bottom"
 	>
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6"
-			fill="none"
-			viewBox="0 0 24 24"
-			stroke="currentColor"
-		>
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				stroke-width="2"
-				d="M19 14l-7 7m0 0l-7-7m7 7V3"
-			/>
-		</svg>
+		<ArrowDown class="size-6" />
 	</button>
 {/if}

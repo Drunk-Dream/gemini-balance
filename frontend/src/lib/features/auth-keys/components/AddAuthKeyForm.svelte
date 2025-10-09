@@ -15,11 +15,7 @@
 
 <div class="mb-6">
 	<Dialog.Root bind:open>
-		<Dialog.Trigger
-			class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700 focus:outline-none"
-		>
-			创建新密钥
-		</Dialog.Trigger>
+		<Dialog.Trigger class="btn btn-primary">创建新密钥</Dialog.Trigger>
 		<Dialog.Portal>
 			<Dialog.Overlay
 				class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
@@ -31,7 +27,13 @@
 				<Dialog.Description class="mb-4 text-sm text-gray-600">
 					为您的认证密钥输入一个别名。
 				</Dialog.Description>
-				<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="flex flex-col space-y-4">
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						handleSubmit();
+					}}
+					class="flex flex-col space-y-4"
+				>
 					<div>
 						<label for="new-alias" class="mb-2 block text-sm font-medium text-gray-700"
 							>新别名</label
@@ -47,16 +49,11 @@
 					</div>
 					<div class="flex justify-end space-x-2">
 						<Dialog.Close
-							class="focus:shadow-outline cursor-pointer rounded bg-gray-300 px-4 py-2 text-sm font-bold text-gray-800 hover:bg-gray-400 focus:outline-none"
+							class="btn btn-neutral btn-soft"
 						>
 							取消
 						</Dialog.Close>
-						<button
-							type="submit"
-							class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700 focus:outline-none"
-						>
-							创建
-						</button>
+						<button type="submit" class="btn btn-primary btn-soft"> 创建 </button>
 					</div>
 				</form>
 			</Dialog.Content>
