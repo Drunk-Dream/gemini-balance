@@ -11,7 +11,7 @@
 	}: { className?: string; header?: Snippet; children?: Snippet } = $props();
 </script>
 
-<div class={twMerge('rounded-lg bg-white p-4 shadow-md sm:p-6 md:p-8 dark:bg-gray-800', className)}>
+<div class={twMerge('rounded-lg bg-base-200 shadow-base-300 p-4 shadow-md sm:p-6 md:p-8', className)}>
 	{#if header}
 		<div class="mb-4">
 			{@render header()}

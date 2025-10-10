@@ -62,7 +62,7 @@
 					},
 					legend: {
 						type: 'scroll',
-						backgroundColor: 'rgba(255, 255, 255, 0.8)',
+						backgroundColor: 'rgba(255, 255, 255, 0.3)',
 						data: modelNames,
 						bottom: 0 // 将 legend 放在底部
 					},

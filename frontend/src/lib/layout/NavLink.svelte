@@ -19,7 +19,9 @@
 <li>
 	<a
 		{href}
-		class="flex items-center gap-2 text-lg {isActive ? 'bg-primary text-primary-content' : ''}"
+		class="flex items-center gap-2 text-lg font-semibold {isActive
+			? 'bg-primary text-primary-content'
+			: ''}"
 		onclick={onClick}
 	>
 		<i class="{icon} w-6 text-lg"></i>

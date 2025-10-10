@@ -26,21 +26,21 @@
 
 	<li class="mt-auto">
 		{#if $isAuthenticated}
-			<button onclick={handleLogout} class="btn btn-ghost w-full justify-start">
-				<i class="fa-solid fa-right-from-bracket text-lg w-6"></i>
+			<button onclick={handleLogout} class="btn btn-ghost btn-lg w-full justify-start">
+				<i class="fa-solid fa-right-from-bracket w-6 text-lg"></i>
 				登出
 			</button>
 		{/if}
 	</li>
 	<li>
-		<label class="swap swap-rotate btn btn-ghost w-full justify-start">
+		<label class="swap swap-rotate btn btn-ghost btn-lg w-full justify-start">
 			<input type="checkbox" onchange={toggleTheme} />
 			<div class="swap-off">
-				<i class="fa-solid fa-sun text-lg w-6"></i>
+				<i class="fa-solid fa-sun w-6 text-lg"></i>
 				<span>主题</span>
 			</div>
 			<div class="swap-on">
-				<i class="fa-solid fa-moon text-lg w-6"></i>
+				<i class="fa-solid fa-moon w-6 text-lg"></i>
 				<span>主题</span>
 			</div>
 		</label>
