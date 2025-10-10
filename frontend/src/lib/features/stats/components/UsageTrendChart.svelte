@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import UsageUnitToggle from '$lib/components/UnitToggle.svelte';
+	import UsageUnitToggle from '$lib/features/stats/components/UnitToggle.svelte';
 	import { getUsageStats, UsageStatsUnit, type UsageStatsData } from '$lib/features/stats/service';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { LineChart } from 'echarts/charts';
@@ -102,7 +102,7 @@
 </script>
 
 <div class="flex h-full flex-col">
-	<div class="mb-4 flex items-center justify-between">
+	<div class="flex items-center justify-between">
 		<UsageUnitToggle bind:currentUnit />
 		<div class="flex items-center space-x-2">
 			<button class="btn btn-ghost btn-sm" onclick={() => changeOffset(-1)} aria-label="上一时间段">

@@ -26,7 +26,7 @@
 <div class="mb-6 flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
 	<button
 		onclick={fetchKeyStatusResponse}
-		class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 focus:outline-none sm:text-base"
+		class="btn btn-primary"
 		disabled={loading}
 	>
 		{loading ? '刷新中...' : '立即刷新'}
@@ -34,7 +34,7 @@
 
 	<Dialog.Root bind:open={addKeyDialogOpen}>
 		<Dialog.Trigger
-			class="focus:shadow-outline cursor-pointer rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700 focus:outline-none"
+			class="btn btn-primary"
 		>
 			新增密钥
 		</Dialog.Trigger>
@@ -63,13 +63,13 @@
 				</div>
 				<div class="mt-6 flex justify-end space-x-2">
 					<Dialog.Close
-						class="focus:shadow-outline cursor-pointer rounded bg-gray-300 px-4 py-2 text-sm font-bold text-gray-800 hover:bg-gray-400 focus:outline-none"
+						class="btn btn-ghost"
 					>
 						取消
 					</Dialog.Close>
 					<button
 						onclick={handleAddKeysSubmit}
-						class="focus:shadow-outline cursor-pointer rounded bg-green-500 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 focus:outline-none"
+						class="btn btn-success"
 					>
 						添加密钥
 					</button>
@@ -80,7 +80,7 @@
 
 	<button
 		onclick={resetAllKeys}
-		class="focus:shadow-outline cursor-pointer rounded bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 focus:outline-none sm:text-base"
+		class="btn btn-error"
 	>
 		重置所有密钥状态
 	</button>

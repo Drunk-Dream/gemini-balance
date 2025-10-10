@@ -49,11 +49,11 @@
 					</div>
 					<div class="flex justify-end space-x-2">
 						<Dialog.Close
-							class="btn btn-neutral btn-soft"
+							class="btn btn-ghost"
 						>
 							取消
 						</Dialog.Close>
-						<button type="submit" class="btn btn-primary btn-soft"> 创建 </button>
+						<button type="submit" class="btn btn-success"> 创建 </button>
 					</div>
 				</form>
 			</Dialog.Content>

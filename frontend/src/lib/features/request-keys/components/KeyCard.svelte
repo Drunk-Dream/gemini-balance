@@ -57,13 +57,13 @@
 	<div class="mt-4 flex justify-end space-x-2">
 		<button
 			onclick={() => resetKey(keyStatus.key_identifier)}
-			class="focus:shadow-outline cursor-pointer rounded bg-yellow-500 px-3 py-1.5 text-sm font-bold text-white hover:bg-yellow-700 focus:outline-none"
+			class="btn btn-warning btn-sm"
 		>
 			重置
 		</button>
 		<button
 			onclick={() => deleteKey(keyStatus.key_identifier)}
-			class="focus:shadow-outline cursor-pointer rounded bg-red-500 px-3 py-1.5 text-sm font-bold text-white hover:bg-red-700 focus:outline-none"
+			class="btn btn-error btn-sm"
 		>
 			删除
 		</button>
