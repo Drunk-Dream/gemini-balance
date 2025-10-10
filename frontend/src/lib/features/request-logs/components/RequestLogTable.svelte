@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { RequestLog } from '$lib/features/logs/service';
+	import type { RequestLog } from '$lib/features/request-logs/service';
 
 	let {
 		logs
@@ -27,7 +27,7 @@
 
 <div class="overflow-x-auto rounded-lg bg-white shadow-md">
 	<table class="min-w-full divide-y divide-gray-200">
-		<thead class="bg-gray-50">
+		<thead class="sticky top-0 bg-gray-50">
 			<tr>
 				{#each headers as header}
 					<th

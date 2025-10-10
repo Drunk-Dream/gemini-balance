@@ -1,10 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { twMerge } from 'tailwind-merge';
 
-	let { header, children }: { header?: string; children: Snippet } = $props();
+	let { className, header, children }: { className?: string; header?: string; children: Snippet } =
+		$props();
 </script>
 
-<div class="sm:p6 container mx-auto p-4 lg:p-8">
+<div class={twMerge('sm:p6 container mx-auto p-4 lg:p-8', className)}>
 	{#if header}
 		<h1 class="mb-6 text-3xl font-bold text-gray-900">{header}</h1>
 	{/if}

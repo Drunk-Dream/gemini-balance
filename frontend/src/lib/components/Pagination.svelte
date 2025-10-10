@@ -14,39 +14,30 @@
 	} = $props();
 </script>
 
-<Pagination.Root count={totalItems} {perPage} siblingCount={2} bind:page={currentPage}>
+<Pagination.Root count={totalItems} {perPage} siblingCount={1} bind:page={currentPage}>
 	{#snippet children({ pages, range })}
-		<div class="mt-4 flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
-			<Pagination.PrevButton
-				class="flex cursor-pointer items-center rounded bg-gray-600 px-4 py-2 text-white hover:bg-gray-700 disabled:opacity-50"
-			>
-				<CaretLeft class="size-6" />
-			</Pagination.PrevButton>
+		<div class="flex flex-col items-center justify-center md:flex-row md:gap-4">
+			<p class="text-base-content/70 text-sm">
+				Showing {range.start} - {range.end} of {totalItems}
+			</p>
+			<div class="join">
+				<Pagination.PrevButton class="join-item btn btn-sm md:btn-md">
+					<CaretLeft class="size-4" />
+				</Pagination.PrevButton>
 
-			<div class="flex flex-wrap items-center justify-center space-x-1">
 				{#each pages as page (page.key)}
 					{#if page.type === 'ellipsis'}
-						<span class="px-2 py-1">...</span>
+						<button class="join-item btn btn-disabled btn-sm md:btn-md select-none">...</button>
 					{:else}
-						<Pagination.Page
-							{page}
-							class="data-selected:bg-gray-800 data-selected:text-white cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-700"
-						>
+						<Pagination.Page {page} class="join-item btn btn-sm md:btn-md data-selected:btn-active">
 							{page.value}
 						</Pagination.Page>
 					{/if}
 				{/each}
+				<Pagination.NextButton class="join-item btn btn-sm md:btn-md">
+					<CaretRight class="size-4" />
+				</Pagination.NextButton>
 			</div>
-
-			<p class="text-sm text-gray-700 dark:text-gray-300">
-				{range.start} - {range.end} of {totalItems}
-			</p>
-
-			<Pagination.NextButton
-				class="flex cursor-pointer items-center rounded bg-gray-600 px-4 py-2 text-white hover:bg-gray-700 disabled:opacity-50"
-			>
-				<CaretRight class="size-6" />
-			</Pagination.NextButton>
 		</div>
 	{/snippet}
 </Pagination.Root>

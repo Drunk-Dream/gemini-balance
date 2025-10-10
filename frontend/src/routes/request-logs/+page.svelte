@@ -92,7 +92,13 @@
 		{:else}
 			<RequestLogTable {logs} />
 
-			<Pagination bind:currentPage perPage={itemsPerPage} {totalItems} />
+			<div class="sticky bottom-0 z-10 mt-2 flex justify-center">
+				<div
+					class="bg-base-100/60 border-base-200/60 rounded-lg border px-2 shadow-md backdrop-blur-sm"
+				>
+					<Pagination bind:currentPage perPage={itemsPerPage} {totalItems} />
+				</div>
+			</div>
 		{/if}
 	</Container>
 </AuthGuard>
