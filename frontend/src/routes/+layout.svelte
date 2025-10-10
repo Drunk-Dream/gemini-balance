@@ -27,7 +27,7 @@
 			{@render children?.()}
 		</main>
 	</div>
-	<div class="drawer-side">
+	<div class="drawer-side border-r border-base-300 shadow-base-200">
 		<label for="my-drawer-2" aria-label="close sidebar" class="drawer-overlay"></label>
 		<Sidebar {sidebarOpen} {toggleSidebar} />
 	</div>

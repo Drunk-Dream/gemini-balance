@@ -8,7 +8,7 @@
 
 <div class={twMerge('sm:p6 container mx-auto p-4 lg:p-8', className)}>
 	{#if header}
-		<h1 class="mb-6 text-3xl font-bold text-gray-900">{header}</h1>
+		<h1 class="mb-6 text-3xl font-bold">{header}</h1>
 	{/if}
 
 	{@render children()}

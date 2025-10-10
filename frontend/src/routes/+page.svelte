@@ -4,15 +4,19 @@
 </script>
 
 <Container header="欢迎使用 Gemini Balance">
-	<p class="mb-12 text-center text-lg text-gray-600">一个高效、安全的 API 请求转发服务</p>
+	<p class="text-base-content/50 mb-12 text-center text-lg italic">
+		一个高效、安全的 API 请求转发服务
+	</p>
 	<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
 		{#each navLinks as link}
 			<a
 				href={link.href}
-				class="group block transform rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl"
+				class="border-base-300 bg-base-200 group block transform rounded-lg border p-6 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl"
 			>
-				<h2 class="mb-2 text-2xl font-bold text-gray-900 group-hover:text-blue-600">{link.name}</h2>
-				<p class="text-gray-600">{link.description}</p>
+				<h2 class="text-base-content mb-2 text-2xl font-bold group-hover:text-blue-600">
+					{link.name}
+				</h2>
+				<p class="text-base-content/60">{link.description}</p>
 			</a>
 		{/each}
 	</div>
