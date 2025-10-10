@@ -2,10 +2,13 @@
 	import { UsageStatsUnit } from '$lib/features/stats/service';
 	import { ToggleGroup } from 'bits-ui';
 
-	let { currentUnit = $bindable() } = $props();
+	let {
+		currentUnit = $bindable(),
+		disabled = false
+	}: { currentUnit: UsageStatsUnit; disabled?: boolean } = $props();
 </script>
 
-<ToggleGroup.Root type="single" bind:value={currentUnit} class="flex">
+<ToggleGroup.Root type="single" bind:value={currentUnit} class="flex" {disabled}>
 	<ToggleGroup.Item
 		aria-label="toggle day"
 		value={UsageStatsUnit.DAY}

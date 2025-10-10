@@ -7,9 +7,8 @@
 	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 	import { init, use } from 'echarts/core';
 	import { CanvasRenderer } from 'echarts/renderers';
-	import CaretLeft from 'phosphor-svelte/lib/CaretLeft';
-	import CaretRight from 'phosphor-svelte/lib/CaretRight';
 	import { Chart } from 'svelte-echarts';
+	import PeriodNavigator from './PeriodNavigator.svelte';
 
 	// 注册 ECharts 组件
 	use([LineChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer]);
@@ -97,24 +96,12 @@
 	$effect(() => {
 		fetchData();
 	});
-
-	function changeOffset(delta: number) {
-		currentOffset += delta;
-	}
 </script>
 
 <div class="flex h-full flex-col">
-	<div class="flex flex-col items-center justify-between md:flex-row">
-		<UsageUnitToggle bind:currentUnit />
-		<div class="flex items-center space-x-2">
-			<button class="btn btn-ghost btn-sm" onclick={() => changeOffset(-1)} aria-label="上一时间段">
-				<CaretLeft class="size-4" />
-			</button>
-			<span class="text-sm text-gray-600">{periodText}</span>
-			<button class="btn btn-ghost btn-sm" onclick={() => changeOffset(1)} aria-label="下一时间段">
-				<CaretRight class="size-4" />
-			</button>
-		</div>
+	<div class="flex flex-col items-center md:flex-row md:justify-between">
+		<UsageUnitToggle bind:currentUnit disabled={loading} />
+		<PeriodNavigator bind:offset={currentOffset} {periodText} disabled={loading} />
 	</div>
 
 	<div class="flex-grow">
