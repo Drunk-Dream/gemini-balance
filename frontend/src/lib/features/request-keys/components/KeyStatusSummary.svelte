@@ -4,24 +4,27 @@
 	let { keyStatusResponse }: { keyStatusResponse: KeyStatusResponse } = $props();
 </script>
 
-<div class="mb-6 rounded-lg bg-white p-4 shadow-md sm:p-6">
-	<h2 class="mb-4 text-xl font-semibold text-gray-800">密钥状态总览</h2>
-	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-		<div class="rounded-md bg-green-50 p-3 text-center shadow-sm">
-			<p class="text-sm font-medium text-green-700">活跃</p>
-			<p class="text-2xl font-bold text-green-800">{keyStatusResponse.available_keys_count}</p>
-		</div>
-		<div class="rounded-md bg-blue-50 p-3 text-center shadow-sm">
-			<p class="text-sm font-medium text-blue-700">使用中</p>
-			<p class="text-2xl font-bold text-blue-800">{keyStatusResponse.in_use_keys_count}</p>
-		</div>
-		<div class="rounded-md bg-yellow-50 p-3 text-center shadow-sm">
-			<p class="text-sm font-medium text-yellow-700">冷却中</p>
-			<p class="text-2xl font-bold text-yellow-800">{keyStatusResponse.cooled_down_keys_count}</p>
-		</div>
-		<div class="rounded-md bg-gray-50 p-3 text-center shadow-sm">
-			<p class="text-sm font-medium text-gray-700">总数</p>
-			<p class="text-2xl font-bold text-gray-800">{keyStatusResponse.total_keys_count}</p>
-		</div>
+<div class="mb-6 grid grid-cols-2 gap-2 lg:gap-4 lg:grid-cols-4">
+	<div
+		class="stat bg-success/20 text-success shadow-base-300 place-items-center rounded-lg shadow-md"
+	>
+		<div class="stat-title">活跃</div>
+		<div class="stat-value">{keyStatusResponse.available_keys_count}</div>
+	</div>
+	<div class="stat bg-info/20 text-info shadow-base-300 place-items-center rounded-lg shadow-md">
+		<div class="stat-title">使用中</div>
+		<div class="stat-value">{keyStatusResponse.in_use_keys_count}</div>
+	</div>
+	<div
+		class="stat bg-warning/20 text-warning shadow-base-300 place-items-center rounded-lg shadow-md"
+	>
+		<div class="stat-title">冷却中</div>
+		<div class="stat-value">{keyStatusResponse.cooled_down_keys_count}</div>
+	</div>
+	<div
+		class="stat bg-neutral/20 text-base-content/90 shadow-base-300 place-items-center rounded-lg shadow-md"
+	>
+		<div class="stat-title">总数</div>
+		<div class="stat-value">{keyStatusResponse.total_keys_count}</div>
 	</div>
 </div>

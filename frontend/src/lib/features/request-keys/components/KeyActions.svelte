@@ -24,33 +24,26 @@
 </script>
 
 <div class="mb-6 flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
-	<button
-		onclick={fetchKeyStatusResponse}
-		class="btn btn-primary"
-		disabled={loading}
-	>
+	<button onclick={fetchKeyStatusResponse} class="btn btn-primary" disabled={loading}>
 		{loading ? '刷新中...' : '立即刷新'}
 	</button>
 
 	<Dialog.Root bind:open={addKeyDialogOpen}>
-		<Dialog.Trigger
-			class="btn btn-primary"
-		>
-			新增密钥
-		</Dialog.Trigger>
+		<Dialog.Trigger class="btn btn-primary">新增密钥</Dialog.Trigger>
 		<Dialog.Portal>
 			<Dialog.Overlay
 				class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
 			/>
 			<Dialog.Content
-				class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-white p-6 shadow-lg"
+				class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 bg-base-200 border-base-300 shadow-base-300 fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border p-6 shadow-lg"
 			>
-				<Dialog.Title class="mb-4 text-xl font-semibold text-gray-800">新增密钥</Dialog.Title>
-				<Dialog.Description class="mb-4 text-sm text-gray-600">
+				<Dialog.Title class="text-base-content/80 mb-4 text-xl font-semibold">新增密钥</Dialog.Title
+				>
+				<Dialog.Description class="text-base-content/60 mb-4 text-sm">
 					单个或批量添加密钥，每行一个。
 				</Dialog.Description>
 				<div>
-					<label for="keysInput" class="mb-2 block text-sm font-medium text-gray-700"
+					<label for="keysInput" class="text-base-content/70 mb-2 block text-sm font-medium"
 						>API 密钥:</label
 					>
 					<textarea
@@ -62,26 +55,12 @@
 					></textarea>
 				</div>
 				<div class="mt-6 flex justify-end space-x-2">
-					<Dialog.Close
-						class="btn btn-ghost"
-					>
-						取消
-					</Dialog.Close>
-					<button
-						onclick={handleAddKeysSubmit}
-						class="btn btn-success"
-					>
-						添加密钥
-					</button>
+					<Dialog.Close class="btn btn-ghost">取消</Dialog.Close>
+					<button onclick={handleAddKeysSubmit} class="btn btn-success"> 添加密钥 </button>
 				</div>
 			</Dialog.Content>
 		</Dialog.Portal>
 	</Dialog.Root>
 
-	<button
-		onclick={resetAllKeys}
-		class="btn btn-error"
-	>
-		重置所有密钥状态
-	</button>
+	<button onclick={resetAllKeys} class="btn btn-error"> 重置所有密钥状态 </button>
 </div>
