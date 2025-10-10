@@ -1,19 +1,28 @@
 <script lang="ts">
-    import { page } from '$app/state';
+	import { page } from '$app/state';
 
-    let { href, name, onClick } = $props();
+	let {
+		href,
+		name,
+		onClick,
+		icon
+	}: {
+		href: string;
+		name: string;
+		onClick: () => void;
+		icon: string; // Add icon prop
+	} = $props();
 
-    const isActive = $derived(page.url.pathname === href);
+	const isActive = $derived(page.url.pathname === href);
 </script>
 
-<li class="mb-2">
-    <a
-        {href}
-        class="block rounded-md p-2 transition-colors duration-200 hover:bg-gray-700 {isActive
-            ? 'bg-gray-700'
-            : ''}"
-        onclick={onClick}
-    >
-        {name}
-    </a>
+<li>
+	<a
+		{href}
+		class="flex items-center gap-2 text-lg {isActive ? 'bg-primary text-primary-content' : ''}"
+		onclick={onClick}
+	>
+		<i class="{icon} w-6 text-lg"></i>
+		{name}
+	</a>
 </li>

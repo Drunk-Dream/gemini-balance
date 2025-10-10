@@ -7,7 +7,7 @@ export default defineConfig({
 	server: {
 		proxy: {
 			'/api': {
-				target: 'http://localhost:8090',
+				target: 'https://gemini.drudream.top',
 				changeOrigin: true,
 				rewrite: (path) => path.replace(/^\/api/, '/api')
 			}
