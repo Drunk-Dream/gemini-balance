@@ -20,12 +20,7 @@
 </script>
 
 {#if message}
-	<div
-		class="relative mb-4 rounded border px-4 py-3 {type === 'success'
-			? 'border-green-400 bg-green-100 text-green-700'
-			: 'border-red-400 bg-red-100 text-red-700'}"
-		role="alert"
-	>
+	<div class="alert {type === 'success' ? 'alert-success' : 'alert-error'}" role="alert">
 		<span class="block sm:inline">{message}</span>
 	</div>
 {/if}
