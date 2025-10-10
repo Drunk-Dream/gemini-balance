@@ -336,8 +336,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             JOIN KeyTotalUsage ktu ON ku.key_identifier = ktu.key_identifier
             ORDER BY
                 ktu.total_usage DESC,
-                ku.key_identifier ASC,
-                ku.model_name DESC
+                ku.key_identifier ASC
         """
         params = [start_timestamp_utc, end_timestamp_utc]
 

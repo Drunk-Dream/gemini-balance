@@ -41,6 +41,8 @@
 						}
 					},
 					legend: {
+						type: 'scroll',
+						backgroundColor: 'rgba(255, 255, 255, 0.8)',
 						data: modelNames,
 						bottom: 0 // 将 legend 放在底部
 					},
@@ -48,7 +50,7 @@
 						left: '3%',
 						right: '4%',
 						top: '5%', // 减小上边距
-						bottom: '10%', // 为 legend 留出更多空间
+						bottom: '13%', // 为 legend 留出更多空间
 						containLabel: true
 					},
 					xAxis: {

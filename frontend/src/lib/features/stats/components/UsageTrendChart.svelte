@@ -62,6 +62,8 @@
 						}
 					},
 					legend: {
+						type: 'scroll',
+						backgroundColor: 'rgba(255, 255, 255, 0.8)',
 						data: modelNames,
 						bottom: 0 // 将 legend 放在底部
 					},
@@ -69,7 +71,7 @@
 						left: '3%',
 						right: '4%',
 						top: '10%', // 减小上边距
-						bottom: '10%', // 为 legend 留出更多空间
+						bottom: '13%', // 为 legend 留出更多空间
 						containLabel: true
 					},
 					xAxis: {
@@ -102,7 +104,7 @@
 </script>
 
 <div class="flex h-full flex-col">
-	<div class="flex items-center justify-between">
+	<div class="flex flex-col items-center justify-between md:flex-row">
 		<UsageUnitToggle bind:currentUnit />
 		<div class="flex items-center space-x-2">
 			<button class="btn btn-ghost btn-sm" onclick={() => changeOffset(-1)} aria-label="上一时间段">
