@@ -49,6 +49,6 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-100 p-4 sm:p-6 lg:p-8">
+<div class="bg-base-100 flex h-[calc(100vh-3rem)] items-center justify-center p-4 sm:p-6 lg:p-8">
 	<LoginForm bind:password {handleLogin} {loading} {errorMessage} />
 </div>
