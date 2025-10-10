@@ -28,7 +28,7 @@
 	});
 </script>
 
-<div>
+<div class="flex h-screen bg-gray-100">
 	<Header {toggleSidebar} />
 
 	<Sidebar {sidebarOpen} {toggleSidebar} {isMobile} />
