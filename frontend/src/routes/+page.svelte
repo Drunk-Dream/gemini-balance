@@ -11,7 +11,7 @@
 		{#each navLinks as link}
 			<a
 				href={link.href}
-				class="border-base-300 bg-base-100 group block transform rounded-lg border p-6 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl"
+				class="border-base-300 bg-base-100 shadow-base-content/20 group block transform rounded-lg border p-6 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl"
 			>
 				<h2 class="text-base-content mb-2 text-2xl font-bold group-hover:text-blue-600">
 					{link.name}

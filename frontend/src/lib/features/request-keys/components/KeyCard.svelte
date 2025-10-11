@@ -16,7 +16,7 @@
 	} = $props();
 </script>
 
-<div class="card bg-base-200 shadow-md">
+<div class="card bg-base-200 border-base-content/10 shadow-base-content/10 border shadow-md">
 	<div class="card-body">
 		<div class="flex items-center justify-between">
 			<h3 class="text-md text-base-content/80 font-semibold">密钥标识:</h3>

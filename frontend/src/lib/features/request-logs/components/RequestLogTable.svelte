@@ -25,7 +25,7 @@
 	}
 </script>
 
-<div class="card bg-base-100 shadow-xl">
+<div class="card bg-base-100 shadow-xl shadow-base-content/20">
 	<div class="card-body">
 		<h2 class="card-title">请求日志</h2>
 		<div class="overflow-x-auto">

@@ -24,7 +24,7 @@
 	} = $props();
 </script>
 
-<div class="card bg-base-100 shadow-xl">
+<div class="card bg-base-100 shadow-xl shadow-base-content/20">
 	<div class="card-body">
 		<h2 class="card-title">现有密钥列表</h2>
 		<div class="overflow-x-auto">
