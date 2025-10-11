@@ -66,7 +66,7 @@ class SQLiteAuthDBManager(AuthDBManager):
 
     async def delete_key(self, api_key: str) -> bool:
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("PRAGMA foreign_keys=ON;")
+            # await db.execute("PRAGMA foreign_keys=ON;")
             cursor = await db.execute(
                 "DELETE FROM auth_keys WHERE api_key = ?", (api_key,)
             )
