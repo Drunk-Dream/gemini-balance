@@ -24,15 +24,6 @@ class RequestLogDBManager(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def get_usage_stats_by_period(
-        self, unit: UsageStatsUnit, offset: int, timezone_str: str
-    ) -> UsageStatsData:
-        """
-        根据指定的时间单位（日、周、月）和偏移量，获取模型使用统计数据。
-        """
-        raise NotImplementedError
-
-    @abc.abstractmethod
     async def get_auth_key_usage_stats(self) -> dict[str, int]:
         """
         获取所有日志记录，并根据 auth_key_alias 进行分组，统计每个 auth_key_alias 的唯一请求数。
@@ -57,6 +48,16 @@ class RequestLogDBManager(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    async def get_request_time_range(
+        self,
+    ) -> Optional[Tuple[datetime, datetime]]:
+        """
+        获取请求日志记录的时间范围。
+        """
+        raise NotImplementedError
+
+    # --------------- Chart Data ---------------
+    @abc.abstractmethod
     async def get_daily_model_usage_chart_stats(
         self, timezone_str: str
     ) -> DailyUsageChartData:
@@ -67,10 +68,10 @@ class RequestLogDBManager(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def get_request_time_range(
-        self,
-    ) -> Optional[Tuple[datetime, datetime]]:
+    async def get_usage_stats_by_period(
+        self, unit: UsageStatsUnit, offset: int, num_periods: int, timezone_str: str
+    ) -> UsageStatsData:
         """
-        获取请求日志记录的时间范围。
+        根据指定的时间单位（日、周、月）和偏移量，获取模型使用统计数据。
         """
         raise NotImplementedError

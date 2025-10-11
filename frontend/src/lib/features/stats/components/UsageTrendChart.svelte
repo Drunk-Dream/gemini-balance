@@ -2,13 +2,15 @@
 	import { browser } from '$app/environment';
 	import UsageUnitToggle from '$lib/features/stats/components/UnitToggle.svelte';
 	import { getUsageStats, UsageStatsUnit, type UsageStatsData } from '$lib/features/stats/service';
-	import type { EChartsOption, LineSeriesOption } from 'echarts';
+	import { type EChartsOption, type LineSeriesOption } from 'echarts';
 	import { LineChart } from 'echarts/charts';
 	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 	import { init, use } from 'echarts/core';
 	import { CanvasRenderer } from 'echarts/renderers';
 	import { Chart } from 'svelte-echarts';
 	import PeriodNavigator from './PeriodNavigator.svelte';
+	import PeriodSlider from './PeriodSlider.svelte';
+	// 导入 PeriodSlider 组件
 
 	// 注册 ECharts 组件
 	use([LineChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer]);
@@ -22,8 +24,8 @@
 	let previousUnit: UsageStatsUnit = $state(UsageStatsUnit.DAY);
 	let currentUnit: UsageStatsUnit = $state(UsageStatsUnit.DAY);
 	let currentOffset: number = $state(0);
+	let num_periods: number = $state(7); // 默认显示 7 个周期
 	let timezone: string = $state('Asia/Shanghai'); // 默认时区
-	// 显示当前统计时间段的文本
 	let periodText: string = $state('加载中...');
 
 	// 获取用户浏览器时区
@@ -36,9 +38,10 @@
 		if (previousUnit !== currentUnit) {
 			currentOffset = 0;
 			previousUnit = currentUnit;
+			num_periods = 7; // 重置周期数
 		}
 		try {
-			chartData = await getUsageStats(currentUnit, currentOffset, timezone);
+			chartData = await getUsageStats(currentUnit, currentOffset, num_periods, timezone);
 			periodText = chartData ? `${chartData.start_date} 至 ${chartData.end_date}` : 'null';
 			if (chartData) {
 				const modelNames = Array.from(new Set(chartData.datasets.map((ds) => ds.label)));
@@ -96,15 +99,29 @@
 
 	// 响应式地重新获取数据
 	$effect(() => {
-		fetchData();
+		currentUnit;
+		currentOffset;
+		num_periods;
+		const timeoutId = setTimeout(() => {
+			fetchData();
+		}, 300);
+		return () => {
+			if (timeoutId) clearTimeout(timeoutId);
+		};
 	});
 </script>
 
 <div class="flex h-full flex-col">
 	<div class="flex flex-col items-center md:flex-row md:justify-between">
 		<UsageUnitToggle bind:currentUnit disabled={loading} />
-		<PeriodNavigator bind:offset={currentOffset} {periodText} disabled={loading} />
+		<PeriodNavigator
+			bind:offset={currentOffset}
+			{periodText}
+			disabled={[loading, loading || currentOffset >= 0]}
+		/>
 	</div>
+
+	<PeriodSlider bind:num_periods {currentUnit} disabled={loading} />
 
 	<div class="flex-grow">
 		{#if loading}

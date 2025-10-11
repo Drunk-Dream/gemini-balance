@@ -46,11 +46,13 @@ export async function getDailyUsageChart(timezone_str?: string): Promise<DailyUs
 export async function getUsageStats(
 	unit: UsageStatsUnit,
 	offset: number,
+	num_periods: number,
 	timezone_str: string
 ): Promise<UsageStatsData> {
 	const queryParams = new URLSearchParams();
 	queryParams.append('unit', unit);
 	queryParams.append('offset', offset.toString());
+	queryParams.append('num_periods', num_periods.toString());
 	queryParams.append('timezone_str', timezone_str);
 
 	try {

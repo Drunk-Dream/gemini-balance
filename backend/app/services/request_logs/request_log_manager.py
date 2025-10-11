@@ -82,11 +82,11 @@ class RequestLogManager:
         return await self._db_manager.get_auth_key_usage_stats()
 
     async def get_usage_stats_by_period(
-        self, unit: UsageStatsUnit, offset: int, timezone_str: str
+        self, unit: UsageStatsUnit, offset: int, num_periods: int, timezone_str: str
     ) -> UsageStatsData:
         """
         根据指定的时间单位（日、周、月）和偏移量，获取模型使用统计数据。
         """
         return await self._db_manager.get_usage_stats_by_period(
-            unit=unit, offset=offset, timezone_str=timezone_str
+            unit=unit, offset=offset, num_periods=num_periods, timezone_str=timezone_str
         )

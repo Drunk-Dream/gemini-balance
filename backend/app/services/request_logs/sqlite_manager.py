@@ -130,7 +130,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             return "+00:00"  # 默认返回 UTC
 
     def _calculate_time_period_details(
-        self, unit: UsageStatsUnit, offset: int, now_in_tz: datetime
+        self, unit: UsageStatsUnit, offset: int, num_periods: int, now_in_tz: datetime
     ) -> TimePeriodDetails:
         """
         根据指定的时间单位（日、周、月）和偏移量，计算时间段的详细信息。
@@ -142,7 +142,6 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         group_by_format: str
 
         if unit == UsageStatsUnit.DAY:
-            num_periods = 7
             current_period_start = (now_in_tz + timedelta(days=offset)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
@@ -161,7 +160,6 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             end_date_display = end_of_range
 
         elif unit == UsageStatsUnit.WEEK:
-            num_periods = 7
             current_week_start = (now_in_tz + timedelta(weeks=offset)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ) - timedelta(
@@ -184,7 +182,6 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             end_date_display = end_of_range
 
         elif unit == UsageStatsUnit.MONTH:
-            num_periods = 6
             current_month_start = (now_in_tz + timedelta(days=30 * offset)).replace(
                 day=1, hour=0, minute=0, second=0, microsecond=0
             )
@@ -280,6 +277,58 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             ]
             return logs, total_count
 
+    async def get_auth_key_usage_stats(self) -> Dict[str, int]:
+        """
+        获取所有日志记录，并根据 auth_key_alias 进行分组，统计每个 auth_key_alias 的唯一请求数。
+        """
+        query = """
+            SELECT
+                auth_key_alias,
+                COUNT(DISTINCT request_id) as request_count
+            FROM
+                request_logs
+            GROUP BY
+                auth_key_alias
+            ORDER BY
+                auth_key_alias
+        """
+        stats: Dict[str, int] = {}
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query)
+            rows = await cursor.fetchall()
+
+            for row in rows:
+                auth_key_alias = row["auth_key_alias"]
+                request_count = row["request_count"]
+                stats[auth_key_alias] = request_count
+        return stats
+
+    async def get_request_time_range(self) -> Optional[Tuple[datetime, datetime]]:
+        """
+        获取数据库中记录的最小和最大请求时间。
+        """
+        query = """
+            SELECT
+                MIN(request_time) as min_time,
+                MAX(request_time) as max_time
+            FROM
+                request_logs
+        """
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query)
+            row = await cursor.fetchone()
+
+            if row:
+                min_time = datetime.fromtimestamp(row["min_time"], tz=ZoneInfo("UTC"))
+                max_time = datetime.fromtimestamp(row["max_time"], tz=ZoneInfo("UTC"))
+                return min_time, max_time
+
+            return None
+
+    # --------------- Chart Data ---------------
     async def get_daily_model_usage_chart_stats(
         self, timezone_str: str
     ) -> DailyUsageChartData:
@@ -376,59 +425,8 @@ class SQLiteRequestLogManager(RequestLogDBManager):
 
         return DailyUsageChartData(labels=label_briefs, datasets=datasets)
 
-    async def get_auth_key_usage_stats(self) -> Dict[str, int]:
-        """
-        获取所有日志记录，并根据 auth_key_alias 进行分组，统计每个 auth_key_alias 的唯一请求数。
-        """
-        query = """
-            SELECT
-                auth_key_alias,
-                COUNT(DISTINCT request_id) as request_count
-            FROM
-                request_logs
-            GROUP BY
-                auth_key_alias
-            ORDER BY
-                auth_key_alias
-        """
-        stats: Dict[str, int] = {}
-
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
-            cursor = await db.execute(query)
-            rows = await cursor.fetchall()
-
-            for row in rows:
-                auth_key_alias = row["auth_key_alias"]
-                request_count = row["request_count"]
-                stats[auth_key_alias] = request_count
-        return stats
-
-    async def get_request_time_range(self) -> Optional[Tuple[datetime, datetime]]:
-        """
-        获取数据库中记录的最小和最大请求时间。
-        """
-        query = """
-            SELECT
-                MIN(request_time) as min_time,
-                MAX(request_time) as max_time
-            FROM
-                request_logs
-        """
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
-            cursor = await db.execute(query)
-            row = await cursor.fetchone()
-
-            if row:
-                min_time = datetime.fromtimestamp(row["min_time"], tz=ZoneInfo("UTC"))
-                max_time = datetime.fromtimestamp(row["max_time"], tz=ZoneInfo("UTC"))
-                return min_time, max_time
-
-            return None
-
     async def get_usage_stats_by_period(
-        self, unit: UsageStatsUnit, offset: int, timezone_str: str
+        self, unit: UsageStatsUnit, offset: int, num_periods: int, timezone_str: str
     ) -> UsageStatsData:
         """
         根据指定的时间单位（日、周、月）和偏移量，获取模型使用统计数据。
@@ -447,7 +445,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
 
         now_in_tz = datetime.now(target_timezone)
         time_period_details = self._calculate_time_period_details(
-            unit, offset, now_in_tz
+            unit, offset, num_periods, now_in_tz
         )
 
         start_of_range = time_period_details.start_of_range

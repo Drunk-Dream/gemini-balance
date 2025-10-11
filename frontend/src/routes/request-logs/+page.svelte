@@ -92,7 +92,7 @@
 		{:else}
 			<RequestLogTable {logs} />
 
-			<div class="sticky bottom-0 z-10 mt-2 flex justify-center">
+			<div class="sticky bottom-2 z-10 mt-2 flex justify-center">
 				<div
 					class="bg-base-100/60 border-base-200/60 shadow-base-content/20 rounded-lg border px-2 shadow-md backdrop-blur-sm"
 				>
