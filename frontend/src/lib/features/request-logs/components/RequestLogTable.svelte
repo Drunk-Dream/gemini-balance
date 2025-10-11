@@ -25,51 +25,74 @@
 	}
 </script>
 
-<div class="overflow-x-auto rounded-lg bg-white shadow-md">
-	<table class="min-w-full divide-y divide-gray-200">
-		<thead class="sticky top-0 bg-gray-50">
-			<tr>
-				{#each headers as header}
-					<th
-						scope="col"
-						class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-					>
-						{header.label}
-					</th>
-				{/each}
-			</tr>
-		</thead>
-		<tbody class="divide-y divide-gray-200 bg-white">
-			{#each logs as log (log.id)}
-				<tr>
-					{#each headers as header}
-						<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-							{#if header.key === 'request_time'}
-								{formatDateTime(log[header.key])}
-							{:else if header.key === 'is_success'}
-								<span
-									class="inline-flex rounded-full px-2 text-xs font-semibold leading-5 {log[
-										header.key
-									]
-										? 'bg-green-100 text-green-800'
-										: 'bg-red-100 text-red-800'}"
-								>
-									{log[header.key] ? '是' : '否'}
-								</span>
-							{:else if header.key === 'token_usage'}
-								{#if log.prompt_tokens !== null || log.completion_tokens !== null || log.total_tokens !== null}
-									{log.prompt_tokens || '0'}->{log.completion_tokens || '0'}({log.total_tokens ||
-										'0'})
-								{:else}
-									-
-								{/if}
-							{:else}
-								{log[header.key as keyof RequestLog] || '-'}
-							{/if}
-						</td>
+<div class="card bg-base-100 shadow-xl">
+	<div class="card-body">
+		<h2 class="card-title">请求日志</h2>
+		<div class="overflow-x-auto">
+			<table class="table-zebra table">
+				<thead>
+					<tr>
+						{#each headers as header}
+							<th scope="col">{header.label}</th>
+						{/each}
+					</tr>
+				</thead>
+				<tbody>
+					{#each logs as log (log.id)}
+						<tr>
+							{#each headers as header}
+								<td class="whitespace-nowrap text-sm">
+									{#if header.key === 'request_id'}
+										<span class="text-base-content/90 font-mono"
+											>{log[header.key as keyof RequestLog] || '-'}</span
+										>
+									{:else if header.key === 'request_time'}
+										<span class="text-base-content/90">{formatDateTime(log[header.key])}</span>
+									{:else if header.key === 'key_brief'}
+										<span class="text-base-content/50 font-mono"
+											>{log[header.key as keyof RequestLog] || '-'}</span
+										>
+									{:else if header.key === 'auth_key_alias'}
+										<span class="text-base-content/90"
+											>{log[header.key as keyof RequestLog] || '-'}</span
+										>
+									{:else if header.key === 'model_name'}
+										<span class="text-base-content/90"
+											>{log[header.key as keyof RequestLog] || '-'}</span
+										>
+									{:else if header.key === 'token_usage'}
+										{#if log.prompt_tokens !== null || log.completion_tokens !== null || log.total_tokens !== null}
+											<span class="text-base-content/90 font-mono"
+												>{log.prompt_tokens || '0'}->{log.completion_tokens ||
+													'0'}({log.total_tokens || '0'})</span
+											>
+										{:else}
+											<span class="text-base-content/90">-</span>
+										{/if}
+									{:else if header.key === 'is_success'}
+										{#if log[header.key]}
+											<span class="badge badge-success badge-outline text-xs">是</span>
+										{:else}
+											<span class="badge badge-error badge-outline text-xs">否</span>
+										{/if}
+									{:else if header.key === 'error_type'}
+										<span class="text-base-content/90"
+											>{log[header.key as keyof RequestLog] || '-'}</span
+										>
+									{:else}
+										<span class="text-base-content/90"
+											>{log[header.key as keyof RequestLog] || '-'}</span
+										>
+									{/if}
+								</td>
+							{/each}
+						</tr>
 					{/each}
-				</tr>
-			{/each}
-		</tbody>
-	</table>
+				</tbody>
+			</table>
+			{#if logs.length === 0}
+				<p class="py-4 text-center text-base-content/50">暂无数据。</p>
+			{/if}
+		</div>
+	</div>
 </div>
