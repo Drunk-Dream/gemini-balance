@@ -22,7 +22,7 @@
 	>
 		<CaretLeft class="size-4" />
 	</button>
-	<span class="text-sm text-gray-600">{periodText}</span>
+	<span class="text-base-content/60 text-sm">{periodText}</span>
 	<button
 		class="btn btn-ghost btn-sm"
 		onclick={() => (offset += 1)}

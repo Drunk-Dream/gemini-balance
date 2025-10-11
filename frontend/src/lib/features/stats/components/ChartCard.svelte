@@ -11,15 +11,17 @@
 	}: { className?: string; header?: Snippet; children?: Snippet } = $props();
 </script>
 
-<div class={twMerge('rounded-lg bg-base-200 shadow-base-300 p-4 shadow-md sm:p-6 md:p-8', className)}>
-	{#if header}
-		<div class="mb-4">
-			{@render header()}
-		</div>
-	{/if}
-	<div class="relative h-64 sm:h-80 md:h-96">
-		{#if children}
-			{@render children()}
+<div class={twMerge('card bg-base-100 shadow-md', className)}>
+	<div class="card-body">
+		{#if header}
+			<h2 class="card-title mb-4 flex-col">
+				{@render header()}
+			</h2>
 		{/if}
+		<div class="relative h-64 sm:h-80 md:h-96">
+			{#if children}
+				{@render children()}
+			{/if}
+		</div>
 	</div>
 </div>
