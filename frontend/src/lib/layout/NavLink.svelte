@@ -20,7 +20,7 @@
 	<a
 		{href}
 		class="flex items-center gap-2 text-lg font-semibold {isActive
-			? 'bg-primary text-primary-content'
+			? 'bg-neutral/80 text-neutral-content'
 			: ''}"
 		onclick={onClick}
 	>

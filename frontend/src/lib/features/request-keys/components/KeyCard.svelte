@@ -16,7 +16,7 @@
     } = $props();
 </script>
 
-<div class="bg-base-200 shadow-base-300 rounded-lg p-4 shadow-md">
+<div class="bg-base-200 rounded-lg p-4 shadow-md">
     <div class="mb-2 flex items-center justify-between">
         <h3 class="text-md text-base-content/80 font-semibold">密钥标识:</h3>
         <p class="text-base-content/90 text-sm">{keyStatus.key_brief}</p>

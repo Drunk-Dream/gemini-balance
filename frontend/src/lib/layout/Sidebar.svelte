@@ -16,7 +16,7 @@
 	}
 </script>
 
-<ul class="menu bg-base-200 text-base-content flex min-h-full w-72 flex-col p-4">
+<ul class="menu bg-base-100 text-base-content flex min-h-full w-72 flex-col p-4">
 	<li class="menu-title mb-4 text-2xl font-bold"><a href="/">Gemini Balance</a></li>
 	{#each navLinks as link}
 		<NavLink href={link.href} name={link.name} onClick={toggleSidebar} icon={link.icon} />

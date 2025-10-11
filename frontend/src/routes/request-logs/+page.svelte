@@ -88,7 +88,7 @@
 		<Notification message={error} type="error" autoHide={false} />
 
 		{#if logs.length === 0}
-			<p class="text-gray-500">没有找到任何请求日志。</p>
+			<p class="text-base-content/50">没有找到任何请求日志。</p>
 		{:else}
 			<RequestLogTable {logs} />
 

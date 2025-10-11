@@ -2,14 +2,9 @@
 	let { toggleSidebar } = $props();
 </script>
 
-<div class="navbar bg-base-100 sticky top-0 z-10 lg:hidden">
+<div class="navbar bg-base-100 sticky top-0 z-10 min-h-8 lg:hidden">
 	<div class="navbar-start">
-		<button
-			type="button"
-			class="btn btn-ghost"
-			onclick={toggleSidebar}
-			aria-label="Toggle sidebar"
-		>
+		<button type="button" class="btn btn-ghost" onclick={toggleSidebar} aria-label="Toggle sidebar">
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				class="h-5 w-5"
