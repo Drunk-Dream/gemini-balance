@@ -26,7 +26,7 @@
 				{/if}
 			</h2>
 		{/if}
-		<div class="relative h-64 sm:h-80 md:h-96">
+		<div class="relative h-80 lg:h-96">
 			{#if children}
 				{@render children()}
 			{/if}

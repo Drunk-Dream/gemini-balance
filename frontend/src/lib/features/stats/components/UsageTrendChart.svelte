@@ -108,12 +108,11 @@
 </script>
 
 <div class="flex h-full flex-col">
-	<div class="flex flex-col items-center md:flex-row md:justify-between">
+	<div class="flex flex-col items-center gap-2 xl:flex-row xl:justify-between xl:gap-0">
 		<UsageUnitToggle bind:currentUnit={unit} disabled={loading} />
+		<PeriodSlider bind:num_periods={numPeriods} currentUnit={unit} disabled={loading} />
 		<PeriodNavigator bind:offset {periodText} disabled={[loading, loading || offset >= 0]} />
 	</div>
-
-	<PeriodSlider bind:num_periods={numPeriods} currentUnit={unit} disabled={loading} />
 
 	<div class="flex-grow">
 		<ChartWrapper {loading} {error} {chartData} {options} />

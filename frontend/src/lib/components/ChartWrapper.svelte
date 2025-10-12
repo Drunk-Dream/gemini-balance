@@ -15,9 +15,17 @@
 		chartData: DailyUsageChartData | null;
 		options: EChartsOption;
 	} = $props();
+
+	let isInitialLoad = $state(true);
+
+	$effect(() => {
+		if (isInitialLoad && !loading) {
+			isInitialLoad = false;
+		}
+	});
 </script>
 
-{#if loading}
+{#if loading && isInitialLoad}
 	<!-- 使用 skeleton 作为加载占位符 -->
 	<div class="skeleton h-full w-full"></div>
 {:else if error}
