@@ -17,7 +17,9 @@
 
 	let options: EChartsOption = $state({});
 
-	onMount(async () => {
+	async function fetchDataAndRenderChart() {
+		loading = true;
+		error = null;
 		try {
 			chartData = await getDailyUsageChart();
 			if (chartData) {
@@ -73,7 +75,11 @@
 		} finally {
 			loading = false;
 		}
-	});
+	}
+
+	onMount(fetchDataAndRenderChart);
+
+	export { fetchDataAndRenderChart as refresh };
 </script>
 
 {#if loading}

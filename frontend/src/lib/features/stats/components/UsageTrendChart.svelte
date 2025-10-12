@@ -99,9 +99,11 @@
 			previousUnit = unit;
 			numPeriods = 7; // 重置周期数
 		}
-		const timeoutId = setTimeout(fetchData, 300, unit, offset, numPeriods);
+		const timeoutId = setTimeout(fetchData, 300);
 		return () => clearTimeout(timeoutId);
 	});
+
+	export { fetchData as refresh };
 </script>
 
 <div class="flex h-full flex-col">
