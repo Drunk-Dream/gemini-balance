@@ -28,5 +28,6 @@
 		bind:value={num_periods}
 		class="range range-primary w-48"
 		{disabled}
+		onpointermove={(event: PointerEvent) => event.stopPropagation()}
 	/>
 </div>
