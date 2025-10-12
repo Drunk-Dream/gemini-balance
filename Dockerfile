@@ -8,7 +8,7 @@ RUN npm install
 
 COPY frontend/ . .
 RUN npm run prepare
-RUN npm run build
+RUN NODE_OPTIONS=--max-old-space-size=1536 npm run build
 
 # Stage 2: Backend Builder
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS backend-builder
