@@ -36,7 +36,7 @@
 	async function fetchData() {
 		loading = true;
 		try {
-			chartData = await getUsageStats(unit, offset, numPeriods, timezone);
+			chartData = await getUsageStats(unit, offset, numPeriods, timezone, 'token_count');
 			periodText = chartData ? `${chartData.start_date} 至 ${chartData.end_date}` : 'null';
 			if (chartData) {
 				const modelNames = Array.from(new Set(chartData.datasets.map((ds) => ds.label)));
