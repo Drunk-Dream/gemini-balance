@@ -92,8 +92,34 @@ async def get_usage_stats_endpoint(
     """
     根据指定的时间单位（日、周、月）和偏移量，获取模型使用统计数据。
     """
-    usage_stats = await request_logs_manager.get_usage_stats_by_period(
+    return await request_logs_manager.get_usage_stats_by_period(
         unit=unit, offset=offset, num_periods=num_periods, timezone_str=timezone_str
     )
-    # 这里不需要 key_identifier 到 key_brief 的映射，因为趋势图是按时间轴和 model_name 统计的
-    return usage_stats
+
+
+@router.get(
+    "/request_logs/token_usage_stats",
+    response_model=UsageStatsData,
+    summary="获取令牌使用统计趋势图表数据",
+)
+async def get_token_usage_stats_endpoint(
+    unit: UsageStatsUnit = Query(
+        UsageStatsUnit.DAY, description="统计单位：'day', 'week', 'month'"
+    ),
+    offset: int = Query(
+        0, description="时间偏移量，0表示当前周期，-1表示上一周期，以此类推"
+    ),
+    num_periods: int = Query(7, description="要显示的周期数量"),
+    timezone_str: str = Query(
+        "America/New_York", description="目标时区字符串，例如 'Asia/Shanghai'"
+    ),
+    current_user: str = Depends(get_current_user),
+    request_logs_manager: RequestLogManager = Depends(RequestLogManager),
+    key_state_manager: KeyStateManager = Depends(KeyStateManager),
+) -> UsageStatsData:
+    """
+    根据指定的时间单位（日、周、月）和偏移量，获取令牌使用统计数据。
+    """
+    return await request_logs_manager.get_token_usage_stats_by_period(
+        unit=unit, offset=offset, num_periods=num_periods, timezone_str=timezone_str
+    )

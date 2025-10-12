@@ -293,7 +293,7 @@ class RequestLogManager:
         num_periods: int,
         timezone_str: str,
         query_func,
-        value_key: str,
+        data_type: str,
     ) -> UsageStatsData:
         """
         通用的方法，根据指定的时间单位（日、周、月）和偏移量，获取模型使用统计数据。
@@ -325,7 +325,7 @@ class RequestLogManager:
         end_timestamp_utc = end_of_range.astimezone(ZoneInfo("UTC")).timestamp()
 
         app_logger.debug(
-            f"Fetching {value_key} stats for unit={unit}, offset={offset}, timezone={timezone_str}: "
+            f"Fetching {data_type} stats for unit={unit}, offset={offset}, timezone={timezone_str}: "
             f"UTC start={start_timestamp_utc}, UTC end={end_timestamp_utc}"
         )
 
@@ -342,7 +342,7 @@ class RequestLogManager:
         for row in rows:
             period_label = row["period_label"]
             model_name = row["model_name"]
-            value = row[value_key]
+            value = row[data_type]
 
             if period_label and value is not None:
                 db_model_data[period_label][model_name] = value
