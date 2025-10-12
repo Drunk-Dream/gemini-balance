@@ -99,7 +99,8 @@
 			previousUnit = unit;
 			numPeriods = 7; // 重置周期数
 		}
-		const timeoutId = setTimeout(fetchData, 300);
+		// 添加unit offset numPeriods是为了在发生变化时触发 effect
+		const timeoutId = setTimeout(fetchData, 300, unit, offset, numPeriods);
 		return () => clearTimeout(timeoutId);
 	});
 

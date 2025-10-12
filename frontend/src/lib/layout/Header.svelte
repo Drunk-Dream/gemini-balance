@@ -1,9 +1,10 @@
 <script lang="ts">
-	let { toggleSidebar } = $props();
+		let { toggleSidebar } = $props();
 </script>
 
 <div class="navbar bg-base-100 sticky top-0 z-10 min-h-8 lg:hidden">
-	<div class="navbar-start">
+	<div class="navbar-start"></div>
+	<div class="navbar-end">
 		<button type="button" class="btn btn-ghost" onclick={toggleSidebar} aria-label="Toggle sidebar">
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
