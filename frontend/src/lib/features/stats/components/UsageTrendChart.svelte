@@ -99,12 +99,10 @@
 
 	// 响应式地重新获取数据
 	$effect(() => {
-		currentUnit;
-		currentOffset;
-		num_periods;
-		const timeoutId = setTimeout(() => {
-			fetchData();
-		}, 300);
+		console.log('Trigger by currentUnit changed:', currentUnit);
+		console.log('Trigger by currentOffset changed:', currentOffset);
+		console.log('Trigger by num_periods changed:', num_periods);
+		const timeoutId = setTimeout(fetchData, 300);
 		return () => {
 			if (timeoutId) clearTimeout(timeoutId);
 		};

@@ -43,7 +43,7 @@
 	// React to log changes and scroll AFTER DOM updates
 	$effect(() => {
 		// By accessing `logs`, we ensure this effect re-runs whenever the logs change.
-		logs;
+		const _ = logs;
 
 		// We need to wait for the DOM to update after `logs` changes.
 		// Using an async IIFE because $effect must be synchronous.
@@ -74,7 +74,7 @@
 {#if showScrollToBottomButton}
 	<button
 		onclick={forceScrollToBottom}
-		class="btn btn-circle btn-primary fixed right-4 bottom-4"
+		class="btn btn-circle btn-primary fixed bottom-4 right-4"
 		aria-label="Scroll to bottom"
 	>
 		<ArrowDown class="size-6" />
