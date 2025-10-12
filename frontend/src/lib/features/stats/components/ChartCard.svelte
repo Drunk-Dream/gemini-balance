@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ArrowClockwise } from 'phosphor-svelte';
+	import ArrowClockwise from 'phosphor-svelte/lib/ArrowClockwise';
 	import type { Snippet } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
