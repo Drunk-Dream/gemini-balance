@@ -2,11 +2,6 @@ import abc
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-from backend.app.api.api.schemas.request_logs import (
-    DailyUsageChartData,
-    UsageStatsData,
-    UsageStatsUnit,
-)
 from backend.app.services.request_logs.schemas import RequestLog
 
 
@@ -56,22 +51,41 @@ class RequestLogDBManager(abc.ABC):
         """
         raise NotImplementedError
 
-    # --------------- Chart Data ---------------
+    # --------------- Chart Data Query Methods ---------------
     @abc.abstractmethod
-    async def get_daily_model_usage_chart_stats(
-        self, timezone_str: str
-    ) -> DailyUsageChartData:
+    async def query_daily_model_usage_stats(
+        self, start_timestamp_utc: float, end_timestamp_utc: float
+    ) -> List[dict]:
         """
-        获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数，
-        按 key_identifier 的总使用量降序排序，并格式化为图表数据。
+        查询指定 UTC 时间范围内每天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数。
+        返回原始数据列表，每项包含 key_identifier, key_brief, model_name, usage_count。
         """
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def get_usage_stats_by_period(
-        self, unit: UsageStatsUnit, offset: int, num_periods: int, timezone_str: str
-    ) -> UsageStatsData:
+    async def query_usage_stats_by_period(
+        self,
+        start_timestamp_utc: float,
+        end_timestamp_utc: float,
+        group_by_format: str,
+        sqlite_timezone_offset: str,
+    ) -> List[dict]:
         """
-        根据指定的时间单位（日、周、月）和偏移量，获取模型使用统计数据。
+        根据指定的时间单位和偏移量，查询模型使用统计数据。
+        返回原始数据列表，每项包含 period_label, model_name, request_count。
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def query_token_usage_stats_by_period(
+        self,
+        start_timestamp_utc: float,
+        end_timestamp_utc: float,
+        group_by_format: str,
+        sqlite_timezone_offset: str,
+    ) -> List[dict]:
+        """
+        根据指定的时间单位和偏移量，查询 token 使用统计数据。
+        返回原始数据列表，每项包含 period_label, model_name, token_count。
         """
         raise NotImplementedError
