@@ -42,19 +42,16 @@
 
 	// React to log changes and scroll AFTER DOM updates
 	$effect(() => {
-		// By accessing `logs`, we ensure this effect re-runs whenever the logs change.
-		const _ = logs;
-
 		// We need to wait for the DOM to update after `logs` changes.
 		// Using an async IIFE because $effect must be synchronous.
-		(async () => {
+		(async (_) => {
 			await tick(); // Ensure DOM is updated with new logs before scrolling
 
 			// Only scroll if autoScroll is enabled
 			if (autoScroll) {
 				scrollToBottom();
 			}
-		})();
+		})(logs);
 	});
 </script>
 

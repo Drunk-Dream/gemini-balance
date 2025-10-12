@@ -37,7 +37,6 @@
 	}
 
 	async function fetchLogs() {
-		error = null;
 		try {
 			if (!request_time_range.start || !request_time_range.end) {
 				return;
@@ -71,7 +70,8 @@
 
 	// 初始加载和当 filters 或 currentPage 变化时，获取日志
 	$effect(() => {
-		fetchLogs();
+		const timeoutId = setTimeout(fetchLogs, 300, request_time_range, currentPage);
+		return () => clearTimeout(timeoutId);
 	});
 </script>
 

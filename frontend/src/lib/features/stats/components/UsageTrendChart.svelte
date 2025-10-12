@@ -22,9 +22,9 @@
 	let options: EChartsOption = $state({});
 
 	let previousUnit: UsageStatsUnit = $state(UsageStatsUnit.DAY);
-	let currentUnit: UsageStatsUnit = $state(UsageStatsUnit.DAY);
-	let currentOffset: number = $state(0);
-	let num_periods: number = $state(7); // 默认显示 7 个周期
+	let unit: UsageStatsUnit = $state(UsageStatsUnit.DAY);
+	let offset: number = $state(0);
+	let numPeriods: number = $state(7); // 默认显示 7 个周期
 	let timezone: string = $state('Asia/Shanghai'); // 默认时区
 	let periodText: string = $state('加载中...');
 
@@ -35,13 +35,8 @@
 
 	async function fetchData() {
 		loading = true;
-		if (previousUnit !== currentUnit) {
-			currentOffset = 0;
-			previousUnit = currentUnit;
-			num_periods = 7; // 重置周期数
-		}
 		try {
-			chartData = await getUsageStats(currentUnit, currentOffset, num_periods, timezone);
+			chartData = await getUsageStats(unit, offset, numPeriods, timezone);
 			periodText = chartData ? `${chartData.start_date} 至 ${chartData.end_date}` : 'null';
 			if (chartData) {
 				const modelNames = Array.from(new Set(chartData.datasets.map((ds) => ds.label)));
@@ -99,27 +94,23 @@
 
 	// 响应式地重新获取数据
 	$effect(() => {
-		console.log('Trigger by currentUnit changed:', currentUnit);
-		console.log('Trigger by currentOffset changed:', currentOffset);
-		console.log('Trigger by num_periods changed:', num_periods);
-		const timeoutId = setTimeout(fetchData, 300);
-		return () => {
-			if (timeoutId) clearTimeout(timeoutId);
-		};
+		if (previousUnit !== unit) {
+			offset = 0;
+			previousUnit = unit;
+			numPeriods = 7; // 重置周期数
+		}
+		const timeoutId = setTimeout(fetchData, 300, unit, offset, numPeriods);
+		return () => clearTimeout(timeoutId);
 	});
 </script>
 
 <div class="flex h-full flex-col">
 	<div class="flex flex-col items-center md:flex-row md:justify-between">
-		<UsageUnitToggle bind:currentUnit disabled={loading} />
-		<PeriodNavigator
-			bind:offset={currentOffset}
-			{periodText}
-			disabled={[loading, loading || currentOffset >= 0]}
-		/>
+		<UsageUnitToggle bind:currentUnit={unit} disabled={loading} />
+		<PeriodNavigator bind:offset {periodText} disabled={[loading, loading || offset >= 0]} />
 	</div>
 
-	<PeriodSlider bind:num_periods {currentUnit} disabled={loading} />
+	<PeriodSlider bind:num_periods={numPeriods} currentUnit={unit} disabled={loading} />
 
 	<div class="flex-grow">
 		{#if loading}
