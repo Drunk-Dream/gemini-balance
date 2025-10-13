@@ -8,7 +8,6 @@
 	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 	import { use } from 'echarts/core';
 	import { CanvasRenderer } from 'echarts/renderers';
-	import PeriodNavigator from './PeriodNavigator.svelte';
 	import PeriodSlider from './PeriodSlider.svelte';
 	// 导入 PeriodSlider 组件
 
@@ -111,7 +110,7 @@
 	<div class="flex flex-col items-center gap-2 xl:gap-0 xl:flex-row xl:justify-between">
 		<UsageUnitToggle bind:currentUnit={unit} disabled={loading} />
 		<PeriodSlider bind:num_periods={numPeriods} currentUnit={unit} disabled={loading} />
-		<PeriodNavigator bind:offset {periodText} disabled={[loading, loading || offset >= 0]} />
+		<!-- <PeriodNavigator bind:offset {periodText} disabled={[loading, loading || offset >= 0]} /> -->
 	</div>
 
 	<div class="flex-grow">
