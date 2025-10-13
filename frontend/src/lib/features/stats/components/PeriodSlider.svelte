@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { UsageStatsUnit } from '$lib/features/stats/service';
+	import MagnifyingGlassMinus from 'phosphor-svelte/lib/MagnifyingGlassMinus';
+	import MagnifyingGlassPlus from 'phosphor-svelte/lib/MagnifyingGlassPlus';
 	import { fade } from 'svelte/transition';
 
 	let {
-		num_periods = $bindable(),
+		value = $bindable(),
 		min = 7,
 		disabled = false,
 		currentUnit
 	}: {
-		num_periods: number;
+		value: number;
 		min?: number;
 		disabled?: boolean;
 		currentUnit: UsageStatsUnit;
@@ -26,7 +28,7 @@
 	let tooltipStyle = $derived.by(() => {
 		const range = max - min;
 		// 防止除以零
-		const percentage = range === 0 ? 0 : (num_periods - min) / range;
+		const percentage = range === 0 ? 0 : (value - min) / range;
 
 		// 根据 daisyUI 样式定义
 		const trackWidthRem = 12; // from w-48
@@ -40,28 +42,45 @@
 	});
 </script>
 
-<div class="relative flex w-48 flex-col items-center gap-2">
-	<!-- <label for="num_periods_slider" class="text-sm font-medium">periods:{num_periods}</label> -->
-	<input
-		type="range"
-		{min}
-		{max}
-		bind:value={num_periods}
-		class="range range-primary w-48"
-		{disabled}
-		onpointermove={(event: PointerEvent) => event.stopPropagation()}
-		onpointerenter={() => (isHovering = true)}
-		onpointerleave={() => (isHovering = false)}
-		onpointerdown={() => (isDragging = true)}
-		onpointerup={() => (isDragging = false)}
-	/>
-	{#if isTooltipVisible}
-		<div
-			class="bg-primary/80 text-primary-content border-base-content/10 pointer-events-none absolute -top-8 z-10 rounded border px-2 py-1 text-xs shadow-lg backdrop-blur-sm"
-			style={tooltipStyle}
-			transition:fade
-		>
-			{num_periods}
-		</div>
-	{/if}
+<div
+	class="flex items-center gap-2"
+	onpointerenter={() => (isHovering = true)}
+	onpointerleave={() => (isHovering = false)}
+>
+	<button
+		class="btn btn-ghost btn-circle"
+		onclick={() => (value = Math.max(min, value - 1))}
+		disabled={disabled || value <= min}
+	>
+		<MagnifyingGlassMinus size={20} />
+	</button>
+	<div class="relative flex w-48 flex-col items-center gap-2">
+		<input
+			type="range"
+			{min}
+			{max}
+			bind:value
+			class="range range-primary w-48"
+			{disabled}
+			onpointermove={(event: PointerEvent) => event.stopPropagation()}
+			onpointerdown={() => (isDragging = true)}
+			onpointerup={() => (isDragging = false)}
+		/>
+		{#if isTooltipVisible}
+			<div
+				class="bg-primary/80 text-primary-content border-base-content/10 pointer-events-none absolute -top-8 z-10 rounded border px-2 py-1 text-xs shadow-lg backdrop-blur-sm"
+				style={tooltipStyle}
+				transition:fade
+			>
+				{value}
+			</div>
+		{/if}
+	</div>
+	<button
+		class="btn btn-ghost btn-circle"
+		onclick={() => (value = Math.min(max, value + 1))}
+		disabled={disabled || value >= max}
+	>
+		<MagnifyingGlassPlus size={20} />
+	</button>
 </div>

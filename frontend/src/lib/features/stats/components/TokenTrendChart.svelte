@@ -109,7 +109,7 @@
 <div class="flex h-full flex-col">
 	<div class="flex flex-col items-center gap-2 xl:gap-0 xl:flex-row xl:justify-between">
 		<UsageUnitToggle bind:currentUnit={unit} disabled={loading} />
-		<PeriodSlider bind:num_periods={numPeriods} currentUnit={unit} disabled={loading} />
+		<PeriodSlider bind:value={numPeriods} currentUnit={unit} disabled={loading} />
 		<!-- <PeriodNavigator bind:offset {periodText} disabled={[loading, loading || offset >= 0]} /> -->
 	</div>
 
