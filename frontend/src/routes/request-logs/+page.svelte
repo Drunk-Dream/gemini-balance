@@ -70,8 +70,10 @@
 
 	// 初始加载和当 filters 或 currentPage 变化时，获取日志
 	$effect(() => {
-		// 添加request_time_range 和 currentPage 是为了在发生变化时触发 effect
-		const timeoutId = setTimeout(fetchLogs, 300, request_time_range, currentPage);
+		// 追踪 request_time_range 和 currentPage 的变化
+		const _1 = request_time_range;
+		const _2 = currentPage;
+		const timeoutId = setTimeout(fetchLogs, 300);
 		return () => clearTimeout(timeoutId);
 	});
 </script>

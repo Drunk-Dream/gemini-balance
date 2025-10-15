@@ -93,13 +93,17 @@
 
 	// 响应式地重新获取数据
 	$effect(() => {
+		// 追踪 unit, offset, numPeriods 的变化
+		const _1 = unit;
+		const _2 = offset;
+		const _3 = numPeriods;
+
 		if (previousUnit !== unit) {
 			offset = 0;
 			previousUnit = unit;
 			numPeriods = 7; // 重置周期数
 		}
-		// 添加unit offset numPeriods是为了在发生变化时触发 effect
-		const timeoutId = setTimeout(fetchData, 300, unit, offset, numPeriods);
+		const timeoutId = setTimeout(fetchData, 300);
 		return () => clearTimeout(timeoutId);
 	});
 
