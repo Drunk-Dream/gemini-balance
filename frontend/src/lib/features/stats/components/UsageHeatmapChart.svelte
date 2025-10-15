@@ -3,15 +3,16 @@
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
 	import { getDailyUsageHeatmap, type DailyUsageHeatmapData } from '$lib/features/stats/service';
 	import { type EChartsOption, type HeatmapSeriesOption } from 'echarts';
-	import { CalendarComponent, TooltipComponent, VisualMapComponent } from 'echarts/components';
 	import { HeatmapChart } from 'echarts/charts';
-	import { use, time } from 'echarts/core'; // 回退到 echarts/core 中的 format
+	import { CalendarComponent, TooltipComponent, VisualMapComponent } from 'echarts/components';
+	import { use } from 'echarts/core';
+// 回退到 echarts/core 中的 format
 	import { CanvasRenderer } from 'echarts/renderers';
 
 	// 注册 ECharts 组件
 	use([HeatmapChart, CalendarComponent, TooltipComponent, VisualMapComponent, CanvasRenderer]);
 
-    let {type}: { type: 'requests' | 'tokens' } = $props();
+	let { type }: { type: 'requests' | 'tokens' } = $props();
 
 	let chartData: DailyUsageHeatmapData | null = $state(null);
 	let loading = $state(true);
@@ -58,8 +59,8 @@
 			tooltip: {
 				position: 'top',
 				formatter: function (p: any) {
-					const formattedDate = time.format(p.data[0], '{yyyy}-{MM}-{dd}', true);
-					return formattedDate + ': ' + p.data[1];
+					const originalValue = data.find((item) => item[0] === p.data[0])?.[1] ?? 0;
+					return `${p.data[0]}: ${originalValue.toLocaleString()}`;
 				}
 			},
 			visualMap: {
@@ -70,31 +71,29 @@
 				left: 'center',
 				bottom: '0',
 				inRange: {
-					color: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'] // GitHub green shades
+					color: ['#D6E8FF', '#4A90E2']
 				}
 			},
 			calendar: years.map((year, index) => ({
-				top: 60 + index * 180, // Adjust top position for each year
+				top: 80 + index * 180,
+				left: 35,
+				right: 35,
 				range: year,
 				cellSize: ['auto', 20],
-				itemStyle: {
-					borderWidth: 0.5,
-					borderColor: '#fff'
-				},
-				yearLabel: {
-					formatter: '{start}年',
-					position: 'top',
-					margin: 20,
-					textStyle: {
-						color: '#666'
-					}
+				itemStyle: {},
+				splitLine: {
+					show: false
 				},
 				dayLabel: {
 					firstDay: 1, // Monday
-					nameMap: ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+					nameMap: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 				},
 				monthLabel: {
-					nameMap: 'cn'
+					nameMap: 'en'
+				},
+				yearLabel: {
+					show: true,
+					position: 'top'
 				}
 			})),
 			series: years.map((year) => ({
@@ -108,7 +107,9 @@
 </script>
 
 <div class="flex h-full flex-col">
-	<div class="flex-grow">
-		<ChartWrapper {loading} {error} {chartData} {options} />
+	<div class="flex-grow overflow-x-auto">
+		<div class="h-full min-w-[800px]">
+			<ChartWrapper {loading} {error} {chartData} {options} />
+		</div>
 	</div>
 </div>
