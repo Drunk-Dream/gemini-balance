@@ -56,11 +56,17 @@ class OpenAIRequestService(BaseRequestService):
             google_config = request_data.extra_body.setdefault("google", {})
             thinking_config = google_config.setdefault("thinking_config", {})
 
-            if hasattr(request_data, "include_thoughts") and request_data.include_thoughts is not None:
+            if (
+                hasattr(request_data, "include_thoughts")
+                and request_data.include_thoughts is not None
+            ):
                 thinking_config["include_thoughts"] = request_data.include_thoughts
                 del request_data.include_thoughts
 
-            if hasattr(request_data, "thinking_budget") and request_data.thinking_budget is not None:
+            if (
+                hasattr(request_data, "thinking_budget")
+                and request_data.thinking_budget is not None
+            ):
                 thinking_config["thinking_budget"] = request_data.thinking_budget
                 del request_data.thinking_budget
                 # reasoning_effort 字段在 GeminiService 中处理，这里删除以避免冲突
@@ -86,7 +92,7 @@ class OpenAIRequestService(BaseRequestService):
         从 OpenAI API 流式响应中提取 token 计数并更新 RequestInfo。
         """
         if any(
-            choice.get("finish_reason") == "stop"
+            choice.get("finish_reason") is not None
             for choice in chunk_data.get("choices", [])
         ):
             self._extract_and_update_token_counts(chunk_data, request_info)

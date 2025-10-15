@@ -56,7 +56,7 @@ class GeminiRequestService(BaseRequestService):
         从 Gemini API 流式响应中提取 token 计数并更新 RequestInfo。
         """
         if any(
-            candidate.get("finishReason") == "STOP"
+            candidate.get("finishReason") is not None
             for candidate in chunk_data.get("candidates", [])
         ):
             self._extract_and_update_token_counts(chunk_data, request_info)
