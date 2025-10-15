@@ -1,8 +1,10 @@
 <script lang="ts">
-	import type { DailyUsageChartData } from '$lib/features/stats/service';
+	import type { DailyUsageChartData, DailyUsageHeatmapData, UsageStatsData } from '$lib/features/stats/service';
 	import type { EChartsOption } from 'echarts';
 	import { init } from 'echarts/core';
 	import { Chart } from 'svelte-echarts';
+
+	type ChartDataType = DailyUsageChartData | DailyUsageHeatmapData | UsageStatsData;
 
 	let {
 		loading,
@@ -12,7 +14,7 @@
 	}: {
 		loading: boolean;
 		error: string | null;
-		chartData: DailyUsageChartData | null;
+		chartData: ChartDataType | null;
 		options: EChartsOption;
 	} = $props();
 
@@ -46,7 +48,7 @@
 		</svg>
 		<span>错误: {error}</span>
 	</div>
-{:else if chartData && chartData.labels.length > 0}
+{:else if chartData && (Array.isArray(chartData) ? chartData.length > 0 : chartData.labels.length > 0)}
 	<!-- 图表容器 -->
 	<div class="h-full w-full">
 		<Chart {init} {options} style="width: 100%; height: 100%;" />

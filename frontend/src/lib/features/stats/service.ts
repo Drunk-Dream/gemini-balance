@@ -23,6 +23,8 @@ export interface UsageStatsData {
 	end_date: string;
 }
 
+export type DailyUsageHeatmapData = [string, number][];
+
 export async function getDailyUsageChart(timezone_str?: string): Promise<DailyUsageChartData> {
 	const queryParams = new URLSearchParams();
 	if (timezone_str) {
@@ -39,6 +41,30 @@ export async function getDailyUsageChart(timezone_str?: string): Promise<DailyUs
 		return response;
 	} catch (error) {
 		console.error('获取每日模型使用统计图表数据失败:', error);
+		throw error;
+	}
+}
+
+export async function getDailyUsageHeatmap(
+	type: 'requests' | 'tokens',
+	timezone_str?: string
+): Promise<DailyUsageHeatmapData> {
+	const queryParams = new URLSearchParams();
+	if (timezone_str) {
+		queryParams.append('timezone_str', timezone_str);
+	}
+	queryParams.append('type', type);
+
+	try {
+		const response = await api.get<DailyUsageHeatmapData>(
+			`/request_logs/daily_usage_heatmap?${queryParams.toString()}`
+		);
+		if (!response) {
+			throw new Error('获取每日使用热力图数据失败：API 返回空数据');
+		}
+		return response;
+	} catch (error) {
+		console.error('获取每日使用热力图数据失败:', error);
 		throw error;
 	}
 }

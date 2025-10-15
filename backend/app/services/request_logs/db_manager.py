@@ -19,6 +19,20 @@ class RequestLogDBManager(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    async def query_daily_usage_heatmap_stats(
+        self,
+        start_timestamp_utc: float,
+        end_timestamp_utc: float,
+        sqlite_timezone_offset: str,
+        data_type: str,
+    ) -> List[dict]:
+        """
+        查询指定 UTC 时间范围内每日的请求次数或 Token 用量，用于热力图。
+        返回原始数据列表，每项包含 date, value。
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
     async def get_auth_key_usage_stats(self) -> dict[str, int]:
         """
         获取所有日志记录，并根据 auth_key_alias 进行分组，统计每个 auth_key_alias 的唯一请求数。

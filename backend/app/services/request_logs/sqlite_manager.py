@@ -253,6 +253,41 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
+    async def query_daily_usage_heatmap_stats(
+        self,
+        start_timestamp_utc: float,
+        end_timestamp_utc: float,
+        sqlite_timezone_offset: str,
+        data_type: str,
+    ) -> List[Dict]:
+        """
+        查询指定 UTC 时间范围内每日的请求次数或 Token 用量，用于热力图。
+        返回原始数据列表，每项包含 date, value。
+        """
+        if data_type == "requests":
+            select_clause = "COUNT(DISTINCT request_id) as value"
+        elif data_type == "tokens":
+            select_clause = "SUM(total_tokens) as value"
+        else:
+            raise ValueError(f"Unsupported data_type for heatmap: {data_type}")
+
+        query = f"""
+            SELECT
+                strftime('%Y-%m-%d', request_time, 'unixepoch', ?) as date,
+                {select_clause}
+            FROM request_logs
+            WHERE is_success = 1 AND request_time >= ? AND request_time <= ?
+            GROUP BY date
+            ORDER BY date ASC
+        """
+        params = [sqlite_timezone_offset, start_timestamp_utc, end_timestamp_utc]
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, params)
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
     async def query_usage_stats_by_period(
         self,
         start_timestamp_utc: float,

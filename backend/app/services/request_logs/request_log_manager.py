@@ -391,3 +391,45 @@ class RequestLogManager:
             self._db_manager.query_token_usage_stats_by_period,
             "token_count",
         )
+
+    async def get_daily_usage_heatmap_stats(
+        self, data_type: str, timezone_str: str
+    ) -> List[List[str | int]]:
+        """
+        获取指定时区内每日请求次数或 Token 用量的热力图数据。
+        """
+        try:
+            target_timezone = ZoneInfo(timezone_str)
+        except Exception:
+            app_logger.error(f"Invalid timezone string: {timezone_str}")
+            return []
+
+        sqlite_timezone_offset = self._get_timezone_offset_str(timezone_str)
+        if sqlite_timezone_offset == "+00:00" and timezone_str != "UTC":
+            app_logger.warning(
+                f"Could not determine specific offset for timezone '{timezone_str}', using UTC."
+            )
+
+        # 获取过去一年的数据
+        now_in_tz = datetime.now(target_timezone)
+        one_year_ago_in_tz = now_in_tz - timedelta(days=365)
+
+        start_timestamp_utc = one_year_ago_in_tz.astimezone(ZoneInfo("UTC")).timestamp()
+        end_timestamp_utc = now_in_tz.astimezone(ZoneInfo("UTC")).timestamp()
+
+        app_logger.debug(
+            f"Fetching daily usage heatmap stats for type={data_type}, timezone={timezone_str}: "
+            f"UTC start={start_timestamp_utc}, UTC end={end_timestamp_utc}"
+        )
+
+        rows = await self._db_manager.query_daily_usage_heatmap_stats(
+            start_timestamp_utc, end_timestamp_utc, sqlite_timezone_offset, data_type
+        )
+
+        heatmap_data: List[List[str | int]] = []
+        for row in rows:
+            date_str = row["date"]
+            value = row["value"]
+            heatmap_data.append([date_str, value])
+
+        return heatmap_data

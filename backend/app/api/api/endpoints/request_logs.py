@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 
 from backend.app.api.api.schemas.request_logs import (
     DailyUsageChartData,
+    DailyUsageHeatmapData,  # 导入 DailyUsageHeatmapData
     UsageStatsData,
     UsageStatsUnit,
 )
@@ -122,4 +123,25 @@ async def get_token_usage_stats_endpoint(
     """
     return await request_logs_manager.get_token_usage_stats_by_period(
         unit=unit, offset=offset, num_periods=num_periods, timezone_str=timezone_str
+    )
+
+
+@router.get(
+    "/request_logs/daily_usage_heatmap",
+    response_model=DailyUsageHeatmapData,
+    summary="获取每日使用热力图数据",
+)
+async def get_daily_usage_heatmap_endpoint(
+    type: str = Query(..., description="数据类型：'requests' 或 'tokens'"),
+    timezone_str: str = Query(
+        "America/New_York", description="目标时区字符串，例如 'Asia/Shanghai'"
+    ),
+    current_user: str = Depends(get_current_user),
+    request_logs_manager: RequestLogManager = Depends(RequestLogManager),
+) -> DailyUsageHeatmapData:
+    """
+    获取指定时区内每日请求次数或 Token 用量的热力图数据。
+    """
+    return await request_logs_manager.get_daily_usage_heatmap_stats(
+        data_type=type, timezone_str=timezone_str
     )

@@ -29,3 +29,6 @@ class UsageStatsData(BaseModel):
     datasets: List["ChartDataset"]
     start_date: str
     end_date: str
+
+
+DailyUsageHeatmapData = List[List[str | int]]
