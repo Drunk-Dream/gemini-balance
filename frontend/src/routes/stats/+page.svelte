@@ -5,7 +5,6 @@
 	import DailyUsageChart from '$lib/features/stats/components/DailyUsageChart.svelte';
 	import UsageHeatmapChart from '$lib/features/stats/components/UsageHeatmapChart.svelte';
 	import UsageTrendChart from '$lib/features/stats/components/UsageTrendChart.svelte';
- // 导入新的热力图组件
 
 	let dailyUsageChart: DailyUsageChart | undefined;
 	let usageRequestTrendChart: UsageTrendChart | undefined;
@@ -27,7 +26,7 @@
 				{/snippet}
 			</ChartCard>
 
-			<ChartCard className="lg:col-span-2" onRefresh={() => usageRequestsHeatmapChart?.refresh()}>
+			<!-- <ChartCard className="lg:col-span-2" onRefresh={() => usageRequestsHeatmapChart?.refresh()}>
 				{#snippet header()}
 					<h2 class="text-lg font-semibold">请求次数热力图</h2>
 					<p class="text-base-content/50 text-sm">每日请求次数热力图</p>
@@ -45,7 +44,7 @@
 				{#snippet children()}
 					<UsageHeatmapChart bind:this={usageTokensHeatmapChart} type="tokens" />
 				{/snippet}
-			</ChartCard>
+			</ChartCard> -->
 
 			<ChartCard className="lg:col-span-1" onRefresh={() => usageRequestTrendChart?.refresh()}>
 				{#snippet header()}
@@ -53,7 +52,7 @@
 					<p class="text-base-content/50 text-sm">按日、周、月统计请求次数</p>
 				{/snippet}
 				{#snippet children()}
-					<UsageTrendChart bind:this={usageRequestTrendChart} type="request_count" />
+					<UsageTrendChart bind:this={usageRequestTrendChart} type="requests" />
 				{/snippet}
 			</ChartCard>
 			<ChartCard className="lg:col-span-1" onRefresh={() => usageTokensTrendChart?.refresh()}>
@@ -62,7 +61,7 @@
 					<p class="text-base-content/50 text-sm">按日、周、月统计Token用量</p>
 				{/snippet}
 				{#snippet children()}
-					<UsageTrendChart bind:this={usageTokensTrendChart} type="token_count" />
+					<UsageTrendChart bind:this={usageTokensTrendChart} type="tokens" />
 				{/snippet}
 			</ChartCard>
 		</div>

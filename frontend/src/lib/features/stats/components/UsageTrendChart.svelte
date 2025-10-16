@@ -13,7 +13,7 @@
 	// 注册 ECharts 组件
 	use([LineChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer]);
 
-	let { type }: { type: 'request_count' | 'token_count' } = $props();
+	let { type }: { type: 'requests' | 'tokens' } = $props();
 
 	let chartData: UsageStatsData | null = $state(null);
 	let loading = $state(true);

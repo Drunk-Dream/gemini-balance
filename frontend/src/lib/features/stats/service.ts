@@ -74,21 +74,18 @@ export async function getUsageStats(
 	offset: number,
 	numPeriods: number,
 	timezone_str: string,
-	data_type: 'request_count' | 'token_count'
+	type: 'requests' | 'tokens'
 ): Promise<UsageStatsData> {
 	const queryParams = new URLSearchParams();
 	queryParams.append('unit', unit);
 	queryParams.append('offset', offset.toString());
 	queryParams.append('num_periods', numPeriods.toString());
 	queryParams.append('timezone_str', timezone_str);
+	queryParams.append('type', type);
 
-	const path_mapping: { [key in 'request_count' | 'token_count']: string } = {
-		request_count: '/request_logs/usage_stats',
-		token_count: '/request_logs/token_usage_stats'
-	};
 	try {
 		const response = await api.get<UsageStatsData>(
-			`${path_mapping[data_type]}?${queryParams.toString()}`
+			`/request_logs/usage_stats?${queryParams.toString()}`
 		);
 		if (!response) {
 			throw new Error('获取模型使用统计趋势图表数据失败：API 返回空数据');
