@@ -20,7 +20,9 @@
     "**/.venv": true,
     "**/.pytest_cache": true,
     "**/node_modules": true,
-    "**/.svelte-kit": true,
+    "**/.svelte-kit": true
   },
-  "css.lint.unknownAtRules": "ignore"
+  "css.lint.unknownAtRules": "ignore",
+  "python-envs.defaultEnvManager": "ms-python.python:venv",
+  "python-envs.pythonProjects": []
 }
