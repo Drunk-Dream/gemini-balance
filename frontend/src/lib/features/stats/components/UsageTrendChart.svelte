@@ -9,10 +9,11 @@
 	import { use } from 'echarts/core';
 	import { CanvasRenderer } from 'echarts/renderers';
 	import PeriodSlider from './PeriodSlider.svelte';
-	// 导入 PeriodSlider 组件
 
 	// 注册 ECharts 组件
 	use([LineChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer]);
+
+	let { type }: { type: 'request_count' | 'token_count' } = $props();
 
 	let chartData: UsageStatsData | null = $state(null);
 	let loading = $state(true);
@@ -35,7 +36,7 @@
 	async function fetchData() {
 		loading = true;
 		try {
-			chartData = await getUsageStats(unit, offset, numPeriods, timezone, 'request_count');
+			chartData = await getUsageStats(unit, offset, numPeriods, timezone, type);
 			periodText = chartData ? `${chartData.start_date} 至 ${chartData.end_date}` : 'null';
 			if (chartData) {
 				const modelNames = Array.from(new Set(chartData.datasets.map((ds) => ds.label)));
