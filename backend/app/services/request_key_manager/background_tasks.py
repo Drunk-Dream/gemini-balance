@@ -32,6 +32,9 @@ class BackgroundTaskManager:
             settings, get_key_db_manager(settings)
         )
         self._check_health_after_cool_down = settings.CHECK_HEALTH_AFTER_COOL_DOWN
+        self._check_health_time_interval_seconds = (
+            settings.CHECK_HEALTH_TIME_INTERVAL_SECONDS
+        )
         self._default_check_cooled_down_seconds = (
             settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS
         )
@@ -70,7 +73,8 @@ class BackgroundTaskManager:
                         await self._key_manager.reactivate_key(key)
                         app_logger.info(f"API key {key.brief} reactivated.")
                     if self._check_health_after_cool_down:
-                        sleep_time = 30 + random.randint(0, 30)
+                        sleep_time = self._check_health_time_interval_seconds
+                        sleep_time += random.randint(1, max(10, sleep_time))
                         await asyncio.sleep(sleep_time)
 
                 min_cool_down_until = await self._key_manager.get_min_cool_down_until()

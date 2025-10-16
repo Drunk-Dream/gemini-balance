@@ -266,7 +266,8 @@ class ChatService:
             )
 
             if e.response.status_code == 429:
-                wait_time = self._rate_limit_default_wait_seconds + random.randint(1, 5)
+                wait_time = self._rate_limit_default_wait_seconds
+                wait_time += random.randint(1, max(10, wait_time))
                 logger.warning(
                     f"[Request ID: {request_id}] Rate limit hit. Retrying after {wait_time} seconds."
                 )

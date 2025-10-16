@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     KEY_IN_USE_TIMEOUT_SECONDS: int = 300  # 密钥在用状态的超时时间，默认5分钟
     DEFAULT_CHECK_COOLED_DOWN_SECONDS: int = 300
     CHECK_HEALTH_AFTER_COOL_DOWN: bool = False
+    CHECK_HEALTH_TIME_INTERVAL_SECONDS: int = 5
 
     # 数据库配置
     DATABASE_TYPE: str = "sqlite"
@@ -80,6 +81,7 @@ def print_non_sensitive_settings(logger: Logger, settings: Settings):
         "KEY_IN_USE_TIMEOUT_SECONDS": settings.KEY_IN_USE_TIMEOUT_SECONDS,
         "DEFAULT_CHECK_COOLED_DOWN_SECONDS": settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS,
         "CHECK_HEALTH_AFTER_COOL_DOWN": settings.CHECK_HEALTH_AFTER_COOL_DOWN,
+        "CHECK_HEALTH_TIME_INTERVAL_SECONDS": settings.CHECK_HEALTH_TIME_INTERVAL_SECONDS,
         "DATABASE_TYPE": settings.DATABASE_TYPE,
         "SQLITE_DB": settings.SQLITE_DB,
         "FORCE_RESET_DATABASE": settings.FORCE_RESET_DATABASE,
