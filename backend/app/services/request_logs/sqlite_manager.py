@@ -294,45 +294,24 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         end_timestamp_utc: float,
         group_by_format: str,
         sqlite_timezone_offset: str,
+        data_type: str,
     ) -> List[Dict]:
         """
-        根据指定的时间单位和偏移量，查询模型使用统计数据。
-        返回原始数据列表，每项包含 period_label, model_name, request_count。
+        根据指定的时间单位和偏移量，查询模型使用或令牌统计数据。
+        返回原始数据列表，每项包含 period_label, model_name, value。
         """
+        if data_type == "requests":
+            select_clause = "COUNT(DISTINCT request_id) as value"
+        elif data_type == "tokens":
+            select_clause = "SUM(total_tokens) as value"
+        else:
+            raise ValueError(f"Unsupported data_type for usage stats: {data_type}")
+
         query = f"""
             SELECT
                 strftime('{group_by_format}', request_time, 'unixepoch', '{sqlite_timezone_offset}') as period_label,
                 model_name,
-                COUNT(DISTINCT request_id) as request_count
-            FROM request_logs
-            WHERE is_success = 1 AND request_time >= ? AND request_time <= ?
-            GROUP BY period_label, model_name
-            ORDER BY period_label ASC, model_name ASC
-        """
-        params = [start_timestamp_utc, end_timestamp_utc]
-
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
-            cursor = await db.execute(query, params)
-            rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
-
-    async def query_token_usage_stats_by_period(
-        self,
-        start_timestamp_utc: float,
-        end_timestamp_utc: float,
-        group_by_format: str,
-        sqlite_timezone_offset: str,
-    ) -> List[Dict]:
-        """
-        根据指定的时间单位和偏移量，查询 token 使用统计数据。
-        返回原始数据列表，每项包含 period_label, model_name, token_count。
-        """
-        query = f"""
-            SELECT
-                strftime('{group_by_format}', request_time, 'unixepoch', '{sqlite_timezone_offset}') as period_label,
-                model_name,
-                SUM(total_tokens) as token_count
+                {select_clause}
             FROM request_logs
             WHERE is_success = 1 AND request_time >= ? AND request_time <= ?
             GROUP BY period_label, model_name

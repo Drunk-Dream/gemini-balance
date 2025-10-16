@@ -83,23 +83,10 @@ class RequestLogDBManager(abc.ABC):
         end_timestamp_utc: float,
         group_by_format: str,
         sqlite_timezone_offset: str,
+        data_type: str,
     ) -> List[dict]:
         """
-        根据指定的时间单位和偏移量，查询模型使用统计数据。
-        返回原始数据列表，每项包含 period_label, model_name, request_count。
-        """
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    async def query_token_usage_stats_by_period(
-        self,
-        start_timestamp_utc: float,
-        end_timestamp_utc: float,
-        group_by_format: str,
-        sqlite_timezone_offset: str,
-    ) -> List[dict]:
-        """
-        根据指定的时间单位和偏移量，查询 token 使用统计数据。
-        返回原始数据列表，每项包含 period_label, model_name, token_count。
+        根据指定的时间单位和偏移量，查询模型使用或令牌统计数据。
+        返回原始数据列表，每项包含 period_label, model_name, value。
         """
         raise NotImplementedError

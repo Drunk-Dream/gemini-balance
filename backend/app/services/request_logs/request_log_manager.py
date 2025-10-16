@@ -286,17 +286,16 @@ class RequestLogManager:
 
         return DailyUsageChartData(labels=label_briefs, datasets=datasets)
 
-    async def _get_stats_by_period_generic(
+    async def get_usage_stats_by_period(
         self,
         unit: UsageStatsUnit,
         offset: int,
         num_periods: int,
         timezone_str: str,
-        query_func,
         data_type: str,
     ) -> UsageStatsData:
         """
-        通用的方法，根据指定的时间单位（日、周、月）和偏移量，获取模型使用统计数据。
+        根据指定的时间单位（日、周、月）和偏移量，获取模型使用或令牌统计数据。
         """
         try:
             target_timezone = ZoneInfo(timezone_str)
@@ -329,11 +328,12 @@ class RequestLogManager:
             f"UTC start={start_timestamp_utc}, UTC end={end_timestamp_utc}"
         )
 
-        rows = await query_func(
+        rows = await self._db_manager.query_usage_stats_by_period(
             start_timestamp_utc,
             end_timestamp_utc,
             group_by_format,
             sqlite_timezone_offset,
+            data_type,
         )
 
         db_model_data: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -342,7 +342,7 @@ class RequestLogManager:
         for row in rows:
             period_label = row["period_label"]
             model_name = row["model_name"]
-            value = row[data_type]
+            value = row["value"]
 
             if period_label and value is not None:
                 db_model_data[period_label][model_name] = value
@@ -360,36 +360,6 @@ class RequestLogManager:
             datasets=datasets,
             start_date=start_of_range.strftime(date_format),
             end_date=end_of_range.strftime(date_format),
-        )
-
-    async def get_usage_stats_by_period(
-        self, unit: UsageStatsUnit, offset: int, num_periods: int, timezone_str: str
-    ) -> UsageStatsData:
-        """
-        根据指定的时间单位（日、周、月）和偏移量，获取模型使用统计数据。
-        """
-        return await self._get_stats_by_period_generic(
-            unit,
-            offset,
-            num_periods,
-            timezone_str,
-            self._db_manager.query_usage_stats_by_period,
-            "request_count",
-        )
-
-    async def get_token_usage_stats_by_period(
-        self, unit: UsageStatsUnit, offset: int, num_periods: int, timezone_str: str
-    ) -> UsageStatsData:
-        """
-        根据指定的时间单位（日、周、月）和偏移量，获取 token 使用统计数据。
-        """
-        return await self._get_stats_by_period_generic(
-            unit,
-            offset,
-            num_periods,
-            timezone_str,
-            self._db_manager.query_token_usage_stats_by_period,
-            "token_count",
         )
 
     async def get_daily_usage_heatmap_stats(
