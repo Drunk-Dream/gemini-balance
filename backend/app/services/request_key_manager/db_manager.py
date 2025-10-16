@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from backend.app.services.request_key_manager.schemas import KeyState, KeyType
+from backend.app.services.request_key_manager.schemas import (
+    KeyCounts,
+    KeyState,
+    KeyType,
+)
 
 
 class DBManager(ABC):
@@ -36,7 +40,7 @@ class DBManager(ABC):
 
     # --------------- Get Key State ---------------
     @abstractmethod
-    async def get_key_state(self, key: KeyType) -> Optional[KeyState]:
+    async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
         """Get the state of a single key."""
         raise NotImplementedError
 
@@ -46,8 +50,8 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_next_available_key(self) -> Optional[KeyType]:
-        """Get the next available key identifier."""
+    async def get_and_lock_next_available_key(self) -> Optional[KeyType]:
+        """Atomically get the next available key and mark it as in use."""
         raise NotImplementedError
 
     @abstractmethod
@@ -61,23 +65,8 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_available_keys_count(self) -> int:
-        """Get the count of available keys."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def get_total_keys_count(self) -> int:
-        """Get the total count of all keys."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def get_in_use_keys_count(self) -> int:
-        """Get the count of keys that are currently in use."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def get_cooled_down_keys_count(self) -> int:
-        """Get the count of keys that are currently cooled down."""
+    async def get_key_counts(self) -> KeyCounts:
+        """Get the count of keys in various states."""
         raise NotImplementedError
 
     @abstractmethod
@@ -87,26 +76,6 @@ class DBManager(ABC):
 
     # --------------- Change Key State ---------------
     @abstractmethod
-    async def save_key_state(self, key: KeyType, state: "KeyState"):
+    async def save_key_state(self, state: "KeyState"):
         """Save the state of a single key."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def move_to_cooldown(self, key: KeyType, cool_down_until: float):
-        """Move a key to the cooldown queue."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def reactivate_key(self, key: KeyType):
-        """Reactivate a key, moving it back to the available queue."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def release_key_from_use(self, key: KeyType):
-        """Release a key from being in use, setting its is_in_use flag to 0."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def move_to_use(self, key: KeyType):
-        """Mark a key as in use and update its last usage time."""
         raise NotImplementedError

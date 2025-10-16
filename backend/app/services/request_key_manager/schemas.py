@@ -19,3 +19,10 @@ class KeyType(BaseModel):
     identifier: str
     brief: str
     full: str
+
+
+class KeyCounts(BaseModel):
+    total: int
+    in_use: int
+    cooled_down: int
+    available: int

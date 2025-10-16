@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, List, Optional
 import aiosqlite
 
 from backend.app.services.request_key_manager.db_manager import DBManager
-from backend.app.services.request_key_manager.schemas import KeyState, KeyType
+from backend.app.services.request_key_manager.schemas import KeyCounts, KeyState, KeyType
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
@@ -133,11 +133,11 @@ class SQLiteDBManager(DBManager):
             is_cooled_down=bool(row["is_cooled_down"]),
         )
 
-    async def get_key_state(self, key: KeyType) -> Optional[KeyState]:
+    async def get_key_state(self, key_identifier: str) -> Optional[KeyState]:
         async with aiosqlite.connect(self.sqlite_db) as db:
             db.row_factory = aiosqlite.Row  # Return rows as dict-like objects
             cursor = await db.execute(
-                "SELECT * FROM key_states WHERE key_identifier = ?", (key.identifier,)
+                "SELECT * FROM key_states WHERE key_identifier = ?", (key_identifier,)
             )
             row = await cursor.fetchone()
             if not row:
@@ -159,10 +159,14 @@ class SQLiteDBManager(DBManager):
             rows = await cursor.fetchall()
             return [self._row_to_key_state(row) for row in rows]
 
-    async def get_next_available_key(self) -> Optional[KeyType]:
+    async def get_and_lock_next_available_key(self) -> Optional[KeyType]:
+        """
+        Atomically get the next available key and mark it as in use.
+        This is done in a transaction to ensure atomicity.
+        """
         async with aiosqlite.connect(self.sqlite_db) as db:
-            try:
-                cursor = await db.execute(
+            async with db.execute("BEGIN IMMEDIATE") as cursor:
+                await cursor.execute(
                     """
                     SELECT key_identifier, api_key FROM key_states
                     WHERE is_in_use = 0 AND is_cooled_down = 0
@@ -173,16 +177,22 @@ class SQLiteDBManager(DBManager):
                 row = await cursor.fetchone()
                 if not row:
                     return None
+
                 key_identifier = row[0]
                 api_key = row[1]
+
+                await cursor.execute(
+                    "UPDATE key_states SET is_in_use = 1, last_usage_time = ? WHERE key_identifier = ?",
+                    (time.time(), key_identifier),
+                )
+                await db.commit()
+
                 brief_api_key = DBManager.key_to_brief(api_key)
                 return KeyType(
                     identifier=key_identifier, brief=brief_api_key, full=api_key
                 )
-            except Exception:
-                return None
 
-    async def get_releasable_keys(self) -> List[str]:
+    async def get_releasable_keys(self) -> List[KeyType]:
         now = time.time()
         async with aiosqlite.connect(self.sqlite_db) as db:
             cursor = await db.execute(
@@ -221,39 +231,28 @@ class SQLiteDBManager(DBManager):
                 )
             return keys
 
-    async def get_available_keys_count(self) -> int:
-        """Get the count of keys that are not in use and not cooled down."""
+    async def get_key_counts(self) -> KeyCounts:
+        """Get the count of keys in various states."""
         async with aiosqlite.connect(self.sqlite_db) as db:
             cursor = await db.execute(
-                "SELECT COUNT(*) FROM key_states WHERE is_in_use = 0 AND is_cooled_down = 0"
+                """
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN is_in_use = 1 THEN 1 ELSE 0 END) as in_use,
+                    SUM(CASE WHEN is_cooled_down = 1 THEN 1 ELSE 0 END) as cooled_down,
+                    SUM(CASE WHEN is_in_use = 0 AND is_cooled_down = 0 THEN 1 ELSE 0 END) as available
+                FROM key_states
+                """
             )
             row = await cursor.fetchone()
-            return row[0] if row else 0
-
-    async def get_total_keys_count(self) -> int:
-        """Get the total count of all keys."""
-        async with aiosqlite.connect(self.sqlite_db) as db:
-            cursor = await db.execute("SELECT COUNT(*) FROM key_states")
-            row = await cursor.fetchone()
-            return row[0] if row else 0
-
-    async def get_in_use_keys_count(self) -> int:
-        """Get the count of keys that are currently in use."""
-        async with aiosqlite.connect(self.sqlite_db) as db:
-            cursor = await db.execute(
-                "SELECT COUNT(*) FROM key_states WHERE is_in_use = 1"
-            )
-            row = await cursor.fetchone()
-            return row[0] if row else 0
-
-    async def get_cooled_down_keys_count(self) -> int:
-        """Get the count of keys that are currently cooled down."""
-        async with aiosqlite.connect(self.sqlite_db) as db:
-            cursor = await db.execute(
-                "SELECT COUNT(*) FROM key_states WHERE is_cooled_down = 1"
-            )
-            row = await cursor.fetchone()
-            return row[0] if row else 0
+            if row:
+                return KeyCounts(
+                    total=row[0] or 0,
+                    in_use=row[1] or 0,
+                    cooled_down=row[2] or 0,
+                    available=row[3] or 0,
+                )
+            return KeyCounts(total=0, in_use=0, cooled_down=0, available=0)
 
     async def get_min_cool_down_until(self) -> Optional[float]:
         """Get the minimum cool_down_until value among all cooled-down keys."""
@@ -272,7 +271,7 @@ class SQLiteDBManager(DBManager):
             return None
 
     # --------------- Change Key State ---------------
-    async def save_key_state(self, key: KeyType, state: KeyState):
+    async def save_key_state(self, state: KeyState):
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
                 """
@@ -281,7 +280,9 @@ class SQLiteDBManager(DBManager):
                     request_fail_count = ?,
                     cool_down_entry_count = ?,
                     current_cool_down_seconds = ?,
-                    last_usage_time = ?
+                    last_usage_time = ?,
+                    is_in_use = ?,
+                    is_cooled_down = ?
                 WHERE key_identifier = ?
                 """,
                 (
@@ -290,40 +291,9 @@ class SQLiteDBManager(DBManager):
                     state.cool_down_entry_count,
                     state.current_cool_down_seconds,
                     state.last_usage_time,
-                    key.identifier,
+                    int(state.is_in_use),
+                    int(state.is_cooled_down),
+                    state.key_identifier,
                 ),
-            )
-            await db.commit()
-
-    async def move_to_use(self, key: KeyType):
-        """Mark a key as in use and update its last usage time in SQLite."""
-        async with aiosqlite.connect(self.sqlite_db) as db:
-            await db.execute(
-                "UPDATE key_states SET is_in_use = 1 WHERE key_identifier = ?",
-                (key.identifier,),
-            )
-            await db.commit()
-
-    async def move_to_cooldown(self, key: KeyType, cool_down_until: float):
-        async with aiosqlite.connect(self.sqlite_db) as db:
-            await db.execute(
-                "UPDATE key_states SET is_cooled_down = 1, cool_down_until = ?, is_in_use = 0 WHERE key_identifier = ?",
-                (cool_down_until, key.identifier),
-            )
-            await db.commit()
-
-    async def reactivate_key(self, key: KeyType):
-        async with aiosqlite.connect(self.sqlite_db) as db:
-            await db.execute(
-                "UPDATE key_states SET is_cooled_down = 0, is_in_use = 0, request_fail_count = 0 WHERE key_identifier = ?",
-                (key.identifier,),
-            )
-            await db.commit()
-
-    async def release_key_from_use(self, key: KeyType):
-        async with aiosqlite.connect(self.sqlite_db) as db:
-            await db.execute(
-                "UPDATE key_states SET is_in_use = 0 WHERE key_identifier = ?",
-                (key.identifier,),
             )
             await db.commit()

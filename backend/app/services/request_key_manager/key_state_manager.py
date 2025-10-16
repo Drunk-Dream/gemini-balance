@@ -112,8 +112,8 @@ class KeyStateManager:
 
     # --------------- Get Key State ---------------
     @with_key_manager_lock
-    async def get_key_state(self, key: KeyType) -> KeyState | None:
-        return await self._db_manager.get_key_state(key)
+    async def get_key_state(self, key_identifier: str) -> KeyState | None:
+        return await self._db_manager.get_key_state(key_identifier)
 
     @with_key_manager_lock
     async def get_all_key_status(self) -> KeyStatusResponse:
@@ -145,24 +145,20 @@ class KeyStateManager:
                 )
             )
 
-        total_keys_count = await self._db_manager.get_total_keys_count()
-        in_use_keys_count = await self._db_manager.get_in_use_keys_count()
-        cooled_down_keys_count = await self._db_manager.get_cooled_down_keys_count()
-        available_keys_count = await self._db_manager.get_available_keys_count()
+        key_counts = await self._db_manager.get_key_counts()
         return KeyStatusResponse(
             keys=states_response,
-            total_keys_count=total_keys_count,
-            in_use_keys_count=in_use_keys_count,
-            cooled_down_keys_count=cooled_down_keys_count,
-            available_keys_count=available_keys_count,
+            total_keys_count=key_counts.total,
+            in_use_keys_count=key_counts.in_use,
+            cooled_down_keys_count=key_counts.cooled_down,
+            available_keys_count=key_counts.available,
         )
 
     @with_key_manager_lock
     async def get_next_key(self) -> Optional[KeyType]:
-        key = await self._db_manager.get_next_available_key()
+        key = await self._db_manager.get_and_lock_next_available_key()
         if not key:
             return None
-        await self._db_manager.move_to_use(key)
         return key
 
     @with_key_manager_lock
@@ -175,8 +171,8 @@ class KeyStateManager:
 
     @with_key_manager_lock
     async def get_available_keys_count(self) -> int:
-        counts = await self._db_manager.get_available_keys_count()
-        return counts
+        counts = await self._db_manager.get_key_counts()
+        return counts.available
 
     @with_key_manager_lock
     async def get_min_cool_down_until(self) -> float | None:
@@ -197,12 +193,13 @@ class KeyStateManager:
     @with_key_manager_lock
     async def mark_key_fail(self, key: KeyType, error_type: ErrorType):
         error_type_str = error_type.value
-        state = await self._db_manager.get_key_state(key)
+        state = await self._db_manager.get_key_state(key.identifier)
         if not state:
             return False
 
         state.request_fail_count += 1
         state.last_usage_time = time.time()
+        state.is_in_use = False  # 失败后释放
 
         should_cool_down = error_type.should_cool_down
 
@@ -218,19 +215,18 @@ class KeyStateManager:
             state.current_cool_down_seconds = current_cool_down_seconds
             state.cool_down_entry_count += 1
             state.cool_down_until = time.time() + current_cool_down_seconds
-            await self._db_manager.move_to_cooldown(key, state.cool_down_until)
+            state.is_cooled_down = True
             app_logger.warning(
                 f"Key {key.brief} cooled down for "
                 f"{current_cool_down_seconds:.2f}s due to {error_type_str}."
             )
-        else:  # 如果不需要冷却，则释放密钥
-            await self._db_manager.release_key_from_use(key)
+        else:
             app_logger.info(
                 f"Key {key.brief} released from "
                 f"use after {error_type_str} without cooldown."
             )
 
-        await self._db_manager.save_key_state(key, state)
+        await self._db_manager.save_key_state(state)
         return should_cool_down
 
     @with_key_manager_lock
@@ -238,20 +234,31 @@ class KeyStateManager:
         self,
         key: KeyType,
     ):
-        state = await self._db_manager.get_key_state(key)
+        state = await self._db_manager.get_key_state(key.identifier)
         if not state:
             return
         state.cool_down_entry_count = 0
         state.request_fail_count = 0
         state.last_usage_time = time.time()
+        state.is_in_use = False
+        state.is_cooled_down = False
 
-        await self._db_manager.save_key_state(key, state)
-        await self._db_manager.reactivate_key(key)
+        await self._db_manager.save_key_state(state)
 
     @with_key_manager_lock
     async def reactivate_key(self, key: KeyType):
-        await self._db_manager.reactivate_key(key)
+        state = await self._db_manager.get_key_state(key.identifier)
+        if not state:
+            return
+        state.is_cooled_down = False
+        state.is_in_use = False
+        state.request_fail_count = 0
+        await self._db_manager.save_key_state(state)
 
     @with_key_manager_lock
     async def release_key_from_use(self, key: KeyType):
-        await self._db_manager.release_key_from_use(key)
+        state = await self._db_manager.get_key_state(key.identifier)
+        if not state:
+            return
+        state.is_in_use = False
+        await self._db_manager.save_key_state(state)
