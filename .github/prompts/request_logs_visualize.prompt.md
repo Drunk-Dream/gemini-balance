@@ -12,36 +12,36 @@ mode: agent
 
 ### Part 1: 后端开发
 
-#### 步骤 1: 分析与规划
+#### 步骤 1: 分析数据结构
 
-1.  **分析数据库结构**:
-    *   仔细阅读 `backend/app/services/request_logs/sqlite_manager.py` 文件。
-    *   理解 `request_logs` 表的 schema。
-2.  **规划数据模型**:
-    *   确定需要为可视化聚合的数据。例如，我们可能需要按天统计不同模型的调用次数、token 消耗量和成本。
-    *   设计一个或多个 SQL 查询来实现这种聚合。
+1.  **获取数据结构**:
+    *   从 `backend/app/services/request_logs/schemas.py` 中的 `RequestLog` 获取最新的日志条目数据结构。
+    *   理解每个字段的含义和类型。
 
-#### 步骤 2: 实现数据库交互
+#### 步骤 2: 设计图表与数据结构
 
-1.  **更新 `sqlite_manager.py`**:
-    *   在 `backend/app/services/request_logs/sqlite_manager.py` 的 `RequestLogSqliteManager` 类中，添加一个新的异步方法。
-    *   该方法应执行在步骤 1 中规划的 SQL 聚合查询。
-    *   确保方法包含适当的参数（例如，时间范围）并返回查询结果。
-2.  **更新 `db_manager.py`**:
-    *   在 `backend/app/services/request_logs/db_manager.py` 的 `RequestLogDBManager` 抽象基类中，添加一个新的抽象方法（例如 `get_model_usage_stats`）。
-    *   此方法定义了获取模型使用统计信息所需遵循的接口。
-3.  **更新 `sqlite_manager.py`**:
-    *   在 `backend/app/services/request_logs/sqlite_manager.py` 的 `RequestLogSqliteManager` 类中，实现 `db_manager.py` 中新增的抽象方法。
-    *   该方法应执行在步骤 1 中规划的 SQL 聚合查询，并返回结果。
+1.  **规划可视化方案**:
+    *   根据 `RequestLog` 数据结构，设计合适的图表类型（如时间序列图、条形图、饼图等）。
+    *   确定需要聚合的指标（如请求次数、token 使用量、成本等）。
+    *   设计适合前端使用的数据结构，包括时间维度、模型维度和指标维度。
 
-#### 步骤 3: 实现业务逻辑
+#### 步骤 3: 实现数据库交互层
 
-1.  **更新 `request_log_manager.py`**:
-    *   在 `backend/app/services/request_logs/request_log_manager.py` 的 `RequestLogManager` 类中，创建一个新的业务逻辑方法。
-    *   该方法应调用 `db_manager` 的新方法来获取原始聚合数据。
-    *   对数据进行处理和转换，使其成为一个适合前端直接使用的、结构化的数据格式（例如，一个包含日期、模型名称和对应统计值的列表）。
+1.  **更新抽象基类**:
+    *   在 `backend/app/services/request_logs/db_manager.py` 中添加合适的抽象方法，定义数据查询接口。
 
-#### 步骤 4: 创建 API 端点
+2.  **实现数据库具体实现**:
+    *   在 `backend/app/services/request_logs/sqlite_manager.py` 中实现抽象方法，根据 SQLite 特性编写具体的 SQL 查询。
+    *   注意设计时考虑未来可能添加的其他数据库类型，保持接口的一致性。
+
+#### 步骤 4: 实现业务逻辑层
+
+1.  **更新请求日志管理器**:
+    *   在 `backend/app/services/request_logs/request_log_manager.py` 中实现具体的业务逻辑。
+    *   调用数据库层方法获取原始数据，进行业务处理和数据转换。
+    *   将数据转换为前端所需的格式。
+
+#### 步骤 5: 创建 API 端点
 
 1.  **更新 `schemas.py` (如果需要)**:
     *   如果新的数据结构无法用现有 schema 表示，请在 `backend/app/api/api/schemas/request_logs.py` 中创建一个新的 Pydantic schema 来定义响应体。
