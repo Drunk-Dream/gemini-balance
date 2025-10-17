@@ -78,3 +78,25 @@ export async function getUsageStats(
 		throw error;
 	}
 }
+
+export async function getSuccessRateStats(
+	days: number,
+	timezone_str: string
+): Promise<SuccessRateStatsResponse> {
+	const queryParams = new URLSearchParams();
+	queryParams.append('days', days.toString());
+	queryParams.append('timezone_str', timezone_str);
+
+	try {
+		const response = await api.get<SuccessRateStatsResponse>(
+			`/stats/success-rate?${queryParams.toString()}`
+		);
+		if (!response) {
+			throw new Error('获取成功率统计数据失败：API 返回空数据');
+		}
+		return response;
+	} catch (error) {
+		console.error('获取成功率统计数据失败:', error);
+		throw error;
+	}
+}

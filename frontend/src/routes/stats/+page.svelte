@@ -3,6 +3,7 @@
 	import AuthGuard from '$lib/features/auth/components/AuthGuard.svelte';
 	import ChartCard from '$lib/features/stats/components/ChartCard.svelte';
 	import DailyUsageChart from '$lib/features/stats/components/DailyUsageChart.svelte';
+	import SuccessRateChart from '$lib/features/stats/components/SuccessRateChart.svelte';
 	import UsageHeatmapChart from '$lib/features/stats/components/UsageHeatmapChart.svelte';
 	import UsageTrendChart from '$lib/features/stats/components/UsageTrendChart.svelte';
 
@@ -11,6 +12,7 @@
 	let usageTokensTrendChart: UsageTrendChart | undefined;
 	let usageRequestsHeatmapChart: UsageHeatmapChart | undefined; // 请求次数热力图
 	let usageTokensHeatmapChart: UsageHeatmapChart | undefined; // Token 用量热力图
+	let successRateChart: SuccessRateChart | undefined;
 </script>
 
 <AuthGuard>
@@ -62,6 +64,15 @@
 				{/snippet}
 				{#snippet children()}
 					<UsageTrendChart bind:this={usageTokensTrendChart} type="tokens" />
+				{/snippet}
+			</ChartCard>
+			<ChartCard className="lg:col-span-1" onRefresh={() => successRateChart?.refresh()}>
+				{#snippet header()}
+					<h2 class="text-lg font-semibold">请求成功率</h2>
+					<p class="text-base-content/50 text-sm">每日不同模型请求成功率</p>
+				{/snippet}
+				{#snippet children()}
+					<SuccessRateChart bind:this={successRateChart} />
 				{/snippet}
 			</ChartCard>
 		</div>
