@@ -28,8 +28,11 @@ mode: agent
     *   该方法应执行在步骤 1 中规划的 SQL 聚合查询。
     *   确保方法包含适当的参数（例如，时间范围）并返回查询结果。
 2.  **更新 `db_manager.py`**:
-    *   在 `backend/app/services/request_logs/db_manager.py` 的 `RequestLogDBManager` 类中，添加一个新方法。
-    *   此方法应调用 `sqlite_manager` 中新创建的方法，以保持数据访问层的一致性。
+    *   在 `backend/app/services/request_logs/db_manager.py` 的 `RequestLogDBManager` 抽象基类中，添加一个新的抽象方法（例如 `get_model_usage_stats`）。
+    *   此方法定义了获取模型使用统计信息所需遵循的接口。
+3.  **更新 `sqlite_manager.py`**:
+    *   在 `backend/app/services/request_logs/sqlite_manager.py` 的 `RequestLogSqliteManager` 类中，实现 `db_manager.py` 中新增的抽象方法。
+    *   该方法应执行在步骤 1 中规划的 SQL 聚合查询，并返回结果。
 
 #### 步骤 3: 实现业务逻辑
 
