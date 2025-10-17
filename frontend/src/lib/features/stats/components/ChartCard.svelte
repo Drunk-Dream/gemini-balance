@@ -7,9 +7,15 @@
 		className,
 		header,
 		children,
-		onRefresh
-	}: { className?: string; header?: Snippet; children?: Snippet; onRefresh?: () => void } =
-		$props();
+		onRefresh,
+		heightClass = 'h-80 lg:h-96'
+	}: {
+		className?: string;
+		header?: Snippet;
+		children?: Snippet;
+		onRefresh?: () => void;
+		heightClass?: string;
+	} = $props();
 </script>
 
 <div class={twMerge('card bg-base-100 shadow-base-content/20 shadow-md', className)}>
@@ -26,7 +32,7 @@
 				{/if}
 			</h2>
 		{/if}
-		<div class="relative h-80 lg:h-96">
+		<div class={twMerge('relative', heightClass)}>
 			{#if children}
 				{@render children()}
 			{/if}
