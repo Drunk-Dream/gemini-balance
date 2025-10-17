@@ -2,7 +2,8 @@
 	import { browser } from '$app/environment';
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
 	import UsageUnitToggle from '$lib/features/stats/components/UnitToggle.svelte';
-	import { getUsageStats, UsageStatsUnit, type UsageStatsData } from '$lib/features/stats/service';
+	import { getUsageStats } from '$lib/features/stats/service';
+	import { UsageStatsUnit, type UsageStatsData } from '$lib/features/stats/types';
 	import { type EChartsOption, type LineSeriesOption } from 'echarts';
 	import { LineChart } from 'echarts/charts';
 	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { UsageStatsUnit } from '$lib/features/stats/service';
+	import { UsageStatsUnit } from '$lib/features/stats/types';
 	import MagnifyingGlassMinus from 'phosphor-svelte/lib/MagnifyingGlassMinus';
 	import MagnifyingGlassPlus from 'phosphor-svelte/lib/MagnifyingGlassPlus';
 	import { fade } from 'svelte/transition';

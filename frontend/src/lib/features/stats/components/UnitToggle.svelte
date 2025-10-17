@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { UsageStatsUnit } from '$lib/features/stats/service';
+	import { UsageStatsUnit } from '$lib/features/stats/types';
 	import { ToggleGroup } from 'bits-ui';
 
 	let {

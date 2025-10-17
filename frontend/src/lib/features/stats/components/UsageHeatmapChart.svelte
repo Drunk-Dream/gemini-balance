@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
-	import { getDailyUsageHeatmap, type DailyUsageHeatmapData } from '$lib/features/stats/service';
+	import { getDailyUsageHeatmap } from '$lib/features/stats/service';
+	import type { DailyUsageHeatmapData } from '$lib/features/stats/types';
 	import { type EChartsOption, type HeatmapSeriesOption } from 'echarts';
 	import { HeatmapChart } from 'echarts/charts';
 	import { CalendarComponent, TooltipComponent, VisualMapComponent } from 'echarts/components';
