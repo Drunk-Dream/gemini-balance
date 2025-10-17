@@ -324,3 +324,31 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             cursor = await db.execute(query, params)
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
+
+    async def get_daily_model_success_rate_stats(
+        self, start_date: datetime, end_date: datetime, sqlite_timezone_offset: str
+    ) -> List[dict]:
+        """
+        查询指定日期范围内每个模型每天的成功和总请求数。
+        """
+        query = """
+            SELECT
+                strftime('%Y-%m-%d', request_time, 'unixepoch', ?) AS date,
+                model_name,
+                SUM(CASE WHEN is_success = 1 THEN 1 ELSE 0 END) AS successful_requests,
+                COUNT(request_id) AS total_requests
+            FROM
+                request_logs
+            WHERE
+                request_time >= ? AND request_time < ?
+            GROUP BY
+                date, model_name
+            ORDER BY
+                date, model_name;
+        """
+        params = [sqlite_timezone_offset, start_date.timestamp(), end_date.timestamp()]
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, params)
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]

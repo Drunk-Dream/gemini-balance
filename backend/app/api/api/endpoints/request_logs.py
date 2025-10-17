@@ -9,6 +9,7 @@ from backend.app.api.api.schemas.request_logs import (
     UsageStatsData,
     UsageStatsUnit,
 )
+from backend.app.api.api.schemas.request_logs import SuccessRateStatsResponse
 from backend.app.core.security import get_current_user
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLogsResponse
@@ -41,6 +42,25 @@ async def get_request_logs_endpoint(
         request_time_end=request_time_end,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get(
+    "/stats/success-rate",
+    response_model=SuccessRateStatsResponse,
+    summary="获取每日模型请求成功率统计",
+)
+async def get_daily_model_success_rate_stats(
+    days: int = Query(7, ge=1, le=90, description="统计最近N天的数据"),
+    timezone_str: str = Query("UTC", description="IANA 时区名称"),
+    current_user: str = Depends(get_current_user),
+    request_logs_manager: RequestLogManager = Depends(RequestLogManager),
+):
+    """
+    根据指定的天数范围，获取每日各模型的请求成功与总次数。
+    """
+    return await request_logs_manager.get_daily_model_success_rate_stats(
+        days=days, timezone_str=timezone_str
     )
 
 

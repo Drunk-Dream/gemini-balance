@@ -90,3 +90,12 @@ class RequestLogDBManager(abc.ABC):
         返回原始数据列表，每项包含 period_label, model_name, value。
         """
         raise NotImplementedError
+
+    @abc.abstractmethod
+    async def get_daily_model_success_rate_stats(
+        self, start_date: datetime, end_date: datetime, sqlite_timezone_offset: str
+    ) -> List[dict]:
+        """
+        查询指定日期范围内每个模型每天的成功和总请求数。
+        """
+        raise NotImplementedError
