@@ -83,4 +83,9 @@
 	export { fetchDataAndRenderChart as refresh };
 </script>
 
-<ChartWrapper {loading} {error} {chartData} {options} />
+<ChartWrapper
+	{loading}
+	{error}
+	isReady={(chartData && chartData.labels.length > 0) || false}
+	{options}
+/>

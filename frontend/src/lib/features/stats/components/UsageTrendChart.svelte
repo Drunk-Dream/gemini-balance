@@ -120,6 +120,11 @@
 	</div>
 
 	<div class="flex-grow">
-		<ChartWrapper {loading} {error} {chartData} {options} />
+		<ChartWrapper
+			{loading}
+			{error}
+			isReady={(chartData && chartData.labels.length > 0) || false}
+			{options}
+		/>
 	</div>
 </div>

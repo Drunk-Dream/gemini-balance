@@ -110,7 +110,12 @@
 <div class="flex h-full flex-col">
 	<div class="flex-grow overflow-x-auto">
 		<div class="h-full min-w-[800px]">
-			<ChartWrapper {loading} {error} {chartData} {options} />
+			<ChartWrapper
+				{loading}
+				{error}
+				isReady={(chartData && chartData.length > 0) || false}
+				{options}
+			/>
 		</div>
 	</div>
 </div>

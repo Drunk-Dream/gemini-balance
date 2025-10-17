@@ -1,5 +1,9 @@
 <script lang="ts">
-	import type { DailyUsageChartData, DailyUsageHeatmapData, UsageStatsData } from '$lib/features/stats/types';
+	import type {
+		DailyUsageChartData,
+		DailyUsageHeatmapData,
+		UsageStatsData
+	} from '$lib/features/stats/types';
 	import type { EChartsOption } from 'echarts';
 	import { init } from 'echarts/core';
 	import { Chart } from 'svelte-echarts';
@@ -9,12 +13,12 @@
 	let {
 		loading,
 		error,
-		chartData,
+		isReady,
 		options
 	}: {
 		loading: boolean;
 		error: string | null;
-		chartData: ChartDataType | null;
+		isReady: boolean;
 		options: EChartsOption;
 	} = $props();
 
@@ -48,7 +52,7 @@
 		</svg>
 		<span>错误: {error}</span>
 	</div>
-{:else if chartData && (Array.isArray(chartData) ? chartData.length > 0 : chartData.labels.length > 0)}
+{:else if isReady}
 	<!-- 图表容器 -->
 	<div class="h-full w-full">
 		<Chart {init} {options} style="width: 100%; height: 100%;" />
