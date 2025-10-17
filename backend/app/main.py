@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("Stopping background task for KeyManager...")
-    background_task_manager.stop_background_task()
+    await background_task_manager.stop_background_task()
 
 
 def create_app() -> FastAPI:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import random
 import time
 from typing import TYPE_CHECKING, Dict, Optional
 
@@ -40,6 +39,10 @@ class BackgroundTaskManager:
         )
         self._gemini_api_base_url = settings.GEMINI_API_BASE_URL
         self._request_timeout_seconds = settings.REQUEST_TIMEOUT_SECONDS
+        self._http_client: httpx.AsyncClient = httpx.AsyncClient(
+            base_url=self._gemini_api_base_url,
+            timeout=httpx.Timeout(self._request_timeout_seconds),
+        )
 
         self.wakeup_event = asyncio.Event()
         self.timeout_tasks: Dict[str, asyncio.Task] = {}
@@ -72,18 +75,19 @@ class BackgroundTaskManager:
                     ):
                         await self._key_manager.reactivate_key(key)
                         app_logger.info(f"API key {key.brief} reactivated.")
-                    if self._check_health_after_cool_down:
-                        sleep_time = self._check_health_time_interval_seconds
-                        sleep_time += random.randint(1, max(10, sleep_time))
-                        await asyncio.sleep(sleep_time)
 
                 min_cool_down_until = await self._key_manager.get_min_cool_down_until()
 
-                wait_time = self._default_check_cooled_down_seconds
                 if min_cool_down_until:
                     now = time.time()
-                    calculated_wait = max(1, min_cool_down_until - now)
+                    calculated_wait = max(0.1, min_cool_down_until - now)
                     wait_time = calculated_wait
+                else:
+                    wait_time = self._default_check_cooled_down_seconds
+
+                # 如果开启了健康检查，确保检查频率不低于设置的时间间隔
+                if self._check_health_after_cool_down:
+                    wait_time = min(wait_time, self._check_health_time_interval_seconds)
 
                 self.wakeup_event.clear()
                 await asyncio.wait_for(self.wakeup_event.wait(), timeout=wait_time)
@@ -109,22 +113,17 @@ class BackgroundTaskManager:
             return True
         app_logger.debug(f"Checking {key.brief} health.")
 
-        client = httpx.AsyncClient(
-            base_url=self._gemini_api_base_url,
-            timeout=httpx.Timeout(self._request_timeout_seconds),
-        )
         headers = {"Content-Type": "application/json", "x-goog-api-key": key.full}
         body = {"contents": [{"parts": [{"text": "Hello, world!"}]}]}
         try:
-            async with client:
-                response = await client.post(
-                    url="/v1beta/models/gemini-2.5-flash-lite:generateContent",
-                    json=body,
-                    headers=headers,
-                )
-                response.raise_for_status()
-                app_logger.info(f"Key {key.brief} is healthy.")
-                return True
+            response = await self._http_client.post(
+                url="/v1beta/models/gemini-2.5-flash-lite:generateContent",
+                json=body,
+                headers=headers,
+            )
+            response.raise_for_status()
+            app_logger.info(f"Key {key.brief} is healthy.")
+            return True
         except Exception as e:
             await self._key_manager.mark_key_fail(key, ErrorType.HEALTH_CHECK_ERROR)
             app_logger.error(f"Error checking key health for {key.brief}: {e}")
@@ -142,7 +141,7 @@ class BackgroundTaskManager:
                 self._release_cooled_down_keys()
             )
 
-    def stop_background_task(self):
+    async def stop_background_task(self):
         """
         停止后台任务。
         """
@@ -157,6 +156,7 @@ class BackgroundTaskManager:
                 app_logger.debug(f"Cancelled timeout task for key {key_identifier}.")
             del self.timeout_tasks[key_identifier]
         app_logger.info("All timeout tasks cancelled.")
+        await self._close_http_client()
 
     # --------------- Release Key From Use ---------------
     async def initialize_key_states(self):
@@ -216,6 +216,11 @@ class BackgroundTaskManager:
             if not task.done():
                 task.cancel()
                 app_logger.debug(f"Cancelled timeout task for key {key.brief}.")
+
+    async def _close_http_client(self):
+        if self._http_client:
+            await self._http_client.aclose()
+            app_logger.info("HTTP client closed.")
 
 
 def get_background_task_manager(request: Request) -> BackgroundTaskManager:
