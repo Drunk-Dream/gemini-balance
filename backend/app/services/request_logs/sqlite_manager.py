@@ -309,7 +309,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
 
         query = f"""
             SELECT
-                strftime('{group_by_format}', request_time, 'unixepoch', '{sqlite_timezone_offset}') as period_label,
+                strftime('{group_by_format}', request_time, 'unixepoch', ?) as period_label,
                 model_name,
                 {select_clause}
             FROM request_logs
@@ -317,7 +317,7 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             GROUP BY period_label, model_name
             ORDER BY period_label ASC, model_name ASC
         """
-        params = [start_timestamp_utc, end_timestamp_utc]
+        params = [sqlite_timezone_offset, start_timestamp_utc, end_timestamp_utc]
 
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
