@@ -23,14 +23,9 @@ export interface UsageStatsData {
 
 export type DailyUsageHeatmapData = [string, number][];
 
-export interface DailyModelSuccessRate {
-	successful_requests: number;
-	total_requests: number;
-}
-
 export interface ModelSuccessRateStats {
 	date: string; // ISO date string
-	models: Record<string, DailyModelSuccessRate>;
+	models: Record<string, number>;
 }
 
 export interface SuccessRateStatsResponse {

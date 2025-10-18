@@ -46,33 +46,14 @@
 		const dates = chartData.stats.map((s) => s.date);
 		const models = chartData.models;
 
-		const series: any[] = models.flatMap((model) => [
-			{
-				name: `${model} Success`,
-				type: 'bar',
-				stack: model,
-				emphasis: {
-					focus: 'series'
-				},
-				data: chartData!.stats.map((s) => s.models[model]?.successful_requests ?? 0)
-			},
-			{
-				name: `${model} Total`,
-				type: 'bar',
-				stack: model,
-				emphasis: {
-					focus: 'series'
-				},
-				data: chartData!.stats.map((s) =>
-					s.models[model]?.total_requests
-						? s.models[model]?.total_requests - s.models[model]?.successful_requests
-						: 0
-				),
-				itemStyle: {
-					color: '#cccccc'
-				}
+		const series: any[] = models.map((model) => ({
+			name: model,
+			type: 'line',
+			data: chartData!.stats.map((s) => s.models[model]?.toFixed(2) ?? 0),
+			emphasis: {
+				focus: 'series'
 			}
-		]);
+		}));
 
 		return {
 			title: {
@@ -82,43 +63,21 @@
 			tooltip: {
 				trigger: 'axis',
 				axisPointer: {
-					type: 'shadow'
+					type: 'cross'
 				},
 				formatter: (params: any) => {
 					let tooltipText = `${params[0].axisValue}<br/>`;
-					const modelData: { [key: string]: { success: number; total: number } } = {};
-
 					params.forEach((param: any) => {
-						const seriesName = param.seriesName;
-						const value = param.value;
-						const model = seriesName.replace(' Success', '').replace(' Total', '');
-
-						if (!modelData[model]) {
-							modelData[model] = { success: 0, total: 0 };
-						}
-
-						if (seriesName.includes('Success')) {
-							modelData[model].success = value;
-						}
-						// The "Total" series now represents failures, so we add success to get total.
-						const totalRequestsForModel = params
-							.filter((p: any) => p.seriesName.startsWith(model))
-							.reduce((acc: number, p: any) => acc + p.value, 0);
-						modelData[model].total = totalRequestsForModel;
+						const model = param.seriesName;
+						const rate = param.value;
+						tooltipText += `${model}: ${rate}%<br/>`;
 					});
-
-					for (const model in modelData) {
-						const success = modelData[model].success;
-						const total = modelData[model].total;
-						const rate = total > 0 ? ((success / total) * 100).toFixed(2) : '0.00';
-						tooltipText += `${model}: ${success} / ${total} (${rate}%)<br/>`;
-					}
-
 					return tooltipText;
 				}
 			},
 			legend: {
-				data: models.map((m) => `${m} Success`),
+				type: 'scroll',
+				data: models,
 				top: 'bottom'
 			},
 			grid: {
@@ -130,12 +89,16 @@
 			xAxis: [
 				{
 					type: 'category',
-					data: dates
+					data: dates,
+					boundaryGap: false
 				}
 			],
 			yAxis: [
 				{
-					type: 'value'
+					type: 'value',
+					axisLabel: {
+						formatter: '{value} %'
+					}
 				}
 			],
 			series: series
