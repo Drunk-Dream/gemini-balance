@@ -35,14 +35,9 @@ class UsageStatsData(BaseModel):
 DailyUsageHeatmapData = List[List[str | int]]
 
 
-class DailyModelSuccessRate(BaseModel):
-    successful_requests: int
-    total_requests: int
-
-
 class ModelSuccessRateStats(BaseModel):
     date: date
-    models: Dict[str, DailyModelSuccessRate]
+    models: Dict[str, float]
 
 
 class SuccessRateStatsResponse(BaseModel):

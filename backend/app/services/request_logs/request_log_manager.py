@@ -8,13 +8,10 @@ from fastapi import Depends
 from backend.app.api.api.schemas.request_logs import (
     ChartDataset,
     DailyUsageChartData,
-    UsageStatsData,
-    UsageStatsUnit,
-)
-from backend.app.api.api.schemas.request_logs import (
-    DailyModelSuccessRate,
     ModelSuccessRateStats,
     SuccessRateStatsResponse,
+    UsageStatsData,
+    UsageStatsUnit,
 )
 from backend.app.core.config import Settings, get_settings
 from backend.app.core.logging import app_logger
@@ -111,17 +108,14 @@ class RequestLogManager:
             start_date, end_date, sqlite_timezone_offset
         )
 
-        stats_by_date: Dict[str, Dict[str, DailyModelSuccessRate]] = defaultdict(dict)
+        stats_by_date: Dict[str, Dict[str, float]] = defaultdict(dict)
         all_models = set()
 
         for row in rows:
             date_str = row["date"]
             model_name = row["model_name"]
             all_models.add(model_name)
-            stats_by_date[date_str][model_name] = DailyModelSuccessRate(
-                successful_requests=row["successful_requests"],
-                total_requests=row["total_requests"],
-            )
+            stats_by_date[date_str][model_name] = row["success_rate"]
 
         result_stats: List[ModelSuccessRateStats] = []
         for day_offset in range(days):

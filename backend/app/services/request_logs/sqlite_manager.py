@@ -329,14 +329,13 @@ class SQLiteRequestLogManager(RequestLogDBManager):
         self, start_date: datetime, end_date: datetime, sqlite_timezone_offset: str
     ) -> List[dict]:
         """
-        查询指定日期范围内每个模型每天的成功和总请求数。
+        查询指定日期范围内每个模型每天的成功率。
         """
         query = """
             SELECT
                 strftime('%Y-%m-%d', request_time, 'unixepoch', ?) AS date,
                 model_name,
-                SUM(CASE WHEN is_success = 1 THEN 1 ELSE 0 END) AS successful_requests,
-                COUNT(request_id) AS total_requests
+                CAST(SUM(CASE WHEN is_success = 1 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(request_id) AS success_rate
             FROM
                 request_logs
             WHERE
