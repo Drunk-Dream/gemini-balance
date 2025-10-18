@@ -4,7 +4,7 @@
 	import { getSuccessRateStats } from '$lib/features/stats/service';
 	import type { SuccessRateStatsResponse } from '$lib/features/stats/types';
 	import { UsageStatsUnit } from '$lib/features/stats/types';
-	import type { EChartsOption } from 'echarts';
+	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import PeriodSlider from './PeriodSlider.svelte';
 
 	let chartData = $state<SuccessRateStatsResponse | null>(null);
@@ -46,7 +46,7 @@
 		const dates = chartData.stats.map((s) => s.date);
 		const models = chartData.models;
 
-		const series: any[] = models.map((model) => ({
+		const series: LineSeriesOption[] = models.map((model) => ({
 			name: model,
 			type: 'line',
 			data: chartData!.stats.map((s) => s.models[model]?.toFixed(2) ?? 0),

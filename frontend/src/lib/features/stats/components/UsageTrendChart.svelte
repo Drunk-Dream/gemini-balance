@@ -4,7 +4,7 @@
 	import UsageUnitToggle from '$lib/features/stats/components/UnitToggle.svelte';
 	import { getUsageStats } from '$lib/features/stats/service';
 	import { UsageStatsUnit, type UsageStatsData } from '$lib/features/stats/types';
-	import { type EChartsOption, type LineSeriesOption } from 'echarts';
+	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { LineChart } from 'echarts/charts';
 	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 	import { use } from 'echarts/core';
