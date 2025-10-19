@@ -22,14 +22,11 @@
 	let loading = $state(true);
 	let error: string | null = $state(null);
 
-	let options: EChartsOption = $state({});
-
 	let previousUnit: UsageStatsUnit = $state(UsageStatsUnit.DAY);
 	let unit: UsageStatsUnit = $state(UsageStatsUnit.DAY);
 	let offset: number = $state(0);
 	let numPeriods: number = $state(7); // 默认显示 7 个周期
 	let timezone: string = $state('Asia/Shanghai'); // 默认时区
-	let periodText: string = $state('加载中...');
 
 	// 获取用户浏览器时区
 	if (browser) {
@@ -38,38 +35,9 @@
 
 	async function fetchData() {
 		loading = true;
+		error = null;
 		try {
 			chartData = await getUsageStats(unit, offset, numPeriods, timezone, type);
-			periodText = chartData ? `${chartData.start_date} 至 ${chartData.end_date}` : 'null';
-			if (chartData) {
-				const modelNames = Array.from(new Set(chartData.datasets.map((ds) => ds.label)));
-				const series: LineSeriesOption[] = chartData.datasets.map((ds) => ({
-					name: ds.label,
-					type: 'line',
-					stack: 'total', // 堆叠
-					emphasis: {
-						focus: 'series'
-					},
-					data: ds.data,
-					smooth: true // 平滑曲线
-				}));
-
-				const specificOptions: EChartsOption = {
-					legend: {
-						data: modelNames
-					},
-					xAxis: {
-						type: 'category',
-						data: chartData.labels,
-						boundaryGap: true,
-					},
-					yAxis: {
-						type: 'value'
-					},
-					series: series
-				};
-				options = deepmerge(defaultChartOptions, specificOptions);
-			}
 		} catch (e: any) {
 			error = e.message;
 			console.error('Failed to fetch usage stats data:', e);
@@ -77,6 +45,40 @@
 			loading = false;
 		}
 	}
+
+	let options = $derived.by((): EChartsOption => {
+		if (!chartData) {
+			return defaultChartOptions;
+		}
+
+		const modelNames = Array.from(new Set(chartData.datasets.map((ds) => ds.label)));
+		const series: LineSeriesOption[] = chartData.datasets.map((ds) => ({
+			name: ds.label,
+			type: 'line',
+			stack: 'total', // 堆叠
+			emphasis: {
+				focus: 'series'
+			},
+			data: ds.data,
+			smooth: true // 平滑曲线
+		}));
+
+		const specificOptions: EChartsOption = {
+			legend: {
+				data: modelNames
+			},
+			xAxis: {
+				type: 'category',
+				data: chartData.labels,
+				boundaryGap: true
+			},
+			yAxis: {
+				type: 'value'
+			},
+			series: series
+		};
+		return deepmerge(defaultChartOptions, specificOptions);
+	});
 
 	// 响应式地重新获取数据
 	$effect(() => {
