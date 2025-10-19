@@ -32,10 +32,6 @@
 		}
 	}
 
-	$effect(() => {
-		fetchData();
-	});
-
 	let chartOption = $derived.by((): EChartsOption => {
 		if (!chartData) {
 			return {
@@ -101,11 +97,17 @@
 		return deepmerge(defaultChartOptions, specificOptions);
 	});
 
+	$effect(() => {
+		const _ = period;
+		const timeoutId = setTimeout(fetchData, 300);
+		return () => clearTimeout(timeoutId);
+	});
+
 	export { fetchData as refresh };
 </script>
 
 <div class="flex h-full flex-col">
-	<div class="flex flex-col items-center gap-2 xl:flex-row xl:justify-between xl:gap-0">
+	<div class="flex flex-col items-center">
 		<PeriodSlider
 			bind:value={period}
 			min={7}
