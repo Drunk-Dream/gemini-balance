@@ -9,6 +9,8 @@
 	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 	import { use } from 'echarts/core';
 	import { CanvasRenderer } from 'echarts/renderers';
+	import { deepmerge } from 'deepmerge-ts';
+	import { defaultChartOptions } from './chart-options';
 	import PeriodSlider from './PeriodSlider.svelte';
 
 	// 注册 ECharts 组件
@@ -52,38 +54,21 @@
 					smooth: true // 平滑曲线
 				}));
 
-				options = {
-					tooltip: {
-						trigger: 'axis',
-						axisPointer: {
-							type: 'shadow'
-						}
-					},
+				const specificOptions: EChartsOption = {
 					legend: {
-						type: 'scroll',
-						data: modelNames,
-						backgroundColor: 'rgba(255, 255, 255, 0.5)',
-						borderRadius: 12,
-						padding: 10,
-						bottom: 0
-					},
-					grid: {
-						left: '3%',
-						right: '4%',
-						top: '10%',
-						bottom: '15%', // 为 legend 留出更多空间
-						containLabel: true
+						data: modelNames
 					},
 					xAxis: {
 						type: 'category',
-						boundaryGap: false,
-						data: chartData.labels
+						data: chartData.labels,
+						boundaryGap: true,
 					},
 					yAxis: {
 						type: 'value'
 					},
 					series: series
 				};
+				options = deepmerge(defaultChartOptions, specificOptions);
 			}
 		} catch (e: any) {
 			error = e.message;

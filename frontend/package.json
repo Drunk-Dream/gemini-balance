@@ -1,7 +1,7 @@
 {
 	"name": "frontend",
 	"private": true,
-	"version": "1.8.2",
+	"version": "1.9.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -44,6 +44,7 @@
 		"@internationalized/date": "^3.9.0",
 		"bits-ui": "^2.11.4",
 		"date-fns": "^4.1.0",
+		"deepmerge-ts": "^7.1.5",
 		"tailwind-merge": "^3.3.1"
 	}
 }

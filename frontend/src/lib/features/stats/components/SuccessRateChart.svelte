@@ -5,6 +5,8 @@
 	import type { SuccessRateStatsResponse } from '$lib/features/stats/types';
 	import { UsageStatsUnit } from '$lib/features/stats/types';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
+	import { deepmerge } from 'deepmerge-ts';
+	import { defaultChartOptions } from './chart-options';
 	import PeriodSlider from './PeriodSlider.svelte';
 
 	let chartData = $state<SuccessRateStatsResponse | null>(null);
@@ -55,7 +57,7 @@
 			}
 		}));
 
-		return {
+		const specificOptions: EChartsOption = {
 			title: {
 				text: '模型请求成功率',
 				left: 'center'
@@ -76,21 +78,14 @@
 				}
 			},
 			legend: {
-				type: 'scroll',
 				data: models,
 				top: 'bottom'
-			},
-			grid: {
-				left: '3%',
-				right: '4%',
-				bottom: '10%',
-				containLabel: true
 			},
 			xAxis: [
 				{
 					type: 'category',
 					data: dates,
-					boundaryGap: false
+					boundaryGap: true
 				}
 			],
 			yAxis: [
@@ -103,6 +98,7 @@
 			],
 			series: series
 		};
+		return deepmerge(defaultChartOptions, specificOptions);
 	});
 
 	export { fetchData as refresh };
@@ -127,42 +123,3 @@
 		/>
 	</div>
 </div>
-
-<!-- <div class="card bg-base-100 shadow-xl">
-	<div class="card-body">
-		<div class="flex items-center justify-between">
-			<h2 class="card-title">模型请求成功率</h2>
-			<PeriodSlider bind:value={period} min={7} currentUnit={UsageStatsUnit.DAY} />
-		</div>
-
-		{#if isLoading}
-			<div class="flex h-96 w-full items-center justify-center">
-				<span class="loading loading-lg loading-spinner"></span>
-			</div>
-		{:else if error}
-			<div class="flex h-96 w-full items-center justify-center">
-				<div role="alert" class="alert alert-error">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-6 w-6 shrink-0 stroke-current"
-						fill="none"
-						viewBox="0 0 24 24"
-						><path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-						/></svg
-					>
-					<span>{error.message}</span>
-				</div>
-			</div>
-		{:else if chartData && chartData.stats.length > 0}
-			<ECharts option={chartOption} style="height: 400px;" />
-		{:else}
-			<div class="flex h-96 w-full items-center justify-center">
-				<p>暂无数据</p>
-			</div>
-		{/if}
-	</div>
-</div> -->

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
 	import { getDailyUsageChart } from '$lib/features/stats/service';
+	import { defaultChartOptions } from '$lib/features/stats/components/chart-options';
 	import type { DailyUsageChartData } from '$lib/features/stats/types';
 	import type { BarSeriesOption, EChartsOption } from 'echarts';
 	import { BarChart } from 'echarts/charts';
@@ -8,6 +9,7 @@
 	import { use } from 'echarts/core';
 	import { CanvasRenderer } from 'echarts/renderers';
 	import { onMount } from 'svelte';
+	import { deepmerge } from 'deepmerge-ts';
 
 	// 注册 ECharts 组件
 	use([BarChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer]);
@@ -36,27 +38,9 @@
 					data: ds.data
 				}));
 
-				options = {
-					tooltip: {
-						trigger: 'axis',
-						axisPointer: {
-							type: 'shadow'
-						}
-					},
+				const specificOptions: EChartsOption = {
 					legend: {
-						type: 'scroll',
-						data: modelNames,
-						backgroundColor: 'rgba(255, 255, 255, 0.5)',
-						borderRadius: 12,
-						padding: 10,
-						bottom: 0
-					},
-					grid: {
-						left: '3%',
-						right: '4%',
-						top: '5%',
-						bottom: '15%', // 为 legend 留出更多空间
-						containLabel: true
+						data: modelNames
 					},
 					xAxis: {
 						type: 'value',
@@ -69,6 +53,8 @@
 					},
 					series: series
 				};
+
+				options = deepmerge(defaultChartOptions, specificOptions);
 			}
 		} catch (e: any) {
 			error = e.message;
