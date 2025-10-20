@@ -8,9 +8,9 @@ import aiosqlite
 
 from backend.app.services.request_key_manager.db_manager import DBManager
 from backend.app.services.request_key_manager.schemas import (
+    ApiKey,
     KeyCounts,
     KeyState,
-    KeyType,
 )
 
 if TYPE_CHECKING:
@@ -41,7 +41,7 @@ class SQLiteDBManager(DBManager):
             self.sqlite_db.parent.mkdir(parents=True, exist_ok=True)
 
     # --------------- Key Management ---------------
-    async def add_key(self, key: KeyType):
+    async def add_key(self, key: ApiKey):
         async with aiosqlite.connect(self.sqlite_db) as db:
             await db.execute(
                 """
@@ -79,7 +79,7 @@ class SQLiteDBManager(DBManager):
                     "DELETE FROM key_states WHERE key_identifier = ?", (key_identifier,)
                 )
                 await db.commit()
-                return DBManager.key_to_brief(api_key)
+                return ApiKey(full=api_key).brief
 
     async def reset_key_state(self, key_identifier: str) -> Optional[str]:
         async with aiosqlite.connect(self.sqlite_db) as db:
@@ -117,7 +117,7 @@ class SQLiteDBManager(DBManager):
                     ),
                 )
                 await db.commit()
-                return DBManager.key_to_brief(api_key)
+                return ApiKey(full=api_key).brief
 
     async def reset_all_key_states(self):
         async with aiosqlite.connect(self.sqlite_db) as db:
@@ -184,7 +184,7 @@ class SQLiteDBManager(DBManager):
             rows = await cursor.fetchall()
             return [self._row_to_key_state(row) for row in rows]
 
-    async def get_and_lock_next_available_key(self) -> Optional[KeyType]:
+    async def get_and_lock_next_available_key(self) -> Optional[ApiKey]:
         """
         Atomically get the next available key and mark it as in use.
         This is done in a transaction to ensure atomicity.
@@ -212,48 +212,33 @@ class SQLiteDBManager(DBManager):
                 )
                 await db.commit()
 
-                brief_api_key = DBManager.key_to_brief(api_key)
-                return KeyType(
-                    identifier=key_identifier, brief=brief_api_key, full=api_key
-                )
+                return ApiKey(full=api_key)
 
-    async def get_releasable_keys(self) -> List[KeyType]:
+    async def get_releasable_keys(self) -> List[ApiKey]:
         now = time.time()
         async with aiosqlite.connect(self.sqlite_db) as db:
             cursor = await db.execute(
-                "SELECT key_identifier, api_key FROM key_states WHERE is_cooled_down = 1 AND cool_down_until <= ?",
+                "SELECT api_key FROM key_states WHERE is_cooled_down = 1 AND cool_down_until <= ?",
                 (now,),
             )
             rows = await cursor.fetchall()
-            keys = []
+            keys: List[ApiKey] = []
             for row in rows:
-                key_identifier = row[0]
-                api_key = row[1]
-                brief_api_key = DBManager.key_to_brief(api_key)
-                keys.append(
-                    KeyType(
-                        identifier=key_identifier, brief=brief_api_key, full=api_key
-                    )
-                )
+                api_key = row[0]
+                keys.append(ApiKey(full=api_key))
             return keys
 
-    async def get_keys_in_use(self) -> List[KeyType]:
+    async def get_keys_in_use(self) -> List[ApiKey]:
         """Get all keys that are currently in use."""
         async with aiosqlite.connect(self.sqlite_db) as db:
             cursor = await db.execute(
-                "SELECT key_identifier, api_key FROM key_states WHERE is_in_use = 1"
+                "SELECT api_key FROM key_states WHERE is_in_use = 1"
             )
             rows = await cursor.fetchall()
-            keys = []
+            keys: List[ApiKey] = []
             for row in rows:
-                key_identifier = row[0]
-                api_key = row[1]
-                brief_api_key = DBManager.key_to_brief(api_key)
-                keys.append(
-                    KeyType(
-                        identifier=key_identifier, brief=brief_api_key, full=api_key
-                    )
-                )
+                api_key = row[0]
+                keys.append(ApiKey(full=api_key))
             return keys
 
     async def get_key_counts(self) -> KeyCounts:

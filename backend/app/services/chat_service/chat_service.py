@@ -30,8 +30,8 @@ from backend.app.services.request_key_manager.background_tasks import (
     BackgroundTaskManager,
     get_background_task_manager,
 )
-from backend.app.services.request_key_manager.db_manager import KeyType
 from backend.app.services.request_key_manager.key_state_manager import KeyStateManager
+from backend.app.services.request_key_manager.schemas import ApiKey
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLog
 from backend.app.services.request_service.base_request_service import BaseRequestService
@@ -88,7 +88,7 @@ class ChatService:
         self._rate_limit_default_wait_seconds = settings.RATE_LIMIT_DEFAULT_WAIT_SECONDS
         self._key_in_use_timeout_seconds = settings.KEY_IN_USE_TIMEOUT_SECONDS
 
-    async def _finalize_successful_request(self, key: KeyType):
+    async def _finalize_successful_request(self, key: ApiKey):
         """
         Finalizes a successful request by marking the key as success and logging token counts.
         """
@@ -187,7 +187,7 @@ class ChatService:
 
     async def _attempt_single_request(
         self,
-        key: KeyType,
+        key: ApiKey,
         request_data: GeminiRequest | OpenAIRequest,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """
@@ -213,7 +213,7 @@ class ChatService:
         ):
             yield chunk
 
-    async def _handle_request_error(self, key: KeyType, e: Exception):
+    async def _handle_request_error(self, key: ApiKey, e: Exception):
         """
         Handles various request errors, marks the key as failed, and performs necessary recovery actions.
         """

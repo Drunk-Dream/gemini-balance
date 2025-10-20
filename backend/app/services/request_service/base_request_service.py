@@ -10,13 +10,13 @@ import httpx_sse
 from backend.app.core.errors import StreamingCompletionError
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
+from backend.app.services.request_key_manager.schemas import ApiKey
 
 if TYPE_CHECKING:
     from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIRequest
     from backend.app.api.v1beta.schemas.gemini import Request as GeminiRequest
     from backend.app.core.config import Settings
     from backend.app.services.chat_service.types import RequestInfo
-    from backend.app.services.request_key_manager.db_manager import KeyType
 
 
 class BaseRequestService(ABC):
@@ -171,7 +171,7 @@ class BaseRequestService(ABC):
     @abstractmethod
     async def send_request(
         self,
-        key: KeyType,
+        key: ApiKey,
         request_data: GeminiRequest | OpenAIRequest,
         request_info: RequestInfo,
         cloudflare_gateway_enabled: bool,

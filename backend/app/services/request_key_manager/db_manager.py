@@ -4,7 +4,7 @@ from typing import List, Optional
 from backend.app.services.request_key_manager.schemas import (
     KeyCounts,
     KeyState,
-    KeyType,
+    ApiKey,
 )
 
 
@@ -19,7 +19,7 @@ class DBManager(ABC):
 
     # --------------- Key Management ---------------
     @abstractmethod
-    async def add_key(self, key: KeyType):
+    async def add_key(self, key: ApiKey):
         """Add a new API key to the database."""
         raise NotImplementedError
 
@@ -50,17 +50,17 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_and_lock_next_available_key(self) -> Optional[KeyType]:
+    async def get_and_lock_next_available_key(self) -> Optional[ApiKey]:
         """Atomically get the next available key and mark it as in use."""
         raise NotImplementedError
 
     @abstractmethod
-    async def get_releasable_keys(self) -> List[KeyType]:
+    async def get_releasable_keys(self) -> List[ApiKey]:
         """Get all keys that have finished their cooldown."""
         raise NotImplementedError
 
     @abstractmethod
-    async def get_keys_in_use(self) -> List[KeyType]:
+    async def get_keys_in_use(self) -> List[ApiKey]:
         """Get all keys that are currently in use."""
         raise NotImplementedError
 

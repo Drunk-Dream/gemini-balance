@@ -8,11 +8,11 @@ from backend.app.api.v1.schemas.chat import ChatCompletionRequest as OpenAIReque
 from backend.app.core.config import Settings, get_settings
 from backend.app.core.logging import app_logger as logger
 from backend.app.core.logging import transaction_logger
+from backend.app.services.request_key_manager.schemas import ApiKey
 from backend.app.services.request_service.base_request_service import BaseRequestService
 
 if TYPE_CHECKING:
     from backend.app.services.chat_service.types import RequestInfo
-    from backend.app.services.request_key_manager.db_manager import KeyType
 
 
 def get_openai_request_service(request: Request) -> OpenAIRequestService:
@@ -101,7 +101,7 @@ class OpenAIRequestService(BaseRequestService):
 
     async def send_request(
         self,
-        key: KeyType,
+        key: ApiKey,
         request_data: OpenAIRequest,
         request_info: RequestInfo,
         cloudflare_gateway_enabled: bool,

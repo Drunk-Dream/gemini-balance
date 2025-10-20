@@ -30,10 +30,10 @@ async def add_keys(
     added_keys = []
     for api_key in request.api_keys:
         try:
-            key_identifier = await key_manager.add_key(api_key)
-            added_keys.append(key_identifier)
+            key = await key_manager.add_key(api_key)
+            added_keys.append(key.brief)
         except Exception as e:
-            app_logger.error(f"Failed to add key: {api_key[:5]}... - {e}")
+            app_logger.error(f"Failed to add key: {key.brief}... - {e}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Failed to add key: {e}",
@@ -122,7 +122,10 @@ async def reset_all_keys_state(
         )
 
 
-@router.get("/keys/status", summary="获取所有 API Key 的状态，包括总数、使用中、冷却中和可用 Key 的数量")
+@router.get(
+    "/keys/status",
+    summary="获取所有 API Key 的状态，包括总数、使用中、冷却中和可用 Key 的数量",
+)
 async def get_api_key_status(
     current_user: bool = Depends(get_current_user),
     key_manager: KeyStateManager = Depends(KeyStateManager),

@@ -20,8 +20,9 @@ from backend.app.api.api.schemas.request_keys import KeyStatus, KeyStatusRespons
 from backend.app.core.config import get_settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
-from backend.app.services.request_key_manager.db_manager import DBManager, KeyType
+from backend.app.services.request_key_manager.db_manager import DBManager
 from backend.app.services.request_key_manager.sqlite_manager import SQLiteDBManager
+from backend.app.services.request_key_manager.schemas import ApiKey
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
@@ -70,12 +71,6 @@ class KeyStateManager:
         self._max_cool_down_seconds = settings.MAX_COOL_DOWN_SECONDS
         self._db_manager = db_manager
 
-    def _get_key_identifier(self, key: str) -> str:
-        """生成一个对日志友好且唯一的密钥标识符"""
-        import hashlib
-
-        return f"key_sha256_{hashlib.sha256(key.encode()).hexdigest()[:8]}"
-
     def _calculate_cool_down_seconds(self, state: KeyState) -> int:
         return min(
             self._initial_cool_down_seconds * (2**state.cool_down_entry_count),
@@ -84,16 +79,11 @@ class KeyStateManager:
 
     # --------------- Key Management ---------------
     @with_key_manager_lock
-    async def add_key(self, api_key: str) -> str:
-        key_identifier = self._get_key_identifier(api_key)
-        key = KeyType(
-            identifier=key_identifier,
-            brief=DBManager.key_to_brief(api_key),
-            full=api_key,
-        )
+    async def add_key(self, api_key: str) -> "ApiKey":
+        key = ApiKey(full=api_key)
         await self._db_manager.add_key(key)
         app_logger.info(f"Added new API key: {key.brief}")
-        return key_identifier
+        return key
 
     @with_key_manager_lock
     async def delete_key(self, key_identifier: str):
@@ -155,18 +145,18 @@ class KeyStateManager:
         )
 
     @with_key_manager_lock
-    async def get_next_key(self) -> Optional[KeyType]:
+    async def get_next_key(self) -> Optional[ApiKey]:
         key = await self._db_manager.get_and_lock_next_available_key()
         if not key:
             return None
         return key
 
     @with_key_manager_lock
-    async def get_releasable_keys(self) -> List[KeyType]:
+    async def get_releasable_keys(self) -> List[ApiKey]:
         return await self._db_manager.get_releasable_keys()
 
     @with_key_manager_lock
-    async def get_keys_in_use(self) -> List[KeyType]:
+    async def get_keys_in_use(self) -> List[ApiKey]:
         return await self._db_manager.get_keys_in_use()
 
     @with_key_manager_lock
@@ -191,7 +181,7 @@ class KeyStateManager:
 
     # --------------- Change Key State ---------------
     @with_key_manager_lock
-    async def mark_key_fail(self, key: KeyType, error_type: ErrorType):
+    async def mark_key_fail(self, key: ApiKey, error_type: ErrorType):
         error_type_str = error_type.value
         state = await self._db_manager.get_key_state(key.identifier)
         if not state:
@@ -232,7 +222,7 @@ class KeyStateManager:
     @with_key_manager_lock
     async def mark_key_success(
         self,
-        key: KeyType,
+        key: ApiKey,
     ):
         state = await self._db_manager.get_key_state(key.identifier)
         if not state:
@@ -246,7 +236,7 @@ class KeyStateManager:
         await self._db_manager.save_key_state(state)
 
     @with_key_manager_lock
-    async def reactivate_key(self, key: KeyType):
+    async def reactivate_key(self, key: ApiKey):
         state = await self._db_manager.get_key_state(key.identifier)
         if not state:
             return
@@ -256,7 +246,7 @@ class KeyStateManager:
         await self._db_manager.save_key_state(state)
 
     @with_key_manager_lock
-    async def release_key_from_use(self, key: KeyType):
+    async def release_key_from_use(self, key: ApiKey):
         state = await self._db_manager.get_key_state(key.identifier)
         if not state:
             return

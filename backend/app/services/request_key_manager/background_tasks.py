@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 import asyncio
 import time
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import Dict, Optional
 
 import httpx
 from fastapi import Request
@@ -14,9 +12,7 @@ from backend.app.services.request_key_manager.key_state_manager import (
     KeyStateManager,
     get_key_db_manager,
 )
-
-if TYPE_CHECKING:
-    from backend.app.services.request_key_manager.db_manager import KeyType
+from backend.app.services.request_key_manager.schemas import ApiKey
 
 
 class BackgroundTaskManager:
@@ -104,7 +100,7 @@ class BackgroundTaskManager:
                 )
                 await asyncio.sleep(self._default_check_cooled_down_seconds)
 
-    async def _check_key_health(self, key: KeyType) -> bool:
+    async def _check_key_health(self, key: ApiKey) -> bool:
         """
         检查密钥的健康状况，如果健康再从冷却中释放
         """
@@ -171,7 +167,7 @@ class BackgroundTaskManager:
 
     async def _timeout_release_key(
         self,
-        key: KeyType,
+        key: ApiKey,
         key_in_use_timeout_seconds: int,
     ):
         """
@@ -190,7 +186,7 @@ class BackgroundTaskManager:
 
     def create_timeout_task(
         self,
-        key: KeyType,
+        key: ApiKey,
         key_in_use_timeout_seconds: int,
     ):
         """
@@ -207,7 +203,7 @@ class BackgroundTaskManager:
         )
         self.timeout_tasks[key.identifier] = task
 
-    def cancel_timeout_task(self, key: KeyType):
+    def cancel_timeout_task(self, key: ApiKey):
         """
         取消指定密钥的超时任务。
         """
