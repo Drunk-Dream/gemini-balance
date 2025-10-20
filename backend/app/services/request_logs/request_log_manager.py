@@ -494,7 +494,7 @@ class RequestLogManager:
             data_points = []
             for hour_str in labels:
                 # 如果特定小时没有数据，则成功率为0
-                data_points.append(stats_by_model[model_name].get(hour_str, 0))
+                data_points.append(stats_by_model[model_name].get(hour_str, 100))
             datasets.append(ChartDataset(label=model_name, data=data_points))
 
         return HourlySuccessRateChartData(labels=labels, datasets=datasets)

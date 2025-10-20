@@ -4,7 +4,7 @@
 	import { getHourlySuccessRateStats } from '$lib/features/stats/service';
 	import type { HourlySuccessRateChartData } from '$lib/features/stats/types';
 	import { UsageStatsUnit } from '$lib/features/stats/types';
-	import type { EChartsOption, BarSeriesOption } from 'echarts';
+	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { deepmerge } from 'deepmerge-ts';
 	import { defaultChartOptions } from './chart-options';
 	import PeriodSlider from './PeriodSlider.svelte';
@@ -44,9 +44,10 @@
 		const labels = chartData.labels;
 		const models = chartData.datasets.map((d) => d.label);
 
-		const series: BarSeriesOption[] = chartData.datasets.map((dataset) => ({
+		const series: LineSeriesOption[] = chartData.datasets.map((dataset) => ({
 			name: dataset.label,
-			type: 'bar',
+			type: 'line',
+			smooth: true,
 			data: dataset.data.map((d) => (d !== null ? d.toFixed(2) : null)),
 			emphasis: {
 				focus: 'series'
@@ -61,7 +62,7 @@
 			tooltip: {
 				trigger: 'axis',
 				axisPointer: {
-					type: 'shadow' // 默认为 'line'，'shadow' 类型更适合柱状图
+					type: 'cross'
 				},
 				formatter: (params: any) => {
 					let tooltipText = `时间: ${params[0].axisValue}:00<br/>`;
@@ -81,7 +82,7 @@
 				{
 					type: 'category',
 					data: labels,
-					boundaryGap: true,
+					boundaryGap: false,
 					axisLabel: {
 						formatter: '{value}:00'
 					}

@@ -79,8 +79,8 @@
 			</ChartCard>
 			<ChartCard className="lg:col-span-1" onRefresh={() => hourlySuccessRateChart?.refresh()}>
 				{#snippet header()}
-					<h2 class="text-lg font-semibold">请求成功率</h2>
-					<p class="text-base-content/50 text-sm">每日不同模型请求成功率</p>
+					<h2 class="text-lg font-semibold">请求成功率(按小时)</h2>
+					<p class="text-base-content/50 text-sm">不同时段不同模型请求成功率</p>
 				{/snippet}
 				{#snippet children()}
 					<HourlySuccessRateChart bind:this={hourlySuccessRateChart} />
