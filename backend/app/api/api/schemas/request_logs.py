@@ -1,6 +1,5 @@
-from datetime import date
 from enum import Enum
-from typing import Dict, List
+from typing import List
 
 from pydantic import BaseModel
 
@@ -26,13 +25,3 @@ class UsageStatsUnit(str, Enum):
 
 
 DailyUsageHeatmapData = List[List[str | int]]
-
-
-class ModelSuccessRateStats(BaseModel):
-    date: date
-    models: Dict[str, float]
-
-
-class SuccessRateStatsResponse(BaseModel):
-    stats: List[ModelSuccessRateStats]
-    models: List[str]

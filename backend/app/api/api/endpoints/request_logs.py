@@ -8,7 +8,6 @@ from backend.app.api.api.schemas.request_logs import (
     UsageStatsUnit,
     ChartData,
 )
-from backend.app.api.api.schemas.request_logs import SuccessRateStatsResponse
 from backend.app.core.security import get_current_user
 from backend.app.services.request_logs.request_log_manager import RequestLogManager
 from backend.app.services.request_logs.schemas import RequestLogsResponse
@@ -122,7 +121,7 @@ async def get_daily_usage_heatmap_endpoint(
 
 @router.get(
     "/stats/success-rate",
-    response_model=SuccessRateStatsResponse,
+    response_model=ChartData,
     summary="获取每日模型请求成功率统计",
 )
 async def get_daily_model_success_rate_stats(
@@ -130,7 +129,7 @@ async def get_daily_model_success_rate_stats(
     timezone_str: str = Query("UTC", description="IANA 时区名称"),
     current_user: str = Depends(get_current_user),
     request_logs_manager: RequestLogManager = Depends(RequestLogManager),
-):
+) -> ChartData:
     """
     根据指定的天数范围，获取每日各模型的请求成功与总次数。
     """

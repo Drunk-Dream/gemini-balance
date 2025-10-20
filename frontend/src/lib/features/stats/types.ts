@@ -15,13 +15,3 @@ export enum UsageStatsUnit {
 }
 
 export type DailyUsageHeatmapData = [string, number][];
-
-export interface ModelSuccessRateStats {
-	date: string; // ISO date string
-	models: Record<string, number>;
-}
-
-export interface SuccessRateStatsResponse {
-	stats: ModelSuccessRateStats[];
-	models: string[];
-}

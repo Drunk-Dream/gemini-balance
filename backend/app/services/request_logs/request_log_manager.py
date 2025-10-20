@@ -8,8 +8,6 @@ from fastapi import Depends
 from backend.app.api.api.schemas.request_logs import (
     ChartData,
     ChartDataset,
-    ModelSuccessRateStats,
-    SuccessRateStatsResponse,
     UsageStatsUnit,
 )
 from backend.app.core.config import Settings, get_settings
@@ -402,7 +400,7 @@ class RequestLogManager:
 
     async def get_daily_model_success_rate_stats(
         self, days: int, timezone_str: str
-    ) -> SuccessRateStatsResponse:
+    ) -> ChartData:
         """
         获取最近 `days` 天内每日各模型的成功率统计数据。
         """
@@ -410,7 +408,7 @@ class RequestLogManager:
             target_timezone = ZoneInfo(timezone_str)
         except Exception:
             app_logger.error(f"Invalid timezone string: {timezone_str}")
-            return SuccessRateStatsResponse(stats=[], models=[])
+            return ChartData(labels=[], datasets=[])
 
         now_in_tz = datetime.now(target_timezone)
         end_date = now_in_tz.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -424,28 +422,27 @@ class RequestLogManager:
             start_date, end_date, sqlite_timezone_offset
         )
 
-        stats_by_date: Dict[str, Dict[str, float]] = defaultdict(dict)
+        stats_by_model: Dict[str, Dict[str, float]] = defaultdict(dict)
         all_models = set()
 
         for row in rows:
             date_str = row["date"]
             model_name = row["model_name"]
             all_models.add(model_name)
-            stats_by_date[date_str][model_name] = row["success_rate"]
+            stats_by_model[model_name][date_str] = row["success_rate"]
 
-        result_stats: List[ModelSuccessRateStats] = []
-        for day_offset in range(days):
-            current_date = start_date.date() + timedelta(days=day_offset)
-            date_str = current_date.isoformat()
-            result_stats.append(
-                ModelSuccessRateStats(
-                    date=current_date, models=stats_by_date.get(date_str, {})
-                )
-            )
+        labels = [
+            (start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)
+        ]
 
-        return SuccessRateStatsResponse(
-            stats=result_stats, models=sorted(list(all_models))
-        )
+        datasets: List[ChartDataset] = []
+        for model_name in sorted(list(all_models)):
+            data_points = [
+                stats_by_model[model_name].get(date_str, 100) for date_str in labels
+            ]
+            datasets.append(ChartDataset(label=model_name, data=data_points))
+
+        return ChartData(labels=labels, datasets=datasets)
 
     async def get_hourly_model_success_rate_stats(
         self, days: int, timezone_str: str
@@ -484,10 +481,9 @@ class RequestLogManager:
         datasets: List[ChartDataset] = []
 
         for model_name in sorted(list(all_models)):
-            data_points = []
-            for hour_str in labels:
-                # 如果特定小时没有数据，则成功率为100
-                data_points.append(stats_by_model[model_name].get(hour_str, 100))
+            data_points = [
+                stats_by_model[model_name].get(hour_str, 100) for hour_str in labels
+            ]
             datasets.append(ChartDataset(label=model_name, data=data_points))
 
         return ChartData(labels=labels, datasets=datasets)

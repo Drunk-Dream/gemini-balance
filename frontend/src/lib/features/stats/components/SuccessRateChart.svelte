@@ -2,14 +2,14 @@
 	import { browser } from '$app/environment';
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
 	import { getSuccessRateStats } from '$lib/features/stats/service';
-	import type { SuccessRateStatsResponse } from '$lib/features/stats/types';
+	import type { ChartData } from '$lib/features/stats/types';
 	import { UsageStatsUnit } from '$lib/features/stats/types';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { deepmerge } from 'deepmerge-ts';
 	import { defaultChartOptions } from './chart-options';
 	import PeriodSlider from './PeriodSlider.svelte';
 
-	let chartData = $state<SuccessRateStatsResponse | null>(null);
+	let chartData = $state<ChartData | null>(null);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 	let period = $state(7);
@@ -41,13 +41,10 @@
 			};
 		}
 
-		const dates = chartData.stats.map((s) => s.date);
-		const models = chartData.models;
-
-		const series: LineSeriesOption[] = models.map((model) => ({
-			name: model,
+		const series: LineSeriesOption[] = chartData.datasets.map((ds) => ({
+			name: ds.label,
 			type: 'line',
-			data: chartData!.stats.map((s) => s.models[model]?.toFixed(2) ?? 0),
+			data: ds.data.map((d) => (d !== null ? d.toFixed(2) : null)),
 			emphasis: {
 				focus: 'series'
 			}
@@ -74,13 +71,13 @@
 				}
 			},
 			legend: {
-				data: models,
+				data: chartData.datasets.map((ds) => ds.label),
 				top: 'bottom'
 			},
 			xAxis: [
 				{
 					type: 'category',
-					data: dates,
+					data: chartData.labels,
 					boundaryGap: true
 				}
 			],
@@ -120,7 +117,7 @@
 		<ChartWrapper
 			loading={isLoading}
 			{error}
-			isReady={(chartData && chartData.stats.length > 0) || false}
+			isReady={(chartData && chartData.datasets.length > 0) || false}
 			options={chartOption}
 		/>
 	</div>

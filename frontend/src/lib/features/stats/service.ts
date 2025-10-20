@@ -1,9 +1,5 @@
 import { api } from '$lib/api';
-import type {
-	ChartData,
-	DailyUsageHeatmapData,
-	SuccessRateStatsResponse
-} from '$lib/features/stats/types';
+import type { ChartData, DailyUsageHeatmapData } from '$lib/features/stats/types';
 import { UsageStatsUnit } from '$lib/features/stats/types';
 
 export async function getDailyUsageChart(timezone_str?: string): Promise<ChartData> {
@@ -81,13 +77,13 @@ export async function getUsageStats(
 export async function getSuccessRateStats(
 	days: number,
 	timezone_str: string
-): Promise<SuccessRateStatsResponse> {
+): Promise<ChartData> {
 	const queryParams = new URLSearchParams();
 	queryParams.append('days', days.toString());
 	queryParams.append('timezone_str', timezone_str);
 
 	try {
-		const response = await api.get<SuccessRateStatsResponse>(
+		const response = await api.get<ChartData>(
 			`/stats/success-rate?${queryParams.toString()}`
 		);
 		if (!response) {
