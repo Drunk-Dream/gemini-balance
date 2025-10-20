@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 class ChartDataset(BaseModel):
     label: str
-    data: List[int]
+    data: List[int] | List[float]
     # 可以根据 Chart.js 的需求添加更多字段，例如 backgroundColor, borderColor 等
     # backgroundColor: Optional[List[str]] = None
     # borderColor: Optional[List[str]] = None
