@@ -4,11 +4,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 
 from backend.app.api.api.schemas.request_logs import (
-    DailyUsageChartData,
     DailyUsageHeatmapData,
-    HourlySuccessRateChartData,  # 导入 DailyUsageHeatmapData
-    UsageStatsData,
     UsageStatsUnit,
+    ChartData,
 )
 from backend.app.api.api.schemas.request_logs import SuccessRateStatsResponse
 from backend.app.core.security import get_current_user
@@ -48,7 +46,7 @@ async def get_request_logs_endpoint(
 
 @router.get(
     "/request_logs/daily_usage_chart",
-    response_model=DailyUsageChartData,
+    response_model=ChartData,
     summary="获取每日模型使用统计图表数据",
 )
 async def get_daily_model_usage_chart_endpoint(
@@ -58,7 +56,7 @@ async def get_daily_model_usage_chart_endpoint(
     current_user: str = Depends(get_current_user),
     request_logs_manager: RequestLogManager = Depends(RequestLogManager),
     # key_state_manager: KeyStateManager = Depends(KeyStateManager),
-) -> DailyUsageChartData:
+) -> ChartData:
     """
     获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数，
     按 key_identifier 的总使用量降序排序，并格式化为图表数据。
@@ -71,7 +69,7 @@ async def get_daily_model_usage_chart_endpoint(
 
 @router.get(
     "/request_logs/usage_stats",
-    response_model=UsageStatsData,
+    response_model=ChartData,
     summary="获取使用统计趋势图表数据",
 )
 async def get_usage_stats_endpoint(
@@ -88,7 +86,7 @@ async def get_usage_stats_endpoint(
     ),
     current_user: str = Depends(get_current_user),
     request_logs_manager: RequestLogManager = Depends(RequestLogManager),
-) -> UsageStatsData:
+) -> ChartData:
     """
     根据指定的时间单位（日、周、月）和偏移量，获取模型使用或令牌统计数据。
     """
@@ -143,14 +141,14 @@ async def get_daily_model_success_rate_stats(
 
 @router.get(
     "/stats/hourly-success-rate",
-    response_model=HourlySuccessRateChartData,
+    response_model=ChartData,
     summary="获取每小时模型成功率统计",
 )
 async def get_hourly_model_success_rate(
     days: int = Query(30, ge=1, le=365, description="查询最近的天数"),
     timezone: str = Query("UTC", description="客户端IANA时区字符串"),
     log_manager: RequestLogManager = Depends(RequestLogManager),
-):
+) -> ChartData:
     """
     获取最近 `days` 天内，按一天24小时划分的各模型平均请求成功率。
     - **days**: 查询的范围，例如 30 表示最近30天。
