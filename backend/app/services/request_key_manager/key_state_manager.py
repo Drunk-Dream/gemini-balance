@@ -19,13 +19,13 @@ from backend.app.api.api.schemas.request_keys import KeyStatus, KeyStatusRespons
 from backend.app.core.config import get_settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
-from backend.app.services.request_key_manager.db_manager import DBManager
 from backend.app.services.request_key_manager.sqlite_manager import SQLiteDBManager
 from backend.app.services.request_key_manager.schemas import ApiKey
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
     from backend.app.services.request_key_manager.schemas import KeyState
+    from backend.app.services.request_key_manager.db_manager import DBManager
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
