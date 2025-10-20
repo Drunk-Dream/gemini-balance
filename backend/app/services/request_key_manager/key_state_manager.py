@@ -97,13 +97,13 @@ class KeyStateManager:
 
     @with_key_manager_lock
     async def delete_key(self, key_identifier: str):
-        await self._db_manager.delete_key(key_identifier)
-        app_logger.info(f"Deleted API key: {key_identifier}")
+        key_brief = await self._db_manager.delete_key(key_identifier)
+        app_logger.info(f"Deleted API key: {key_brief}")
 
     @with_key_manager_lock
     async def reset_key_state(self, key_identifier: str):
-        await self._db_manager.reset_key_state(key_identifier)
-        app_logger.info(f"Reset state for API key: {key_identifier}")
+        key_brief = await self._db_manager.reset_key_state(key_identifier)
+        app_logger.info(f"Reset state for API key: {key_brief}")
 
     @with_key_manager_lock
     async def reset_all_key_states(self):

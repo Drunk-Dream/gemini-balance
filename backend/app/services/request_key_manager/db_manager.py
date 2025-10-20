@@ -24,12 +24,12 @@ class DBManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def delete_key(self, key_identifier: str):
+    async def delete_key(self, key_identifier: str) -> Optional[str]:
         """Delete an API key from the database."""
         raise NotImplementedError
 
     @abstractmethod
-    async def reset_key_state(self, key_identifier: str):
+    async def reset_key_state(self, key_identifier: str) -> Optional[str]:
         """Reset the state of a specific API key."""
         raise NotImplementedError
 

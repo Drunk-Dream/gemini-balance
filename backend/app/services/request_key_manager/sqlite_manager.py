@@ -7,7 +7,11 @@ from typing import TYPE_CHECKING, List, Optional
 import aiosqlite
 
 from backend.app.services.request_key_manager.db_manager import DBManager
-from backend.app.services.request_key_manager.schemas import KeyCounts, KeyState, KeyType
+from backend.app.services.request_key_manager.schemas import (
+    KeyCounts,
+    KeyState,
+    KeyType,
+)
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
@@ -59,40 +63,61 @@ class SQLiteDBManager(DBManager):
             )
             await db.commit()
 
-    async def delete_key(self, key_identifier: str):
+    async def delete_key(self, key_identifier: str) -> Optional[str]:
         async with aiosqlite.connect(self.sqlite_db) as db:
-            # await db.execute("PRAGMA foreign_keys=ON;")
-            await db.execute(
-                "DELETE FROM key_states WHERE key_identifier = ?", (key_identifier,)
-            )
-            await db.commit()
+            async with db.execute("BEGIN IMMEDIATE") as cursor:
+                await cursor.execute(
+                    "SELECT api_key FROM key_states WHERE key_identifier = ?",
+                    (key_identifier,),
+                )
+                row = await cursor.fetchone()
+                if not row:
+                    return None
 
-    async def reset_key_state(self, key_identifier: str):
+                api_key = row[0]
+                await cursor.execute(
+                    "DELETE FROM key_states WHERE key_identifier = ?", (key_identifier,)
+                )
+                await db.commit()
+                return DBManager.key_to_brief(api_key)
+
+    async def reset_key_state(self, key_identifier: str) -> Optional[str]:
         async with aiosqlite.connect(self.sqlite_db) as db:
-            await db.execute(
-                """
-                UPDATE key_states SET
-                    cool_down_until = ?,
-                    request_fail_count = ?,
-                    cool_down_entry_count = ?,
-                    current_cool_down_seconds = ?,
-                    last_usage_time = ?,
-                    is_in_use = ?,
-                    is_cooled_down = ?
-                WHERE key_identifier = ?
-                """,
-                (
-                    0.0,
-                    0,
-                    0,
-                    self.settings.API_KEY_COOL_DOWN_SECONDS,
-                    time.time(),
-                    0,  # is_in_use 重置为 0
-                    0,
-                    key_identifier,
-                ),
-            )
-            await db.commit()
+            async with db.execute("BEGIN IMMEDIATE") as cursor:
+                await cursor.execute(
+                    "SELECT api_key FROM key_states WHERE key_identifier = ?",
+                    (key_identifier,),
+                )
+                row = await cursor.fetchone()
+                if not row:
+                    return None
+
+                api_key = row[0]
+                await cursor.execute(
+                    """
+                    UPDATE key_states SET
+                        cool_down_until = ?,
+                        request_fail_count = ?,
+                        cool_down_entry_count = ?,
+                        current_cool_down_seconds = ?,
+                        last_usage_time = ?,
+                        is_in_use = ?,
+                        is_cooled_down = ?
+                    WHERE key_identifier = ?
+                    """,
+                    (
+                        0.0,
+                        0,
+                        0,
+                        self.settings.API_KEY_COOL_DOWN_SECONDS,
+                        time.time(),
+                        0,  # is_in_use 重置为 0
+                        0,
+                        key_identifier,
+                    ),
+                )
+                await db.commit()
+                return DBManager.key_to_brief(api_key)
 
     async def reset_all_key_states(self):
         async with aiosqlite.connect(self.sqlite_db) as db:
