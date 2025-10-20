@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 import aiosqlite
 
+from backend.app.services.request_key_manager.db_manager import DBManager
 from backend.app.services.request_key_manager.schemas import (
     ApiKey,
     KeyCounts,
@@ -13,7 +14,6 @@ from backend.app.services.request_key_manager.schemas import (
 )
 
 if TYPE_CHECKING:
-    from backend.app.services.request_key_manager.db_manager import DBManager
     from backend.app.core.config import Settings
 
 
