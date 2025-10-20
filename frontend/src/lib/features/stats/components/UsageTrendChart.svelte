@@ -3,7 +3,7 @@
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
 	import UsageUnitToggle from '$lib/features/stats/components/UnitToggle.svelte';
 	import { getUsageStats } from '$lib/features/stats/service';
-	import { UsageStatsUnit, type UsageStatsData } from '$lib/features/stats/types';
+	import { UsageStatsUnit, type ChartData } from '$lib/features/stats/types';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { LineChart } from 'echarts/charts';
 	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
@@ -18,7 +18,7 @@
 
 	let { type }: { type: 'requests' | 'tokens' } = $props();
 
-	let chartData: UsageStatsData | null = $state(null);
+	let chartData: ChartData | null = $state(null);
 	let loading = $state(true);
 	let error: string | null = $state(null);
 

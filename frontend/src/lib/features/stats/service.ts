@@ -1,21 +1,19 @@
 import { api } from '$lib/api';
 import type {
-	DailyUsageChartData,
+	ChartData,
 	DailyUsageHeatmapData,
-	HourlySuccessRateChartData,
-	SuccessRateStatsResponse,
-	UsageStatsData
+	SuccessRateStatsResponse
 } from '$lib/features/stats/types';
 import { UsageStatsUnit } from '$lib/features/stats/types';
 
-export async function getDailyUsageChart(timezone_str?: string): Promise<DailyUsageChartData> {
+export async function getDailyUsageChart(timezone_str?: string): Promise<ChartData> {
 	const queryParams = new URLSearchParams();
 	if (timezone_str) {
 		queryParams.append('timezone_str', timezone_str);
 	}
 
 	try {
-		const response = await api.get<DailyUsageChartData>(
+		const response = await api.get<ChartData>(
 			`/request_logs/daily_usage_chart?${queryParams.toString()}`
 		);
 		if (!response) {
@@ -58,7 +56,7 @@ export async function getUsageStats(
 	numPeriods: number,
 	timezone_str: string,
 	type: 'requests' | 'tokens'
-): Promise<UsageStatsData> {
+): Promise<ChartData> {
 	const queryParams = new URLSearchParams();
 	queryParams.append('unit', unit);
 	queryParams.append('offset', offset.toString());
@@ -67,7 +65,7 @@ export async function getUsageStats(
 	queryParams.append('type', type);
 
 	try {
-		const response = await api.get<UsageStatsData>(
+		const response = await api.get<ChartData>(
 			`/request_logs/usage_stats?${queryParams.toString()}`
 		);
 		if (!response) {
@@ -105,14 +103,14 @@ export async function getSuccessRateStats(
 export async function getHourlySuccessRateStats(
 	days: number,
 	timezone: string
-): Promise<HourlySuccessRateChartData> {
+): Promise<ChartData> {
 	const queryParams = new URLSearchParams({
 		days: days.toString(),
 		timezone: timezone
 	});
 
 	try {
-		const response = await api.get<HourlySuccessRateChartData>(
+		const response = await api.get<ChartData>(
 			`/stats/hourly-success-rate?${queryParams.toString()}`
 		);
 		if (!response) {

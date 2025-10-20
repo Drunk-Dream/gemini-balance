@@ -6,13 +6,11 @@ from zoneinfo import ZoneInfo
 from fastapi import Depends
 
 from backend.app.api.api.schemas.request_logs import (
+    ChartData,
     ChartDataset,
-    DailyUsageChartData,
     ModelSuccessRateStats,
     SuccessRateStatsResponse,
-    UsageStatsData,
     UsageStatsUnit,
-    HourlySuccessRateChartData,
 )
 from backend.app.core.config import Settings, get_settings
 from backend.app.core.logging import app_logger
@@ -225,9 +223,7 @@ class RequestLogManager:
         )
 
     # --------------- Chart Data ---------------
-    async def get_daily_model_usage_chart_stats(
-        self, timezone_str: str
-    ) -> DailyUsageChartData:
+    async def get_daily_model_usage_chart_stats(self, timezone_str: str) -> ChartData:
         """
         获取指定时区内当天成功的请求，并统计每个 key_identifier 下，每个 model_name 的使用次数，
         按 key_identifier 的总使用量降序排序，并格式化为图表数据。
@@ -236,7 +232,7 @@ class RequestLogManager:
             target_timezone = ZoneInfo(timezone_str)
         except Exception:
             app_logger.error(f"Invalid timezone string: {timezone_str}")
-            return DailyUsageChartData(labels=[], datasets=[])
+            return ChartData(labels=[], datasets=[])
 
         now_in_tz = datetime.now(target_timezone)
         start_of_day_in_tz = now_in_tz.replace(
@@ -287,7 +283,7 @@ class RequestLogManager:
 
         label_briefs = [key_identifier_to_key_brief[label] for label in labels]
 
-        return DailyUsageChartData(labels=label_briefs, datasets=datasets)
+        return ChartData(labels=label_briefs, datasets=datasets)
 
     async def get_usage_stats_by_period(
         self,
@@ -296,7 +292,7 @@ class RequestLogManager:
         num_periods: int,
         timezone_str: str,
         data_type: str,
-    ) -> UsageStatsData:
+    ) -> ChartData:
         """
         根据指定的时间单位（日、周、月）和偏移量，获取模型使用或令牌统计数据。
         """
@@ -304,7 +300,7 @@ class RequestLogManager:
             target_timezone = ZoneInfo(timezone_str)
         except Exception:
             app_logger.error(f"Invalid timezone string: {timezone_str}")
-            return UsageStatsData(labels=[], datasets=[], start_date="", end_date="")
+            return ChartData(labels=[], datasets=[])
 
         sqlite_timezone_offset = self._get_timezone_offset_str(timezone_str)
         if sqlite_timezone_offset == "+00:00" and timezone_str != "UTC":
@@ -320,7 +316,6 @@ class RequestLogManager:
         start_of_range = time_period_details.start_of_range
         end_of_range = time_period_details.end_of_range
         period_labels = time_period_details.period_labels
-        date_format = time_period_details.date_format
         group_by_format = time_period_details.group_by_format
 
         start_timestamp_utc = start_of_range.astimezone(ZoneInfo("UTC")).timestamp()
@@ -358,11 +353,9 @@ class RequestLogManager:
                 data_points.append(db_model_data[label].get(model_name, 0))
             datasets.append(ChartDataset(label=model_name, data=data_points))
 
-        return UsageStatsData(
+        return ChartData(
             labels=period_labels,
             datasets=datasets,
-            start_date=start_of_range.strftime(date_format),
-            end_date=end_of_range.strftime(date_format),
         )
 
     async def get_daily_usage_heatmap_stats(
@@ -456,7 +449,7 @@ class RequestLogManager:
 
     async def get_hourly_model_success_rate_stats(
         self, days: int, timezone_str: str
-    ) -> HourlySuccessRateChartData:
+    ) -> ChartData:
         """
         获取最近 `days` 天内，一天中每个小时各模型的成功率统计。
         """
@@ -464,7 +457,7 @@ class RequestLogManager:
             target_timezone = ZoneInfo(timezone_str)
         except Exception:
             app_logger.error(f"Invalid timezone string: {timezone_str}")
-            return HourlySuccessRateChartData(labels=[], datasets=[])
+            return ChartData(labels=[], datasets=[])
 
         now_in_tz = datetime.now(target_timezone)
         end_date = now_in_tz
@@ -493,8 +486,8 @@ class RequestLogManager:
         for model_name in sorted(list(all_models)):
             data_points = []
             for hour_str in labels:
-                # 如果特定小时没有数据，则成功率为0
+                # 如果特定小时没有数据，则成功率为100
                 data_points.append(stats_by_model[model_name].get(hour_str, 100))
             datasets.append(ChartDataset(label=model_name, data=data_points))
 
-        return HourlySuccessRateChartData(labels=labels, datasets=datasets)
+        return ChartData(labels=labels, datasets=datasets)

@@ -1,14 +1,7 @@
 <script lang="ts">
-	import type {
-		DailyUsageChartData,
-		DailyUsageHeatmapData,
-		UsageStatsData
-	} from '$lib/features/stats/types';
 	import type { EChartsOption } from 'echarts';
 	import { init } from 'echarts/core';
 	import { Chart } from 'svelte-echarts';
-
-	type ChartDataType = DailyUsageChartData | DailyUsageHeatmapData | UsageStatsData;
 
 	let {
 		loading,

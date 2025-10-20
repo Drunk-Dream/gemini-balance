@@ -2,14 +2,14 @@
 	import { browser } from '$app/environment';
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
 	import { getHourlySuccessRateStats } from '$lib/features/stats/service';
-	import type { HourlySuccessRateChartData } from '$lib/features/stats/types';
+	import type { ChartData } from '$lib/features/stats/types';
 	import { UsageStatsUnit } from '$lib/features/stats/types';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { deepmerge } from 'deepmerge-ts';
 	import { defaultChartOptions } from './chart-options';
 	import PeriodSlider from './PeriodSlider.svelte';
 
-	let chartData = $state<HourlySuccessRateChartData | null>(null);
+	let chartData = $state<ChartData | null>(null);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 	let period = $state(30); // 默认查询最近30天
