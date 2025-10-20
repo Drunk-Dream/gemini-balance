@@ -7,7 +7,6 @@ from typing import (
     TYPE_CHECKING,
     Awaitable,
     Callable,
-    Dict,
     List,
     Optional,
     ParamSpec,
@@ -167,17 +166,6 @@ class KeyStateManager:
     @with_key_manager_lock
     async def get_min_cool_down_until(self) -> float | None:
         return await self._db_manager.get_min_cool_down_until()
-
-    @with_key_manager_lock
-    async def get_key_identifier_to_brief_dict(self) -> Dict[str, str]:
-        """获取所有key的key_identifier到brief的映射"""
-        states = await self._db_manager.get_all_key_states()
-        if not states:
-            return {}
-        return {
-            state.key_identifier: DBManager.key_to_brief(state.api_key)
-            for state in states
-        }
 
     # --------------- Change Key State ---------------
     @with_key_manager_lock

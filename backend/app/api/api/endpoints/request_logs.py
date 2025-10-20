@@ -84,8 +84,6 @@ async def get_daily_model_usage_chart_endpoint(
     request_logs = await request_logs_manager.get_daily_model_usage_chart_stats(
         timezone_str=timezone_str
     )
-    # mapping = await key_state_manager.get_key_identifier_to_brief_dict()
-    # request_logs.labels = [mapping.get(label, label) for label in request_logs.labels]
     return request_logs
 
 
