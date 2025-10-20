@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Query
 
 from backend.app.api.api.schemas.request_logs import (
     DailyUsageChartData,
-    DailyUsageHeatmapData,  # 导入 DailyUsageHeatmapData
+    DailyUsageHeatmapData,
+    HourlySuccessRateChartData,  # 导入 DailyUsageHeatmapData
     UsageStatsData,
     UsageStatsUnit,
 )
@@ -137,4 +138,24 @@ async def get_daily_usage_heatmap_endpoint(
     """
     return await request_logs_manager.get_daily_usage_heatmap_stats(
         data_type=type, timezone_str=timezone_str
+    )
+
+
+@router.get(
+    "/stats/hourly-success-rate",
+    response_model=HourlySuccessRateChartData,
+    summary="获取每小时模型成功率统计",
+)
+async def get_hourly_model_success_rate(
+    days: int = Query(30, ge=1, le=365, description="查询最近的天数"),
+    timezone: str = Query("UTC", description="客户端IANA时区字符串"),
+    log_manager: RequestLogManager = Depends(RequestLogManager),
+):
+    """
+    获取最近 `days` 天内，按一天24小时划分的各模型平均请求成功率。
+    - **days**: 查询的范围，例如 30 表示最近30天。
+    - **timezone**: 用于确定日期范围的IANA时区，例如 `Asia/Shanghai`。
+    """
+    return await log_manager.get_hourly_model_success_rate_stats(
+        days=days, timezone_str=timezone
     )

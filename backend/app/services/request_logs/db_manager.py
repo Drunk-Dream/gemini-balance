@@ -99,3 +99,12 @@ class RequestLogDBManager(abc.ABC):
         查询指定日期范围内每个模型每天的成功和总请求数。
         """
         raise NotImplementedError
+
+    @abc.abstractmethod
+    async def get_hourly_model_success_rate_stats(
+        self, start_date: datetime, end_date: datetime, sqlite_timezone_offset: str
+    ) -> List[dict]:
+        """
+        查询一天中每个小时的请求成功率。
+        """
+        raise NotImplementedError

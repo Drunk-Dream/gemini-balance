@@ -43,3 +43,8 @@ class ModelSuccessRateStats(BaseModel):
 class SuccessRateStatsResponse(BaseModel):
     stats: List[ModelSuccessRateStats]
     models: List[str]
+
+
+class HourlySuccessRateChartData(BaseModel):
+    labels: List[str]
+    datasets: List[ChartDataset]

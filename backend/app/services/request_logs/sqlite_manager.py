@@ -351,3 +351,30 @@ class SQLiteRequestLogManager(RequestLogDBManager):
             cursor = await db.execute(query, params)
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
+
+    async def get_hourly_model_success_rate_stats(
+        self, start_date: datetime, end_date: datetime, sqlite_timezone_offset: str
+    ) -> List[dict]:
+        """
+        查询一天中每个小时的请求成功率。
+        """
+        query = """
+            SELECT
+                strftime('%H', request_time, 'unixepoch', ?) AS hour,
+                model_name,
+                CAST(SUM(CASE WHEN is_success = 1 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(request_id) AS success_rate
+            FROM
+                request_logs
+            WHERE
+                request_time >= ? AND request_time < ?
+            GROUP BY
+                hour, model_name
+            ORDER BY
+                hour, model_name;
+        """
+        params = [sqlite_timezone_offset, start_date.timestamp(), end_date.timestamp()]
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, params)
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]

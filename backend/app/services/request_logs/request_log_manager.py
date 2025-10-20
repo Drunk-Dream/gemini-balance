@@ -12,6 +12,7 @@ from backend.app.api.api.schemas.request_logs import (
     SuccessRateStatsResponse,
     UsageStatsData,
     UsageStatsUnit,
+    HourlySuccessRateChartData,
 )
 from backend.app.core.config import Settings, get_settings
 from backend.app.core.logging import app_logger
@@ -82,53 +83,6 @@ class RequestLogManager:
             logs=logs,
             total=total,
             request_time_range=request_time_range,
-        )
-
-    async def get_daily_model_success_rate_stats(
-        self, days: int, timezone_str: str
-    ) -> SuccessRateStatsResponse:
-        """
-        获取最近 `days` 天内每日各模型的成功率统计数据。
-        """
-        try:
-            target_timezone = ZoneInfo(timezone_str)
-        except Exception:
-            app_logger.error(f"Invalid timezone string: {timezone_str}")
-            return SuccessRateStatsResponse(stats=[], models=[])
-
-        now_in_tz = datetime.now(target_timezone)
-        end_date = now_in_tz.replace(hour=23, minute=59, second=59, microsecond=999999)
-        start_date = (now_in_tz - timedelta(days=days - 1)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-
-        sqlite_timezone_offset = self._get_timezone_offset_str(timezone_str)
-
-        rows = await self._db_manager.get_daily_model_success_rate_stats(
-            start_date, end_date, sqlite_timezone_offset
-        )
-
-        stats_by_date: Dict[str, Dict[str, float]] = defaultdict(dict)
-        all_models = set()
-
-        for row in rows:
-            date_str = row["date"]
-            model_name = row["model_name"]
-            all_models.add(model_name)
-            stats_by_date[date_str][model_name] = row["success_rate"]
-
-        result_stats: List[ModelSuccessRateStats] = []
-        for day_offset in range(days):
-            current_date = start_date.date() + timedelta(days=day_offset)
-            date_str = current_date.isoformat()
-            result_stats.append(
-                ModelSuccessRateStats(
-                    date=current_date, models=stats_by_date.get(date_str, {})
-                )
-            )
-
-        return SuccessRateStatsResponse(
-            stats=result_stats, models=sorted(list(all_models))
         )
 
     async def get_auth_key_usage_stats(self) -> Dict[str, int]:
@@ -452,3 +406,95 @@ class RequestLogManager:
             heatmap_data.append([date_str, value])
 
         return heatmap_data
+
+    async def get_daily_model_success_rate_stats(
+        self, days: int, timezone_str: str
+    ) -> SuccessRateStatsResponse:
+        """
+        获取最近 `days` 天内每日各模型的成功率统计数据。
+        """
+        try:
+            target_timezone = ZoneInfo(timezone_str)
+        except Exception:
+            app_logger.error(f"Invalid timezone string: {timezone_str}")
+            return SuccessRateStatsResponse(stats=[], models=[])
+
+        now_in_tz = datetime.now(target_timezone)
+        end_date = now_in_tz.replace(hour=23, minute=59, second=59, microsecond=999999)
+        start_date = (now_in_tz - timedelta(days=days - 1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
+        sqlite_timezone_offset = self._get_timezone_offset_str(timezone_str)
+
+        rows = await self._db_manager.get_daily_model_success_rate_stats(
+            start_date, end_date, sqlite_timezone_offset
+        )
+
+        stats_by_date: Dict[str, Dict[str, float]] = defaultdict(dict)
+        all_models = set()
+
+        for row in rows:
+            date_str = row["date"]
+            model_name = row["model_name"]
+            all_models.add(model_name)
+            stats_by_date[date_str][model_name] = row["success_rate"]
+
+        result_stats: List[ModelSuccessRateStats] = []
+        for day_offset in range(days):
+            current_date = start_date.date() + timedelta(days=day_offset)
+            date_str = current_date.isoformat()
+            result_stats.append(
+                ModelSuccessRateStats(
+                    date=current_date, models=stats_by_date.get(date_str, {})
+                )
+            )
+
+        return SuccessRateStatsResponse(
+            stats=result_stats, models=sorted(list(all_models))
+        )
+
+    async def get_hourly_model_success_rate_stats(
+        self, days: int, timezone_str: str
+    ) -> HourlySuccessRateChartData:
+        """
+        获取最近 `days` 天内，一天中每个小时各模型的成功率统计。
+        """
+        try:
+            target_timezone = ZoneInfo(timezone_str)
+        except Exception:
+            app_logger.error(f"Invalid timezone string: {timezone_str}")
+            return HourlySuccessRateChartData(labels=[], datasets=[])
+
+        now_in_tz = datetime.now(target_timezone)
+        end_date = now_in_tz
+        start_date = now_in_tz - timedelta(days=days)
+
+        sqlite_timezone_offset = self._get_timezone_offset_str(timezone_str)
+
+        rows = await self._db_manager.get_hourly_model_success_rate_stats(
+            start_date, end_date, sqlite_timezone_offset
+        )
+
+        stats_by_model: Dict[str, Dict[str, float]] = defaultdict(dict)
+        all_models = set()
+
+        for row in rows:
+            hour = row["hour"]
+            model_name = row["model_name"]
+            success_rate = row["success_rate"]
+
+            all_models.add(model_name)
+            stats_by_model[model_name][hour] = success_rate
+
+        labels = [f"{h:02d}" for h in range(24)]
+        datasets: List[ChartDataset] = []
+
+        for model_name in sorted(list(all_models)):
+            data_points = []
+            for hour_str in labels:
+                # 如果特定小时没有数据，则成功率为0
+                data_points.append(stats_by_model[model_name].get(hour_str, 0))
+            datasets.append(ChartDataset(label=model_name, data=data_points))
+
+        return HourlySuccessRateChartData(labels=labels, datasets=datasets)
