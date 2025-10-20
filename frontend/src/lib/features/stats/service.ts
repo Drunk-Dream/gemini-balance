@@ -2,6 +2,7 @@ import { api } from '$lib/api';
 import type {
 	DailyUsageChartData,
 	DailyUsageHeatmapData,
+	HourlySuccessRateChartData,
 	SuccessRateStatsResponse,
 	UsageStatsData
 } from '$lib/features/stats/types';
@@ -97,6 +98,29 @@ export async function getSuccessRateStats(
 		return response;
 	} catch (error) {
 		console.error('获取成功率统计数据失败:', error);
+		throw error;
+	}
+}
+
+export async function getHourlySuccessRateStats(
+	days: number,
+	timezone: string
+): Promise<HourlySuccessRateChartData> {
+	const queryParams = new URLSearchParams({
+		days: days.toString(),
+		timezone: timezone
+	});
+
+	try {
+		const response = await api.get<HourlySuccessRateChartData>(
+			`/stats/hourly-success-rate?${queryParams.toString()}`
+		);
+		if (!response) {
+			throw new Error('获取每小时成功率统计图表数据失败：API 返回空数据');
+		}
+		return response;
+	} catch (error) {
+		console.error('获取每小时成功率统计图表数据失败:', error);
 		throw error;
 	}
 }

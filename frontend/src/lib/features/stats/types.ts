@@ -1,6 +1,6 @@
 export interface ChartDataset {
 	label: string;
-	data: number[];
+	data: (number | null)[];
 }
 
 export interface DailyUsageChartData {
@@ -31,4 +31,8 @@ export interface ModelSuccessRateStats {
 export interface SuccessRateStatsResponse {
 	stats: ModelSuccessRateStats[];
 	models: string[];
+}
+export interface HourlySuccessRateChartData {
+	labels: string[]; // e.g., ["00", "01", ..., "23"]
+	datasets: ChartDataset[];
 }
