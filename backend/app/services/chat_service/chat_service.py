@@ -393,7 +393,7 @@ class ChatService:
     ) -> None:
         self.request_info = RequestInfo(
             request_id=secrets.token_hex(4),
-            model_id=model_id,
+            model_id=model_id.removeprefix("models/"),
             auth_key_alias=auth_key_alias,
             stream=stream,
         )
