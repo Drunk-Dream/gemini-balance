@@ -111,8 +111,7 @@ class KeyStateManager:
         states = await self._db_manager.get_all_key_states()
 
         for state in states:
-            key_identifier = state.key_identifier
-            key_brief = self._db_manager.key_to_brief(state.api_key)
+            key = ApiKey(full=state.api_key)
             cool_down_remaining = max(0, state.cool_down_until - now)
 
             if state.is_in_use:
@@ -124,8 +123,8 @@ class KeyStateManager:
 
             states_response.append(
                 KeyStatus(
-                    key_identifier=key_identifier,
-                    key_brief=key_brief,
+                    key_identifier=state.key_identifier,
+                    key_brief=key.brief,
                     status=status,
                     cool_down_seconds_remaining=round(cool_down_remaining),
                     failure_count=state.request_fail_count,

@@ -13,10 +13,6 @@ class DBManager(ABC):
     Abstract class for database operations for the key manager.
     """
 
-    @staticmethod
-    def key_to_brief(key: str) -> str:
-        return key[:4] + "..." + key[-4:]
-
     # --------------- Key Management ---------------
     @abstractmethod
     async def add_key(self, key: ApiKey):
