@@ -176,7 +176,7 @@ class KeyStateManager:
 
         state.request_fail_count += 1
         state.last_usage_time = time.time()
-        state.is_in_use = False  # 失败后释放
+        # state.is_in_use = False  # 失败后释放
 
         should_cool_down = error_type.should_cool_down
 
@@ -197,11 +197,11 @@ class KeyStateManager:
                 f"Key {key.brief} cooled down for "
                 f"{current_cool_down_seconds:.2f}s due to {error_type_str}."
             )
-        else:
-            app_logger.info(
-                f"Key {key.brief} released from "
-                f"use after {error_type_str} without cooldown."
-            )
+        # else:
+        #     app_logger.info(
+        #         f"Key {key.brief} released from "
+        #         f"use after {error_type_str} without cooldown."
+        #     )
 
         await self._db_manager.save_key_state(state)
         return should_cool_down
@@ -217,7 +217,7 @@ class KeyStateManager:
         state.cool_down_entry_count = 0
         state.request_fail_count = 0
         state.last_usage_time = time.time()
-        state.is_in_use = False
+        # state.is_in_use = False
         state.is_cooled_down = False
 
         await self._db_manager.save_key_state(state)

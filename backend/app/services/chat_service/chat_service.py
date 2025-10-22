@@ -92,9 +92,6 @@ class ChatService:
         """
         Finalizes a successful request by marking the key as success and logging token counts.
         """
-        # 取消对应的超时任务
-        self._background_task_manager.cancel_timeout_task(key)
-
         request_id = self.request_info.request_id
         await self._key_manager.mark_key_success(key)
         logger.info(
@@ -151,10 +148,10 @@ class ChatService:
             )
 
             # 启动一个定时任务，在超时后自动释放密钥
-            self._background_task_manager.create_timeout_task(
-                key=key,
-                key_in_use_timeout_seconds=self._key_in_use_timeout_seconds,
-            )
+            # self._background_task_manager.create_timeout_task(
+            #     key=key,
+            #     key_in_use_timeout_seconds=self._key_in_use_timeout_seconds,
+            # )
 
             try:
                 async for chunk in self._attempt_single_request(key, request_data):
@@ -170,6 +167,13 @@ class ChatService:
                 if isinstance(e, HTTPException) and e.status_code == 500:
                     raise e
                 continue
+            finally:
+                # 取消对应的超时任务
+                # self._background_task_manager.cancel_timeout_task(key)
+                self._key_manager.release_key_from_use(key)
+                logger.info(
+                    f"[Request ID: {request_id}] Key {key.brief} released from use."
+                )
 
         if last_exception:
             logger.critical(
@@ -220,9 +224,6 @@ class ChatService:
         request_id = self.request_info.request_id
         error_type = ErrorType.UNEXPECTED_ERROR
         log_level = logger.critical
-
-        # 取消对应的超时任务
-        self._background_task_manager.cancel_timeout_task(key)
 
         if isinstance(e, StreamingCompletionError):
             error_type = ErrorType.STREAMING_COMPLETION_ERROR
