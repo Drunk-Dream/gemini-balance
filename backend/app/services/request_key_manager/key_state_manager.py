@@ -20,8 +20,8 @@ from backend.app.core.config import get_settings
 from backend.app.core.errors import ErrorType
 from backend.app.core.logging import app_logger
 from backend.app.services.request_key_manager.db_manager import DBManager
-from backend.app.services.request_key_manager.sqlite_manager import SQLiteDBManager
 from backend.app.services.request_key_manager.schemas import ApiKey
+from backend.app.services.request_key_manager.sqlite_manager import SQLiteDBManager
 
 if TYPE_CHECKING:
     from backend.app.core.config import Settings
