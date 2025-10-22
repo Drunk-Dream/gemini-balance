@@ -71,7 +71,7 @@ gemini-balance/
 
 - **UI 库**: 项目使用 DaisyUI 5 和 Tailwind CSS。
 - **响应式**: 前端开发基于 Svelte 5 的 Runes 实现细粒度响应式。
-- **组件**: 遵循 `.clinerules/daisyui.md` 中定义的组件用法和类名规则。这是进行任何前端开发时的重要参考。
+- **组件**: 遵循 `.github/instructions/daisyui.instructions.md` 中定义的组件用法和类名规则。这是进行任何前端开发时的重要参考。
 - **颜色**: 优先使用 DaisyUI 的语义化颜色名称 (如 `primary`, `base-100`)，以确保主题切换时颜色正确。
 
 ## 配置管理
