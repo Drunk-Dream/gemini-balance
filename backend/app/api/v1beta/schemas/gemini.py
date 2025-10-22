@@ -63,12 +63,27 @@ class GenerationConfig(BaseModel):
 
 
 class SafetySetting(BaseModel):
-    category: str
+    category: Literal[
+        "HARM_CATEGORY_UNSPECIFIED",
+        "HARM_CATEGORY_DEROGATORY",
+        "HARM_CATEGORY_TOXICITY",
+        "HARM_CATEGORY_VIOLENCE",
+        "HARM_CATEGORY_SEXUAL",
+        "HARM_CATEGORY_MEDICAL",
+        "HARM_CATEGORY_DANGEROUS",
+        "HARM_CATEGORY_HARASSMENT",
+        "HARM_CATEGORY_HATE_SPEECH",
+        "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "HARM_CATEGORY_DANGEROUS_CONTENT",
+        "HARM_CATEGORY_CIVIC_INTEGRITY",
+    ]
     threshold: Literal[
-        "HARM_BLOCK_UNSPECIFIED",
+        "HARM_BLOCK_THRESHOLD_UNSPECIFIED",
         "BLOCK_LOW_AND_ABOVE",
         "BLOCK_MEDIUM_AND_ABOVE",
+        "BLOCK_ONLY_HIGH",
         "BLOCK_NONE",
+        "OFF",
     ]
 
 
