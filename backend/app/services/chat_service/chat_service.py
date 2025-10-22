@@ -170,7 +170,7 @@ class ChatService:
             finally:
                 # 取消对应的超时任务
                 # self._background_task_manager.cancel_timeout_task(key)
-                self._key_manager.release_key_from_use(key)
+                await self._key_manager.release_key_from_use(key)
                 logger.info(
                     f"[Request ID: {request_id}] Key {key.brief} released from use."
                 )
