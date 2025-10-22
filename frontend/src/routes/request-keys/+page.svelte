@@ -76,14 +76,14 @@
 		}
 	}
 
-	async function deleteKey(keyIdentifier: string) {
-		if (!confirm(`确定要删除密钥标识符为 "${keyIdentifier}" 的密钥吗？`)) {
+	async function deleteKey(key: { identifier: string; brief: string }) {
+		if (!confirm(`确定要删除密钥 "${key.brief}" 吗？`)) {
 			return;
 		}
 		try {
-			await api.delete(`/keys/${keyIdentifier}`);
+			await api.delete(`/keys/${key.identifier}`);
 			notificationObject = {
-				message: `密钥 "${keyIdentifier}" 删除成功！`,
+				message: `密钥 "${key.brief}" 删除成功！`,
 				type: 'success'
 			};
 			fetchKeyStatusResponse();
@@ -96,14 +96,14 @@
 		}
 	}
 
-	async function resetKey(keyIdentifier: string) {
-		if (!confirm(`确定要重置密钥标识符为 "${keyIdentifier}" 的密钥状态吗？`)) {
+	async function resetKey(key: { identifier: string; brief: string }) {
+		if (!confirm(`确定要重置密钥 "${key.brief}" 的状态吗？`)) {
 			return;
 		}
 		try {
-			await api.post(`/keys/${keyIdentifier}/reset`, {});
+			await api.post(`/keys/${key.identifier}/reset`, {});
 			notificationObject = {
-				message: `密钥 "${keyIdentifier}" 状态重置成功！`,
+				message: `密钥 "${key.brief}" 状态重置成功！`,
 				type: 'success'
 			};
 			fetchKeyStatusResponse();

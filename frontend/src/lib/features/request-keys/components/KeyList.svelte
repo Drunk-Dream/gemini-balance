@@ -10,12 +10,12 @@
 		deleteKey
 	}: {
 		keyStatuses: KeyStatus[];
-		resetKey: (keyIdentifier: string) => Promise<void>;
-		deleteKey: (keyIdentifier: string) => Promise<void>;
+		resetKey: (key: { identifier: string; brief: string }) => Promise<void>;
+		deleteKey: (key: { identifier: string; brief: string }) => Promise<void>;
 	} = $props();
 </script>
 
-<div class="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
 	{#each keyStatuses as keyStatus (keyStatus.key_identifier)}
 		<div animate:flip={{ easing: quintOut }}>
 			<KeyCard {keyStatus} {resetKey} {deleteKey} />
