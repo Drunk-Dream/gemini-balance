@@ -14,7 +14,7 @@
 		resetKey: (key: { identifier: string; brief: string }) => Promise<void>;
 		deleteKey: (key: { identifier: string; brief: string }) => Promise<void>;
 	} = $props();
-	let {
+	const {
 		key_identifier,
 		key_brief,
 		cool_down_entry_count,
@@ -22,7 +22,7 @@
 		current_cool_down_seconds,
 		failure_count,
 		status
-	} = keyStatus;
+	} = $derived(keyStatus);
 </script>
 
 <div class="card bg-base-200 border-base-content/10 shadow-base-content/10 border shadow-md">
@@ -34,7 +34,7 @@
 		<div class="flex items-center justify-between">
 			<h3 class="text-md text-base-content/80 font-semibold">状态:</h3>
 			<span class="badge {statusMap.get(status)?.colorClass || 'badge-neutral'} badge-md"
-				>{statusMap.get(keyStatus.status)?.text || '未知状态'}</span
+				>{statusMap.get(status)?.text || '未知状态'}</span
 			>
 		</div>
 		<div class="flex items-center justify-between">
