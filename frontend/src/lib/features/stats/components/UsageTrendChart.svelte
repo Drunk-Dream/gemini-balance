@@ -4,12 +4,12 @@
 	import UsageUnitToggle from '$lib/features/stats/components/UnitToggle.svelte';
 	import { getUsageStats } from '$lib/features/stats/service';
 	import { UsageStatsUnit, type ChartData } from '$lib/features/stats/types';
+	import { deepmerge } from 'deepmerge-ts';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { LineChart } from 'echarts/charts';
 	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 	import { use } from 'echarts/core';
 	import { CanvasRenderer } from 'echarts/renderers';
-	import { deepmerge } from 'deepmerge-ts';
 	import { defaultChartOptions } from './chart-options';
 	import PeriodSlider from './PeriodSlider.svelte';
 
@@ -102,8 +102,11 @@
 <div class="flex h-full flex-col">
 	<div class="flex flex-col items-center gap-2 xl:flex-row xl:justify-between xl:gap-0">
 		<UsageUnitToggle bind:currentUnit={unit} disabled={loading} />
-		<PeriodSlider bind:value={numPeriods} currentUnit={unit} disabled={loading} />
-		<!-- <PeriodNavigator bind:offset {periodText} disabled={[loading, loading || offset >= 0]} /> -->
+		<PeriodSlider
+			bind:value={numPeriods}
+			max={unit === UsageStatsUnit.DAY ? 90 : unit === UsageStatsUnit.WEEK ? 52 : 24}
+			disabled={loading}
+		/>
 	</div>
 
 	<div class="flex-grow">

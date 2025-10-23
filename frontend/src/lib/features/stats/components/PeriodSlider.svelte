@@ -7,18 +7,14 @@
 	let {
 		value = $bindable(),
 		min = 7,
-		disabled = false,
-		currentUnit
+		max = 90, // max 作为可自定义参数，默认 90 天
+		disabled = false
 	}: {
 		value: number;
 		min?: number;
+		max?: number; // 添加 max 到类型定义
 		disabled?: boolean;
-		currentUnit: UsageStatsUnit;
 	} = $props();
-
-	let max = $derived.by(() => {
-		return currentUnit === UsageStatsUnit.DAY ? 90 : currentUnit === UsageStatsUnit.WEEK ? 52 : 24;
-	});
 
 	let isDragging = $state(false);
 	let isHovering = $state(false);

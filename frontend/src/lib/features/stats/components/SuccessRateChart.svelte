@@ -108,7 +108,7 @@
 		<PeriodSlider
 			bind:value={period}
 			min={7}
-			currentUnit={UsageStatsUnit.DAY}
+			max={90}
 			disabled={isLoading}
 		/>
 	</div>

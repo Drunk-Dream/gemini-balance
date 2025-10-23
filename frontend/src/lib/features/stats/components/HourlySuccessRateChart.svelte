@@ -3,9 +3,8 @@
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
 	import { getHourlySuccessRateStats } from '$lib/features/stats/service';
 	import type { ChartData } from '$lib/features/stats/types';
-	import { UsageStatsUnit } from '$lib/features/stats/types';
-	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { deepmerge } from 'deepmerge-ts';
+	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { defaultChartOptions } from './chart-options';
 	import PeriodSlider from './PeriodSlider.svelte';
 
@@ -112,12 +111,7 @@
 
 <div class="flex h-full flex-col">
 	<div class="flex flex-col items-center">
-		<PeriodSlider
-			bind:value={period}
-			min={7}
-			currentUnit={UsageStatsUnit.DAY}
-			disabled={isLoading}
-		/>
+		<PeriodSlider bind:value={period} min={7} max={90} disabled={isLoading} />
 	</div>
 
 	<div class="flex-grow">
