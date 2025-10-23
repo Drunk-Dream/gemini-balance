@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
+	import { defaultChartOptions } from '$lib/features/stats//constants/chart-options';
 	import UsageUnitToggle from '$lib/features/stats/components/UnitToggle.svelte';
 	import { getUsageStats } from '$lib/features/stats/service';
 	import { UsageStatsUnit, type ChartData } from '$lib/features/stats/types';
@@ -10,7 +11,6 @@
 	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 	import { use } from 'echarts/core';
 	import { CanvasRenderer } from 'echarts/renderers';
-	import { defaultChartOptions } from './chart-options';
 	import PeriodSlider from './PeriodSlider.svelte';
 
 	// 注册 ECharts 组件

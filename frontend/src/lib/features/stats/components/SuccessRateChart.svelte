@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
+	import { defaultChartOptions } from '$lib/features/stats/constants/chart-options';
 	import { getSuccessRateStats } from '$lib/features/stats/service';
 	import type { ChartData } from '$lib/features/stats/types';
-	import { UsageStatsUnit } from '$lib/features/stats/types';
-	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import { deepmerge } from 'deepmerge-ts';
-	import { defaultChartOptions } from './chart-options';
+	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import PeriodSlider from './PeriodSlider.svelte';
 
 	let chartData = $state<ChartData | null>(null);
@@ -105,12 +104,7 @@
 
 <div class="flex h-full flex-col">
 	<div class="flex flex-col items-center">
-		<PeriodSlider
-			bind:value={period}
-			min={7}
-			max={90}
-			disabled={isLoading}
-		/>
+		<PeriodSlider bind:value={period} min={7} max={90} disabled={isLoading} />
 	</div>
 
 	<div class="flex-grow">

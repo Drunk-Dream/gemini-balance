@@ -5,7 +5,7 @@
 	import type { ChartData } from '$lib/features/stats/types';
 	import { deepmerge } from 'deepmerge-ts';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
-	import { defaultChartOptions } from './chart-options';
+	import { defaultChartOptions } from '$lib/features/stats/constants/chart-options';
 	import PeriodSlider from './PeriodSlider.svelte';
 
 	let chartData = $state<ChartData | null>(null);

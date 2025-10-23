@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
 	import { getDailyUsageChart } from '$lib/features/stats/service';
-	import { defaultChartOptions } from '$lib/features/stats/components/chart-options';
+	import { defaultChartOptions } from '$lib/features/stats/constants/chart-options';
 	import type { ChartData } from '$lib/features/stats/types';
 	import type { BarSeriesOption, EChartsOption } from 'echarts';
 	import { BarChart } from 'echarts/charts';
