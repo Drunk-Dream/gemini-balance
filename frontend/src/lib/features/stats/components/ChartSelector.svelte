@@ -48,7 +48,9 @@
 			</Combobox.Trigger>
 		</div>
 		<Combobox.Portal>
-			<Combobox.Content class="bg-base-100 rounded-box mt-1 w-[250px] shadow-lg">
+			<Combobox.Content
+				class="bg-base-100 focus-override border-muted bg-background shadow-popover data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 outline-hidden z-50 mt-1 h-96 max-h-[var(--bits-combobox-content-available-height)] w-[var(--bits-combobox-anchor-width)] min-w-[var(--bits-combobox-anchor-width)] select-none rounded-xl border px-1 py-3 shadow-lg data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1  data-[side=top]:-translate-y-1"
+			>
 				<Combobox.Viewport class="max-h-60 overflow-y-auto p-1">
 					{#each filteredCharts as chart (chart.value)}
 						<Combobox.Item
