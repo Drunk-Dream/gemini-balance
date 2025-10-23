@@ -24,5 +24,5 @@
 </div>
 
 {#if keyStatuses.length === 0}
-	<p class="text-gray-600">没有可用的密钥状态信息。</p>
+	<p class="text-muted-foreground">没有可用的密钥状态信息。</p>
 {/if}

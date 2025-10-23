@@ -17,7 +17,7 @@
 <Pagination.Root count={totalItems} {perPage} siblingCount={1} bind:page={currentPage}>
 	{#snippet children({ pages, range })}
 		<div class="flex flex-col items-center justify-center md:flex-row md:gap-4">
-			<p class="text-base-content/70 text-sm">
+			<p class="text-muted-foreground text-sm">
 				Showing {range.start} - {range.end} of {totalItems}
 			</p>
 			<div class="join">
@@ -29,7 +29,7 @@
 					{#if page.type === 'ellipsis'}
 						<button class="join-item btn btn-disabled btn-sm md:btn-md select-none">...</button>
 					{:else}
-						<Pagination.Page {page} class="join-item btn btn-sm md:btn-md data-selected:btn-active">
+						<Pagination.Page {page} class="join-item btn btn-sm md:btn-md data-selected:bg-primary data-selected:text-primary-foreground">
 							{page.value}
 						</Pagination.Page>
 					{/if}

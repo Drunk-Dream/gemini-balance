@@ -25,44 +25,46 @@
 	} = $derived(keyStatus);
 </script>
 
-<div class="card bg-base-200 border-base-content/10 shadow-base-content/10 border shadow-md">
+<div class="card bg-card border-border shadow-md">
 	<div class="card-body">
 		<div class="flex items-center justify-between">
-			<h3 class="text-md text-base-content/80 font-semibold">密钥标识:</h3>
-			<span class="text-base-content/90 text-sm">{key_brief}</span>
+			<h3 class="text-md text-card-foreground font-semibold">密钥标识:</h3>
+			<span class="text-foreground text-sm">{key_brief}</span>
 		</div>
 		<div class="flex items-center justify-between">
-			<h3 class="text-md text-base-content/80 font-semibold">状态:</h3>
-			<span class="badge {statusMap.get(status)?.colorClass || 'badge-neutral'} badge-md"
+			<h3 class="text-md text-card-foreground font-semibold">状态:</h3>
+			<span
+				class="badge px-2 {statusMap.get(status)?.colorClass ||
+					'bg-muted text-muted-foreground'} badge-md"
 				>{statusMap.get(status)?.text || '未知状态'}</span
 			>
 		</div>
 		<div class="flex items-center justify-between">
-			<h3 class="text-md text-base-content/80 font-semibold">剩余冷却时间:</h3>
-			<span class="text-base-content/90 text-sm">{cool_down_seconds_remaining} 秒</span>
+			<h3 class="text-md text-card-foreground font-semibold">剩余冷却时间:</h3>
+			<span class="text-foreground text-sm">{cool_down_seconds_remaining} 秒</span>
 		</div>
 		<div class="flex items-center justify-between">
-			<h3 class="text-md text-base-content/80 font-semibold">连续失败次数:</h3>
-			<span class="text-base-content/90 text-sm">{failure_count}</span>
+			<h3 class="text-md text-card-foreground font-semibold">连续失败次数:</h3>
+			<span class="text-foreground text-sm">{failure_count}</span>
 		</div>
 		<div class="flex items-center justify-between">
-			<h3 class="text-md text-base-content/80 font-semibold">连续冷却次数:</h3>
-			<span class="text-base-content/90 text-sm">{cool_down_entry_count}</span>
+			<h3 class="text-md text-card-foreground font-semibold">连续冷却次数:</h3>
+			<span class="text-foreground text-sm">{cool_down_entry_count}</span>
 		</div>
 		<div class="flex items-center justify-between">
-			<h3 class="text-md text-base-content/80 font-semibold">当前冷却时长:</h3>
-			<span class="text-base-content/90 text-sm">{current_cool_down_seconds} 秒</span>
+			<h3 class="text-md text-card-foreground font-semibold">当前冷却时长:</h3>
+			<span class="text-foreground text-sm">{current_cool_down_seconds} 秒</span>
 		</div>
 		<div class="card-actions mt-4 justify-end space-x-2">
 			<button
 				onclick={() => resetKey({ identifier: key_identifier, brief: key_brief })}
-				class="btn btn-warning btn-sm"
+				class="btn btn-sm bg-yellow-500 text-yellow-50"
 			>
 				重置
 			</button>
 			<button
 				onclick={() => deleteKey({ identifier: key_identifier, brief: key_brief })}
-				class="btn btn-error btn-sm"
+				class="btn bg-destructive text-destructive-foreground btn-sm"
 			>
 				删除
 			</button>

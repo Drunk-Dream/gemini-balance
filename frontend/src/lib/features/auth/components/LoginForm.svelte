@@ -14,25 +14,25 @@
 	} = $props();
 </script>
 
-<div class="bg-base-300 w-full max-w-md rounded-lg p-6 shadow-md">
-	<h1 class="text-base-content/80 mb-6 text-center text-2xl font-bold">登录</h1>
+<div class="bg-card w-full max-w-md rounded-lg p-6 shadow-md">
+	<h1 class="text-card-foreground mb-6 text-center text-2xl font-bold">登录</h1>
 
 	<Notification message={errorMessage} type="error" />
 
 	<form onsubmit={handleLogin}>
 		<div class="mb-4">
-			<label for="password" class="text-base-content/70 mb-2 block text-sm font-bold">密码:</label>
+			<label for="password" class="text-muted-foreground mb-2 block text-sm font-bold">密码:</label>
 			<input
 				type="password"
 				id="password"
 				bind:value={password}
 				required
-				class="focus:shadow-outline text-base-content/70 w-full appearance-none rounded border px-3 py-2 leading-tight shadow focus:outline-none"
+				class="focus:shadow-outline text-muted-foreground w-full appearance-none rounded border px-3 py-2 leading-tight shadow focus:outline-none"
 				placeholder="请输入密码"
 			/>
 		</div>
 		<div class="flex items-center justify-between">
-			<button type="submit" class="btn btn-primary" disabled={loading}>
+			<button type="submit" class="btn bg-primary text-primary-foreground" disabled={loading}>
 				{loading ? '登录中...' : '登录'}
 			</button>
 		</div>

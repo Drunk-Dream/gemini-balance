@@ -24,7 +24,7 @@
 	} = $props();
 </script>
 
-<div class="card bg-base-100 shadow-xl shadow-base-content/20">
+<div class="card bg-card text-card-foreground shadow-lg border">
 	<div class="card-body">
 		<h2 class="card-title">现有密钥列表</h2>
 		<div class="overflow-x-auto">
@@ -45,27 +45,27 @@
 									<input
 										type="text"
 										bind:value={editingAlias}
-										class="input input-bordered w-full"
+										class="input bg-background border-input text-foreground w-full"
 									/>
 								{:else}
-									<span class="text-base-content/90 text-sm">{key.alias}</span>
+									<span class="text-foreground text-sm">{key.alias}</span>
 								{/if}
 							</td>
 							<td class="whitespace-nowrap">
-								<span class="text-base-content/50 font-mono text-sm">{key.api_key}</span>
+								<span class="text-muted-foreground font-mono text-sm">{key.api_key}</span>
 							</td>
 							<td class="whitespace-nowrap">
-								<span class="text-base-content/90 text-sm">{key.call_count}</span>
+									<span class="text-foreground text-sm">{key.call_count}</span>
 							</td>
 							<td class="space-x-2 whitespace-nowrap text-right text-sm font-medium">
 								{#if editingKey?.api_key === key.api_key}
-									<button onclick={updateAuthKey} class="btn btn-primary btn-sm"> 保存 </button>
+									<button onclick={updateAuthKey} class="btn bg-primary text-primary-foreground btn-sm"> 保存 </button>
 									<button onclick={cancelEdit} class="btn btn-ghost btn-sm"> 取消 </button>
 								{:else}
 									<button onclick={() => startEdit(key)} class="btn btn-ghost btn-sm">
 										编辑
 									</button>
-									<button onclick={() => deleteAuthKey(key.api_key)} class="btn btn-error btn-sm">
+									<button onclick={() => deleteAuthKey(key.api_key)} class="btn bg-destructive text-destructive-foreground btn-sm">
 										删除
 									</button>
 								{/if}
@@ -75,7 +75,7 @@
 				</tbody>
 			</table>
 			{#if authKeys.length === 0}
-				<p class="py-4 text-center text-gray-500">暂无数据。</p>
+				<p class="py-4 text-center text-muted-foreground">暂无数据。</p>
 			{/if}
 		</div>
 	</div>

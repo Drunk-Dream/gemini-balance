@@ -15,7 +15,7 @@
 
 <Collapsible.Root bind:open bind:ref {...restProps}>
 	<Collapsible.Trigger
-		class="mb-3 inline-flex h-10 items-center justify-center space-x-2 rounded-md border border-gray-300 bg-white p-2 text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-[0.98]"
+		class="mb-3 inline-flex h-10 items-center justify-center space-x-2 rounded-md border border-border bg-background p-2 text-foreground shadow-sm transition-all hover:bg-muted active:scale-[0.98]"
 		aria-label="Toggle filters"
 	>
 		<p class="text-lg font-medium">{buttonText}</p>

@@ -20,7 +20,12 @@
 </script>
 
 {#if message}
-	<div class="alert my-2 {type === 'success' ? 'alert-success' : 'alert-error'}" role="alert">
+	<div
+		class="alert my-2 {type === 'success'
+			? 'alert-success'
+			: 'alert-error'}"
+		role="alert"
+	>
 		{#if type === 'success'}
 			<svg
 				xmlns="http://www.w3.org/2000/svg"

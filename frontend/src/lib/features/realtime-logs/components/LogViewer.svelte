@@ -71,7 +71,7 @@
 {#if showScrollToBottomButton}
 	<button
 		onclick={forceScrollToBottom}
-		class="btn btn-circle btn-primary fixed bottom-4 right-4"
+		class="btn btn-circle bg-primary text-primary-foreground fixed bottom-4 right-4"
 		aria-label="Scroll to bottom"
 	>
 		<ArrowDown class="size-6" />

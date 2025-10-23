@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { UsageStatsUnit } from '$lib/features/stats/types';
 	import MagnifyingGlassMinus from 'phosphor-svelte/lib/MagnifyingGlassMinus';
 	import MagnifyingGlassPlus from 'phosphor-svelte/lib/MagnifyingGlassPlus';
 	import { fade } from 'svelte/transition';
@@ -44,7 +43,7 @@
 	onpointerleave={() => (isHovering = false)}
 >
 	<button
-		class="btn btn-ghost btn-circle"
+		class="btn btn-ghost"
 		onclick={() => (value = Math.max(min, value - 1))}
 		disabled={disabled || value <= min}
 	>
@@ -56,7 +55,7 @@
 			{min}
 			{max}
 			bind:value
-			class="range range-primary w-48"
+			class="range ring-accent w-48"
 			{disabled}
 			onpointermove={(event: PointerEvent) => event.stopPropagation()}
 			onpointerdown={() => (isDragging = true)}
@@ -64,7 +63,7 @@
 		/>
 		{#if isTooltipVisible}
 			<div
-				class="bg-primary/80 text-primary-content border-base-content/10 pointer-events-none absolute -top-8 z-10 rounded border px-2 py-1 text-xs shadow-lg backdrop-blur-sm"
+				class="bg-primary text-primary-foreground border-border pointer-events-none absolute -top-8 z-10 rounded border px-2 py-1 text-xs shadow-lg backdrop-blur-sm"
 				style={tooltipStyle}
 				transition:fade
 			>

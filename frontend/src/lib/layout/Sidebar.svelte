@@ -17,7 +17,7 @@
 </script>
 
 <ul
-	class="menu bg-sidebar text-base-content border-base-content/10 flex min-h-full w-72 flex-col border-r p-4 shadow-lg"
+    class="menu bg-sidebar text-sidebar-foreground border-sidebar-border flex min-h-full w-72 flex-col border-r p-4 shadow-lg"
 >
 	<li class="menu-title mb-4 text-2xl font-bold"><a href="/">Gemini Balance</a></li>
 	{#each navLinks as link}

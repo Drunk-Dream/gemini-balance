@@ -15,16 +15,18 @@
 
 <div class="mb-6">
 	<Dialog.Root bind:open>
-		<Dialog.Trigger class="btn btn-primary">创建新密钥</Dialog.Trigger>
+		<Dialog.Trigger class="btn bg-primary text-primary-foreground">创建新密钥</Dialog.Trigger>
 		<Dialog.Portal>
 			<Dialog.Overlay
 				class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
 			/>
 			<Dialog.Content
-				class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-white p-6 shadow-lg"
+				class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 bg-card fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border p-6 shadow-lg"
 			>
-				<Dialog.Title class="mb-4 text-xl font-semibold text-gray-800">创建新密钥</Dialog.Title>
-				<Dialog.Description class="mb-4 text-sm text-gray-600">
+				<Dialog.Title class="text-card-foreground mb-4 text-xl font-semibold"
+					>创建新密钥</Dialog.Title
+				>
+				<Dialog.Description class="text-muted-foreground mb-4 text-sm">
 					为您的认证密钥输入一个别名。
 				</Dialog.Description>
 				<form
@@ -35,7 +37,7 @@
 					class="flex flex-col space-y-4"
 				>
 					<div>
-						<label for="new-alias" class="mb-2 block text-sm font-medium text-gray-700"
+						<label for="new-alias" class="text-card-foreground mb-2 block text-sm font-medium"
 							>新别名</label
 						>
 						<input
@@ -43,17 +45,13 @@
 							type="text"
 							bind:value={newAlias}
 							placeholder="输入新密钥的别名"
-							class="focus:shadow-outline w-full appearance-none rounded border px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none"
+							class="focus:shadow-outline text-muted-foreground w-full appearance-none rounded border px-3 py-2 leading-tight shadow focus:outline-none"
 							required
 						/>
 					</div>
 					<div class="flex justify-end space-x-2">
-						<Dialog.Close
-							class="btn btn-ghost"
-						>
-							取消
-						</Dialog.Close>
-						<button type="submit" class="btn btn-success"> 创建 </button>
+						<Dialog.Close class="btn btn-ghost">取消</Dialog.Close>
+						<button type="submit" class="btn bg-primary text-primary-foreground"> 创建 </button>
 					</div>
 				</form>
 			</Dialog.Content>
