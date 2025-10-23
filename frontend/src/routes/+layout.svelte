@@ -23,7 +23,7 @@
 	<div class="drawer-content flex h-screen flex-col">
 		<Header {toggleSidebar} />
 		<!-- Main content -->
-		<main class="bg-base-100 flex-1 overflow-y-auto">
+		<main class="bg-background flex-1 overflow-y-auto">
 			{@render children?.()}
 		</main>
 	</div>
