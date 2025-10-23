@@ -2,13 +2,19 @@
 	import Container from '$lib/components/Container.svelte';
 	import AuthGuard from '$lib/features/auth/components/AuthGuard.svelte';
 	import ChartCard from '$lib/features/stats/components/ChartCard.svelte';
+	import ChartSelector from '$lib/features/stats/components/ChartSelector.svelte';
 	import DailyUsageChart from '$lib/features/stats/components/DailyUsageChart.svelte';
 	import HourlySuccessRateChart from '$lib/features/stats/components/HourlySuccessRateChart.svelte';
 	import SuccessRateChart from '$lib/features/stats/components/SuccessRateChart.svelte';
-	import UsageHeatmapChart from '$lib/features/stats/components/UsageHeatmapChart.svelte';
 	import UsageTrendChart from '$lib/features/stats/components/UsageTrendChart.svelte';
-	import ChartSelector from '$lib/features/stats/components/ChartSelector.svelte';
 	import { chartSelectionStore } from '$lib/features/stats/stores/chart-store';
+	import { BarChart, LineChart } from 'echarts/charts';
+	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
+	import { use } from 'echarts/core';
+	import { CanvasRenderer } from 'echarts/renderers';
+
+	// 注册 ECharts 组件
+	use([BarChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer, LineChart]);
 
 	let dailyUsageChart: DailyUsageChart | undefined;
 	let usageRequestTrendChart: UsageTrendChart | undefined;

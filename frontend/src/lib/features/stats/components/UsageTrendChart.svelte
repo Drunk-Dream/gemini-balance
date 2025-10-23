@@ -7,14 +7,7 @@
 	import { UsageStatsUnit, type ChartData } from '$lib/features/stats/types';
 	import { deepmerge } from 'deepmerge-ts';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
-	import { LineChart } from 'echarts/charts';
-	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
-	import { use } from 'echarts/core';
-	import { CanvasRenderer } from 'echarts/renderers';
 	import PeriodSlider from './PeriodSlider.svelte';
-
-	// 注册 ECharts 组件
-	use([LineChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer]);
 
 	let { type }: { type: 'requests' | 'tokens' } = $props();
 

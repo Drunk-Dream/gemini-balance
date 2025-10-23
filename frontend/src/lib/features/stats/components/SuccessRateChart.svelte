@@ -33,11 +33,7 @@
 
 	let chartOption = $derived.by((): EChartsOption => {
 		if (!chartData) {
-			return {
-				title: {
-					text: '模型请求成功率'
-				}
-			};
+			return {};
 		}
 
 		const series: LineSeriesOption[] = chartData.datasets.map((ds) => ({
@@ -50,10 +46,6 @@
 		}));
 
 		const specificOptions: EChartsOption = {
-			title: {
-				text: '模型请求成功率',
-				left: 'center'
-			},
 			tooltip: {
 				trigger: 'axis',
 				axisPointer: {
@@ -77,7 +69,7 @@
 				{
 					type: 'category',
 					data: chartData.labels,
-					boundaryGap: true
+					boundaryGap: false
 				}
 			],
 			yAxis: [

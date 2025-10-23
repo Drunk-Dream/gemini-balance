@@ -1,18 +1,12 @@
 <script lang="ts">
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
-	import { getDailyUsageChart } from '$lib/features/stats/service';
 	import { defaultChartOptions } from '$lib/features/stats/constants/chart-options';
+	import { getDailyUsageChart } from '$lib/features/stats/service';
 	import type { ChartData } from '$lib/features/stats/types';
-	import type { BarSeriesOption, EChartsOption } from 'echarts';
-	import { BarChart } from 'echarts/charts';
-	import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
-	import { use } from 'echarts/core';
-	import { CanvasRenderer } from 'echarts/renderers';
-	import { onMount } from 'svelte';
 	import { deepmerge } from 'deepmerge-ts';
+	import type { BarSeriesOption, EChartsOption } from 'echarts';
+	import { onMount } from 'svelte';
 
-	// 注册 ECharts 组件
-	use([BarChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer]);
 
 	let chartData: ChartData | null = $state(null);
 	let loading = $state(true);

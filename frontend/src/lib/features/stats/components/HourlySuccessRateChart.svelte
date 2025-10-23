@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
+	import { defaultChartOptions } from '$lib/features/stats/constants/chart-options';
 	import { getHourlySuccessRateStats } from '$lib/features/stats/service';
 	import type { ChartData } from '$lib/features/stats/types';
 	import { deepmerge } from 'deepmerge-ts';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
-	import { defaultChartOptions } from '$lib/features/stats/constants/chart-options';
 	import PeriodSlider from './PeriodSlider.svelte';
 
 	let chartData = $state<ChartData | null>(null);
@@ -33,11 +33,7 @@
 
 	let chartOption = $derived.by((): EChartsOption => {
 		if (!chartData) {
-			return {
-				title: {
-					text: '模型请求成功率 (按小时)'
-				}
-			};
+			return {};
 		}
 
 		const labels = chartData.labels;
@@ -54,10 +50,6 @@
 		}));
 
 		const specificOptions: EChartsOption = {
-			title: {
-				text: '模型请求成功率 (按小时)',
-				left: 'center'
-			},
 			tooltip: {
 				trigger: 'axis',
 				axisPointer: {
