@@ -91,13 +91,13 @@
 		<Notification message={error} type="error" autoHide={false} />
 
 		{#if logs.length === 0}
-			<p class="text-base-content/50">没有找到任何请求日志。</p>
+			<p class="text-foreground/50">没有找到任何请求日志。</p>
 		{:else}
 			<RequestLogTable {logs} />
 
 			<div class="sticky bottom-2 z-10 mt-2 flex justify-center">
 				<div
-					class="bg-base-100/60 border-base-200/60 shadow-base-content/20 rounded-lg border px-2 shadow-md backdrop-blur-sm"
+					class="bg-card/60 border-border/60 shadow-foreground/20 rounded-lg border px-2 shadow-md backdrop-blur-sm"
 				>
 					<Pagination bind:currentPage perPage={itemsPerPage} {totalItems} />
 				</div>

@@ -33,7 +33,7 @@
 				<ChartCard className="lg:col-span-2" onRefresh={() => dailyUsageChart?.refresh()}>
 					{#snippet header()}
 						<h2 class="text-lg font-semibold">每日使用</h2>
-						<p class="text-base-content/50 text-sm">每个key每日用量</p>
+						<p class="text-foreground/50 text-sm">每个key每日用量</p>
 					{/snippet}
 					{#snippet children()}
 						<DailyUsageChart bind:this={dailyUsageChart} />
@@ -45,7 +45,7 @@
 				<ChartCard className="lg:col-span-1" onRefresh={() => usageRequestTrendChart?.refresh()}>
 					{#snippet header()}
 						<h2 class="text-lg font-semibold">请求次数</h2>
-						<p class="text-base-content/50 text-sm">按日、周、月统计请求次数</p>
+						<p class="text-foreground/50 text-sm">按日、周、月统计请求次数</p>
 					{/snippet}
 					{#snippet children()}
 						<UsageTrendChart bind:this={usageRequestTrendChart} type="requests" />
@@ -57,7 +57,7 @@
 				<ChartCard className="lg:col-span-1" onRefresh={() => usageTokensTrendChart?.refresh()}>
 					{#snippet header()}
 						<h2 class="text-lg font-semibold">Token用量</h2>
-						<p class="text-base-content/50 text-sm">按日、周、月统计Token用量</p>
+						<p class="text-foreground/50 text-sm">按日、周、月统计Token用量</p>
 					{/snippet}
 					{#snippet children()}
 						<UsageTrendChart bind:this={usageTokensTrendChart} type="tokens" />
@@ -69,7 +69,7 @@
 				<ChartCard className="lg:col-span-1" onRefresh={() => successRateChart?.refresh()}>
 					{#snippet header()}
 						<h2 class="text-lg font-semibold">请求成功率</h2>
-						<p class="text-base-content/50 text-sm">每日不同模型请求成功率</p>
+						<p class="text-foreground/50 text-sm">每日不同模型请求成功率</p>
 					{/snippet}
 					{#snippet children()}
 						<SuccessRateChart bind:this={successRateChart} />
@@ -81,7 +81,7 @@
 				<ChartCard className="lg:col-span-1" onRefresh={() => hourlySuccessRateChart?.refresh()}>
 					{#snippet header()}
 						<h2 class="text-lg font-semibold">请求成功率(按小时)</h2>
-						<p class="text-base-content/50 text-sm">不同时段不同模型请求成功率</p>
+						<p class="text-foreground/50 text-sm">不同时段不同模型请求成功率</p>
 					{/snippet}
 					{#snippet children()}
 						<HourlySuccessRateChart bind:this={hourlySuccessRateChart} />
