@@ -44,7 +44,7 @@ async def get_request_logs_endpoint(
 
 
 @router.get(
-    "/request_logs/daily_usage_chart",
+    "/stats/daily_usage_chart",
     response_model=ChartData,
     summary="获取每日模型使用统计图表数据",
 )
@@ -67,7 +67,7 @@ async def get_daily_model_usage_chart_endpoint(
 
 
 @router.get(
-    "/request_logs/usage_stats",
+    "/stats/usage_stats",
     response_model=ChartData,
     summary="获取使用统计趋势图表数据",
 )
@@ -99,7 +99,7 @@ async def get_usage_stats_endpoint(
 
 
 @router.get(
-    "/request_logs/daily_usage_heatmap",
+    "/stats/daily_usage_heatmap",
     response_model=DailyUsageHeatmapData,
     summary="获取每日使用热力图数据",
 )

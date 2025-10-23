@@ -10,7 +10,7 @@ export async function getDailyUsageChart(timezone_str?: string): Promise<ChartDa
 
 	try {
 		const response = await api.get<ChartData>(
-			`/request_logs/daily_usage_chart?${queryParams.toString()}`
+			`/stats/daily_usage_chart?${queryParams.toString()}`
 		);
 		if (!response) {
 			throw new Error('获取每日模型使用统计图表数据失败：API 返回空数据');
@@ -34,7 +34,7 @@ export async function getDailyUsageHeatmap(
 
 	try {
 		const response = await api.get<DailyUsageHeatmapData>(
-			`/request_logs/daily_usage_heatmap?${queryParams.toString()}`
+			`/stats/daily_usage_heatmap?${queryParams.toString()}`
 		);
 		if (!response) {
 			throw new Error('获取每日使用热力图数据失败：API 返回空数据');
@@ -62,7 +62,7 @@ export async function getUsageStats(
 
 	try {
 		const response = await api.get<ChartData>(
-			`/request_logs/usage_stats?${queryParams.toString()}`
+			`/stats/usage_stats?${queryParams.toString()}`
 		);
 		if (!response) {
 			throw new Error('获取模型使用统计趋势图表数据失败：API 返回空数据');
@@ -74,18 +74,13 @@ export async function getUsageStats(
 	}
 }
 
-export async function getSuccessRateStats(
-	days: number,
-	timezone_str: string
-): Promise<ChartData> {
+export async function getSuccessRateStats(days: number, timezone_str: string): Promise<ChartData> {
 	const queryParams = new URLSearchParams();
 	queryParams.append('days', days.toString());
 	queryParams.append('timezone_str', timezone_str);
 
 	try {
-		const response = await api.get<ChartData>(
-			`/stats/success-rate?${queryParams.toString()}`
-		);
+		const response = await api.get<ChartData>(`/stats/success-rate?${queryParams.toString()}`);
 		if (!response) {
 			throw new Error('获取成功率统计数据失败：API 返回空数据');
 		}
