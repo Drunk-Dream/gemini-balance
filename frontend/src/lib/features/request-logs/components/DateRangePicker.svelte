@@ -58,19 +58,17 @@
 		</DateRangePicker.Trigger>
 	</div>
 	<DateRangePicker.Content sideOffset={6} class="z-50">
-		<DateRangePicker.Calendar
-			class="border-border bg-card mt-6 rounded-xl border p-4 shadow-lg"
-		>
+		<DateRangePicker.Calendar class="border-border bg-card mt-6 rounded-xl border p-4 shadow-lg">
 			{#snippet children({ months, weekdays })}
 				<DateRangePicker.Header class="flex items-center justify-between">
 					<DateRangePicker.PrevButton
-						class="btn btn-ghost inline-flex size-10 items-center justify-center rounded-lg transition-all"
+						class="btn btn-ghost btn-square inline-flex size-10 items-center justify-center rounded-lg transition-all"
 					>
 						<CaretLeft class="size-6" />
 					</DateRangePicker.PrevButton>
 					<DateRangePicker.Heading class="text-[15px] font-medium" />
 					<DateRangePicker.NextButton
-						class="btn btn-ghost inline-flex size-10 items-center justify-center rounded-lg transition-all"
+						class="btn btn-ghost btn-square inline-flex size-10 items-center justify-center rounded-lg transition-all"
 					>
 						<CaretRight class="size-6" />
 					</DateRangePicker.NextButton>
@@ -81,7 +79,9 @@
 							<DateRangePicker.GridHead>
 								<DateRangePicker.GridRow class="mb-1 flex w-full justify-between">
 									{#each weekdays as day (day)}
-										<DateRangePicker.HeadCell class="text-muted-foreground w-10 text-xs font-normal">
+										<DateRangePicker.HeadCell
+											class="text-muted-foreground w-10 text-xs font-normal"
+										>
 											<div>{day.slice(0, 2)}</div>
 										</DateRangePicker.HeadCell>
 									{/each}
