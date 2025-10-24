@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
-	import { defaultChartOptions } from '$lib/features/stats//constants/chart-options';
+	import { getDefaultChartOptions } from '$lib/features/stats//constants/chart-options';
 	import UsageUnitToggle from '$lib/features/stats/components/UnitToggle.svelte';
 	import { getUsageStats } from '$lib/features/stats/service';
 	import { UsageStatsUnit, type ChartData } from '$lib/features/stats/types';
+	import { theme } from '$lib/features/theme/theme';
 	import { deepmerge } from 'deepmerge-ts';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import PeriodSlider from './PeriodSlider.svelte';
@@ -20,6 +21,7 @@
 	let offset: number = $state(0);
 	let numPeriods: number = $state(7); // 默认显示 7 个周期
 	let timezone: string = $state('Asia/Shanghai'); // 默认时区
+	let defaultChartOptions: EChartsOption = $state(getDefaultChartOptions());
 
 	// 获取用户浏览器时区
 	if (browser) {
@@ -40,9 +42,7 @@
 	}
 
 	let options = $derived.by((): EChartsOption => {
-		if (!chartData) {
-			return defaultChartOptions;
-		}
+		if (!chartData) return getDefaultChartOptions();
 
 		const modelNames = Array.from(new Set(chartData.datasets.map((ds) => ds.label)));
 		const series: LineSeriesOption[] = chartData.datasets.map((ds) => ({
@@ -71,6 +71,11 @@
 			series: series
 		};
 		return deepmerge(defaultChartOptions, specificOptions);
+	});
+
+	$effect(() => {
+		const _ = $theme;
+		defaultChartOptions = getDefaultChartOptions();
 	});
 
 	// 响应式地重新获取数据

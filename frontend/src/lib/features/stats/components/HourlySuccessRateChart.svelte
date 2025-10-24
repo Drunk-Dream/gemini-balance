@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import ChartWrapper from '$lib/components/ChartWrapper.svelte';
-	import { defaultChartOptions } from '$lib/features/stats/constants/chart-options';
+	import { getDefaultChartOptions } from '$lib/features/stats/constants/chart-options';
 	import { getHourlySuccessRateStats } from '$lib/features/stats/service';
 	import type { ChartData } from '$lib/features/stats/types';
+	import { theme } from '$lib/features/theme/theme';
 	import { deepmerge } from 'deepmerge-ts';
 	import type { EChartsOption, LineSeriesOption } from 'echarts';
 	import PeriodSlider from './PeriodSlider.svelte';
@@ -13,6 +14,7 @@
 	let error = $state<string | null>(null);
 	let period = $state(30); // 默认查询最近30天
 	let timezone: string = $state('UTC'); // 默认时区
+	let defaultChartOptions: EChartsOption = $state(getDefaultChartOptions());
 
 	// 获取用户浏览器时区
 	if (browser) {
@@ -31,10 +33,8 @@
 		}
 	}
 
-	let chartOption = $derived.by((): EChartsOption => {
-		if (!chartData) {
-			return {};
-		}
+	const options = $derived.by((): EChartsOption => {
+		if (!chartData) return getDefaultChartOptions();
 
 		const labels = chartData.labels;
 		const models = chartData.datasets.map((d) => d.label);
@@ -93,6 +93,11 @@
 	});
 
 	$effect(() => {
+		const _ = $theme;
+		defaultChartOptions = getDefaultChartOptions();
+	});
+
+	$effect(() => {
 		const _ = period; // 依赖 period 的变化
 		const timeoutId = setTimeout(fetchData, 300); // 防抖
 		return () => clearTimeout(timeoutId);
@@ -111,7 +116,7 @@
 			loading={isLoading}
 			{error}
 			isReady={(chartData && chartData.datasets.length > 0) || false}
-			options={chartOption}
+			{options}
 		/>
 	</div>
 </div>

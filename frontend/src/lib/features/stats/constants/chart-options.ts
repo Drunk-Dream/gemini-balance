@@ -12,30 +12,43 @@ export const ALL_CHARTS: ChartOption[] = [
 	{ value: 'hourlySuccessRate', label: '请求成功率(按小时)' }
 ];
 
-export const defaultChartOptions: EChartsOption = {
-	tooltip: {
-		trigger: 'axis',
-		axisPointer: {
-			type: 'shadow'
+export function getDefaultChartOptions(): EChartsOption {
+    const isBrowser = typeof window !== 'undefined';
+    const getCssVar = (varName: string, fallback: string) =>
+        isBrowser ? getComputedStyle(document.documentElement).getPropertyValue(varName) || fallback : fallback;
+
+    const foregroundColor = getCssVar('--foreground', '#333');
+    const mutedForegroundColor = getCssVar('--muted-foreground', '#333');
+    const borderColor = getCssVar('--border-color', '#ccc');
+    const mutedColor = getCssVar('--muted', '#f0f0f0');
+
+	return {
+		tooltip: {
+			trigger: 'axis',
+			axisPointer: {
+				type: 'shadow'
+			},
+			backgroundColor: mutedColor,
+			textStyle: {
+				color: mutedForegroundColor
+			},
+			borderColor: borderColor
 		},
-		backgroundColor: 'var(--muted)',
-		textStyle: {
-			color: 'var(--muted-foreground)'
+		legend: {
+			type: 'scroll',
+			textStyle: {
+				color: foregroundColor
+			},
+			borderRadius: 12,
+			padding: 10,
+			bottom: 0
 		},
-		borderColor: 'var(--border-color)'
-	},
-	legend: {
-		type: 'scroll',
-		backgroundColor: 'rgba(255, 255, 255, 0.5)',
-		borderRadius: 12,
-		padding: 10,
-		bottom: 0
-	},
-	grid: {
-		left: '3%',
-		right: '4%',
-		top: '5%',
-		bottom: '15%',
-		containLabel: true
-	}
-};
+		grid: {
+			left: '3%',
+			right: '4%',
+			top: '5%',
+			bottom: '15%',
+			containLabel: true
+		}
+	};
+}
