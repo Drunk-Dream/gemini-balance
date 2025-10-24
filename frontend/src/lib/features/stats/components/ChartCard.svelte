@@ -1,8 +1,8 @@
 <script lang="ts">
+	import { cn } from '$lib/lib/utils';
 	import ArrowClockwise from 'phosphor-svelte/lib/ArrowClockwise';
 	import type { Snippet } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
-	import { cn } from "$lib/lib/utils";
 
 	let {
 		className,
@@ -19,7 +19,7 @@
 	} = $props();
 </script>
 
-<div class={cn('bg-card text-card-foreground shadow-lg border', className)}>
+<div class={cn('card bg-card text-card-foreground border shadow-lg', className)}>
 	<div class="card-body">
 		{#if header}
 			<h2 class="card-title mb-4 flex-row items-center justify-between">
@@ -27,7 +27,7 @@
 					{@render header()}
 				</div>
 				{#if onRefresh}
-					<button class="btn btn-ghost" onclick={onRefresh}>
+					<button class="btn btn-ghost btn-circle" onclick={onRefresh}>
 						<ArrowClockwise size={20} />
 					</button>
 				{/if}

@@ -17,7 +17,12 @@ export const defaultChartOptions: EChartsOption = {
 		trigger: 'axis',
 		axisPointer: {
 			type: 'shadow'
-		}
+		},
+		backgroundColor: 'var(--muted)',
+		textStyle: {
+			color: 'var(--muted-foreground)'
+		},
+		borderColor: 'var(--border-color)'
 	},
 	legend: {
 		type: 'scroll',

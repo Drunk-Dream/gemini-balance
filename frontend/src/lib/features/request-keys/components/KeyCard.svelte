@@ -58,13 +58,13 @@
 		<div class="card-actions mt-4 justify-end space-x-2">
 			<button
 				onclick={() => resetKey({ identifier: key_identifier, brief: key_brief })}
-				class="btn btn-sm bg-yellow-500 text-yellow-50"
+				class="btn btn-sm btn-warning"
 			>
 				重置
 			</button>
 			<button
 				onclick={() => deleteKey({ identifier: key_identifier, brief: key_brief })}
-				class="btn bg-destructive text-destructive-foreground btn-sm"
+				class="btn bg-error btn-sm"
 			>
 				删除
 			</button>

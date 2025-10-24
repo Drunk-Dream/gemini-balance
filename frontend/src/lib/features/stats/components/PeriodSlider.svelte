@@ -43,7 +43,7 @@
 	onpointerleave={() => (isHovering = false)}
 >
 	<button
-		class="btn btn-ghost"
+		class="btn btn-ghost btn-circle"
 		onclick={() => (value = Math.max(min, value - 1))}
 		disabled={disabled || value <= min}
 	>
@@ -55,7 +55,7 @@
 			{min}
 			{max}
 			bind:value
-			class="range ring-accent w-48"
+			class="range range-primary w-48"
 			{disabled}
 			onpointermove={(event: PointerEvent) => event.stopPropagation()}
 			onpointerdown={() => (isDragging = true)}

@@ -15,7 +15,7 @@
 
 <div class="mb-6">
 	<Dialog.Root bind:open>
-		<Dialog.Trigger class="btn bg-primary text-primary-foreground">创建新密钥</Dialog.Trigger>
+		<Dialog.Trigger class="btn btn-primary">创建新密钥</Dialog.Trigger>
 		<Dialog.Portal>
 			<Dialog.Overlay
 				class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
@@ -45,13 +45,13 @@
 							type="text"
 							bind:value={newAlias}
 							placeholder="输入新密钥的别名"
-							class="focus:shadow-outline text-muted-foreground w-full appearance-none rounded border px-3 py-2 leading-tight shadow focus:outline-none"
+							class="border-border focus:border-primary focus:ring-primary w-full rounded-md border p-2 focus:ring"
 							required
 						/>
 					</div>
 					<div class="flex justify-end space-x-2">
 						<Dialog.Close class="btn btn-ghost">取消</Dialog.Close>
-						<button type="submit" class="btn bg-primary text-primary-foreground"> 创建 </button>
+						<button type="submit" class="btn btn-primary"> 创建 </button>
 					</div>
 				</form>
 			</Dialog.Content>
