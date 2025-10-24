@@ -17,12 +17,21 @@
 </script>
 
 <ul
-    class="menu bg-sidebar text-sidebar-foreground border-sidebar-border flex min-h-full w-72 flex-col border-r p-4 shadow-lg"
+	class="menu bg-sidebar text-sidebar-foreground border-sidebar-border flex min-h-full w-72 flex-col border-r p-4 shadow-lg"
 >
 	<li class="menu-title mb-4 text-2xl font-bold"><a href="/">Gemini Balance</a></li>
-	{#each navLinks as link}
-		<NavLink href={link.href} name={link.name} onClick={toggleSidebar} icon={link.icon} />
-	{/each}
+	{#if $isAuthenticated}
+		{#each navLinks as link}
+			<NavLink href={link.href} name={link.name} onClick={toggleSidebar} icon={link.icon} />
+		{/each}
+	{:else}
+		<NavLink
+			href="/login"
+			name="登录"
+			onClick={toggleSidebar}
+			icon="fa-solid fa-sign-in-alt"
+		/>
+	{/if}
 
 	<div class="divider my-4"></div>
 
@@ -39,11 +48,11 @@
 			<input type="checkbox" onchange={toggleTheme} />
 			<div class="swap-off">
 				<i class="fa-solid fa-sun w-6 text-lg"></i>
-				<span>主题</span>
+				<span>日间</span>
 			</div>
 			<div class="swap-on">
 				<i class="fa-solid fa-moon w-6 text-lg"></i>
-				<span>主题</span>
+				<span>夜间</span>
 			</div>
 		</label>
 	</li>
