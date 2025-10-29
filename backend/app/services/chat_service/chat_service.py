@@ -224,6 +224,7 @@ class ChatService:
         request_id = self.request_info.request_id
         error_type = ErrorType.UNEXPECTED_ERROR
         log_level = logger.critical
+        status_code = None
 
         if isinstance(e, StreamingCompletionError):
             error_type = ErrorType.STREAMING_COMPLETION_ERROR
@@ -232,6 +233,7 @@ class ChatService:
                 f"[Request ID: {request_id}] Streaming completion error: {e}. Deactivating and retrying..."
             )
         elif isinstance(e, httpx.HTTPStatusError):
+            status_code = e.response.status_code
             response_text = ""
             try:
                 response_text = e.response.text
@@ -240,9 +242,10 @@ class ChatService:
                     await e.response.aread()
                     response_text = e.response.text
                 except httpx.StreamClosed:
-                    response_text = (
-                        "<Streamed response body not available due to connection error>"
-                    )
+                    # response_text = (
+                    #     "<Streamed response body not available due to connection error>"
+                    # )
+                    response_text = e
             except Exception:
                 response_text = "<Error reading response body>"
 
@@ -299,7 +302,11 @@ class ChatService:
             auth_key_alias=self.request_info.auth_key_alias,
             model_name=self.request_info.model_id,
             is_success=False,
-            error_type=error_type.value,
+            error_type=(
+                error_type.value
+                if error_type != ErrorType.OTHER_HTTP_ERROR
+                else f"{error_type.value}: {status_code}"
+            ),
             key_brief=key.brief,
         )
         await self._request_log_manager.record_request_log(log_entry)
