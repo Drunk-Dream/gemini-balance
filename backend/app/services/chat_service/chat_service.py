@@ -133,6 +133,7 @@ class ChatService:
         )
         for attempt in range(max_retries):
             key = await self._key_manager.get_next_key()
+            self._background_task_manager.wakeup_release_in_use_event.set()
             if not key:
                 logger.warning(
                     f"[Request ID: {request_id}] Attempt {attempt + 1}/{max_retries}: No available API keys. "
@@ -292,7 +293,7 @@ class ChatService:
 
         should_cool_down = await self._key_manager.mark_key_fail(key, error_type)
         if should_cool_down:
-            self._background_task_manager.wakeup_event.set()
+            self._background_task_manager.wakeup_release_cool_down_event.set()
 
         log_entry = RequestLog(
             id=None,

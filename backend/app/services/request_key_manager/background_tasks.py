@@ -33,6 +33,7 @@ class BackgroundTaskManager:
         self._default_check_cooled_down_seconds = (
             settings.DEFAULT_CHECK_COOLED_DOWN_SECONDS
         )
+        self._key_in_use_timeout_seconds = settings.KEY_IN_USE_TIMEOUT_SECONDS
         self._gemini_api_base_url = settings.GEMINI_API_BASE_URL
         self._request_timeout_seconds = settings.REQUEST_TIMEOUT_SECONDS
         self._http_client: httpx.AsyncClient = httpx.AsyncClient(
@@ -40,9 +41,11 @@ class BackgroundTaskManager:
             timeout=httpx.Timeout(self._request_timeout_seconds),
         )
 
-        self.wakeup_event = asyncio.Event()
+        self.wakeup_release_cool_down_event = asyncio.Event()
+        self.wakeup_release_in_use_event = asyncio.Event()
         self.timeout_tasks: Dict[str, asyncio.Task] = {}
         self._background_task: Optional[asyncio.Task] = None
+        self._release_in_use_background_task: Optional[asyncio.Task] = None
         BackgroundTaskManager._instance = self
 
     @classmethod
@@ -52,9 +55,7 @@ class BackgroundTaskManager:
         return cls._instance
 
     # --------------- Release Key From Cool Down ---------------
-    async def _release_cooled_down_keys(
-        self,
-    ):
+    async def _release_cooled_down_keys(self):
         """
         后台任务，定期检查并释放冷却中的密钥。
         """
@@ -85,8 +86,10 @@ class BackgroundTaskManager:
                 if self._check_health_after_cool_down:
                     wait_time = min(wait_time, self._check_health_time_interval_seconds)
 
-                self.wakeup_event.clear()
-                await asyncio.wait_for(self.wakeup_event.wait(), timeout=wait_time)
+                self.wakeup_release_cool_down_event.clear()
+                await asyncio.wait_for(
+                    self.wakeup_release_cool_down_event.wait(), timeout=wait_time
+                )
             except asyncio.TimeoutError:
                 pass
             except asyncio.CancelledError:
@@ -125,35 +128,6 @@ class BackgroundTaskManager:
             app_logger.error(f"Error checking key health for {key.brief}: {e}")
             return False
 
-        return True
-
-    async def start_background_task(self):
-        """
-        启动后台任务，用于定期释放冷却中的密钥。
-        """
-        if self._background_task is None or self._background_task.done():
-            app_logger.info("Starting background task for releasing cooled down keys.")
-            self._background_task = asyncio.create_task(
-                self._release_cooled_down_keys()
-            )
-
-    async def stop_background_task(self):
-        """
-        停止后台任务。
-        """
-        if self._background_task:
-            app_logger.info("Stopping background task for releasing cooled down keys.")
-            self._background_task.cancel()
-            self._background_task = None
-
-        for key_identifier, task in list(self.timeout_tasks.items()):
-            if not task.done():
-                task.cancel()
-                app_logger.debug(f"Cancelled timeout task for key {key_identifier}.")
-            del self.timeout_tasks[key_identifier]
-        app_logger.info("All timeout tasks cancelled.")
-        await self._close_http_client()
-
     # --------------- Release Key From Use ---------------
     async def initialize_key_states(self):
         """
@@ -164,6 +138,45 @@ class BackgroundTaskManager:
             app_logger.warning(f"Releasing {key.brief} from use due to initialization.")
             await self._key_manager.release_key_from_use(key)
         app_logger.info("Key states initialized: all 'in_use' keys released.")
+
+    async def _release_key_from_use(self):
+        """
+        后台任务，定期检查并释放未被在is_in_use中释放的key。
+        NOTE: 目前猜测可能的原因是在请求期间取消任务，导致fastapi把任务取消，进而
+        key_state_manager中的release_key_from_use未被成功调用(可能是异步调用的原因)
+        针对这种情况，新建一个后台任务，定期检查key in use并释放
+        """
+        while True:
+            app_logger.debug("Background task for releasing key in use started.")
+            try:
+                wait_time = self._default_check_cooled_down_seconds
+                keys_in_use = await self._key_manager.get_keys_in_use()
+                for key in keys_in_use:
+                    state = await self._key_manager.get_key_state(key.identifier)
+                    if not state:
+                        continue
+                    now = time.time()
+                    locked_until = (
+                        state.last_usage_time + self._key_in_use_timeout_seconds
+                    )
+                    if locked_until <= now:
+                        await self._key_manager.release_key_from_use(key)
+                        app_logger.warning(
+                            f"Releasing {key.brief} from use due to timeout."
+                        )
+                    else:
+                        wait_time = min(wait_time, max(locked_until - now, 1))
+                self.wakeup_release_in_use_event.clear()
+                await asyncio.wait_for(
+                    self.wakeup_release_in_use_event.wait(), wait_time
+                )
+            except asyncio.TimeoutError:
+                pass
+            except asyncio.CancelledError:
+                app_logger.info("Background task for releasing keys in use cancelled.")
+                break
+            except Exception as e:
+                app_logger.error(f"Error occurred while releasing keys from use: {e}")
 
     async def _timeout_release_key(
         self,
@@ -217,6 +230,48 @@ class BackgroundTaskManager:
         if self._http_client:
             await self._http_client.aclose()
             app_logger.info("HTTP client closed.")
+
+    # --------------- Start and Stop Background Tasks ---------------
+    async def start_background_task(self):
+        """
+        启动后台任务，用于定期释放冷却中的密钥和检查使用中的密钥。
+        """
+        if self._background_task is None or self._background_task.done():
+            app_logger.info("Starting background task for releasing cooled down keys.")
+            self._background_task = asyncio.create_task(
+                self._release_cooled_down_keys()
+            )
+
+        if (
+            self._release_in_use_background_task is None
+            or self._release_in_use_background_task.done()
+        ):
+            app_logger.info("Starting background task for releasing keys from use.")
+            self._release_in_use_background_task = asyncio.create_task(
+                self._release_key_from_use()
+            )
+
+    async def stop_background_task(self):
+        """
+        停止后台任务。
+        """
+        if self._background_task:
+            app_logger.info("Stopping background task for releasing cooled down keys.")
+            self._background_task.cancel()
+            self._background_task = None
+
+        if self._release_in_use_background_task:
+            app_logger.info("Stopping background task for releasing keys from use.")
+            self._release_in_use_background_task.cancel()
+            self._release_in_use_background_task = None
+
+        for key_identifier, task in list(self.timeout_tasks.items()):
+            if not task.done():
+                task.cancel()
+                app_logger.debug(f"Cancelled timeout task for key {key_identifier}.")
+            del self.timeout_tasks[key_identifier]
+        app_logger.info("All timeout tasks cancelled.")
+        await self._close_http_client()
 
 
 def get_background_task_manager(request: Request) -> BackgroundTaskManager:
