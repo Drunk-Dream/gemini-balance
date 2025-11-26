@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { Collapsible, type WithoutChild } from 'bits-ui';
+	import * as Collapsible from '$lib/components/ui/collapsible';
 	import CaretUpDown from 'phosphor-svelte/lib/CaretUpDown';
+	import { Collapsible as CollapsiblePrimitive, type WithoutChild } from 'bits-ui';
 
 	let {
 		open = $bindable(false),
@@ -8,23 +9,20 @@
 		buttonText,
 		children,
 		...restProps
-	}: WithoutChild<Collapsible.RootProps> & {
+	}: WithoutChild<CollapsiblePrimitive.RootProps> & {
 		buttonText: string;
 	} = $props();
 </script>
 
 <Collapsible.Root bind:open bind:ref {...restProps}>
 	<Collapsible.Trigger
-		class="mb-3 inline-flex h-10 items-center justify-center space-x-2 rounded-md border border-border bg-background p-2 text-foreground shadow-sm transition-all hover:bg-muted active:scale-[0.98]"
+		class="border-border bg-background text-foreground hover:bg-muted mb-3 inline-flex h-10 items-center justify-center space-x-2 rounded-md border p-2 shadow-sm transition-all active:scale-[0.98]"
 		aria-label="Toggle filters"
 	>
 		<p class="text-lg font-medium">{buttonText}</p>
 		<CaretUpDown class="size-4" weight="bold" />
 	</Collapsible.Trigger>
-	<Collapsible.Content
-		hiddenUntilFound
-		class="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up space-y-2 overflow-hidden"
-	>
+	<Collapsible.Content class="space-y-2 overflow-hidden">
 		{@render children?.()}
 	</Collapsible.Content>
 </Collapsible.Root>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Pagination } from 'bits-ui';
+	import * as Pagination from '$lib/components/ui/pagination';
 	import CaretLeft from 'phosphor-svelte/lib/CaretLeft';
 	import CaretRight from 'phosphor-svelte/lib/CaretRight';
 
@@ -16,28 +16,33 @@
 
 <Pagination.Root count={totalItems} {perPage} siblingCount={1} bind:page={currentPage}>
 	{#snippet children({ pages, range })}
-		<div class="flex flex-col items-center justify-center md:flex-row md:gap-4">
-			<p class="text-muted-foreground text-sm">
+		<Pagination.Content>
+			<div class="text-muted-foreground mr-4 hidden text-sm md:block">
 				Showing {range.start} - {range.end} of {totalItems}
-			</p>
-			<div class="join">
-				<Pagination.PrevButton class="join-item btn btn-sm md:btn-md">
+			</div>
+			<Pagination.Item>
+				<Pagination.PrevButton>
 					<CaretLeft class="size-4" />
 				</Pagination.PrevButton>
-
-				{#each pages as page (page.key)}
-					{#if page.type === 'ellipsis'}
-						<button class="join-item btn btn-disabled btn-sm md:btn-md select-none">...</button>
-					{:else}
-						<Pagination.Page {page} class="join-item btn btn-sm md:btn-md data-selected:bg-primary data-selected:text-primary-foreground">
+			</Pagination.Item>
+			{#each pages as page (page.key)}
+				{#if page.type === 'ellipsis'}
+					<Pagination.Item>
+						<Pagination.Ellipsis />
+					</Pagination.Item>
+				{:else}
+					<Pagination.Item>
+						<Pagination.Link {page} isActive={currentPage === page.value}>
 							{page.value}
-						</Pagination.Page>
-					{/if}
-				{/each}
-				<Pagination.NextButton class="join-item btn btn-sm md:btn-md">
+						</Pagination.Link>
+					</Pagination.Item>
+				{/if}
+			{/each}
+			<Pagination.Item>
+				<Pagination.NextButton>
 					<CaretRight class="size-4" />
 				</Pagination.NextButton>
-			</div>
-		</div>
+			</Pagination.Item>
+		</Pagination.Content>
 	{/snippet}
 </Pagination.Root>
