@@ -2,6 +2,7 @@
 	import MagnifyingGlassMinus from 'phosphor-svelte/lib/MagnifyingGlassMinus';
 	import MagnifyingGlassPlus from 'phosphor-svelte/lib/MagnifyingGlassPlus';
 	import { fade } from 'svelte/transition';
+	import { Button } from '$lib/components/ui/button';
 
 	let {
 		value = $bindable(),
@@ -42,13 +43,15 @@
 	onpointerenter={() => (isHovering = true)}
 	onpointerleave={() => (isHovering = false)}
 >
-	<button
-		class="btn btn-ghost btn-circle"
+	<Button
+		variant="ghost"
+		size="icon"
+		class="rounded-full"
 		onclick={() => (value = Math.max(min, value - 1))}
 		disabled={disabled || value <= min}
 	>
 		<MagnifyingGlassMinus size={20} />
-	</button>
+	</Button>
 	<div class="relative flex w-48 flex-col items-center gap-2">
 		<input
 			type="range"
@@ -71,11 +74,13 @@
 			</div>
 		{/if}
 	</div>
-	<button
-		class="btn btn-ghost btn-circle"
+	<Button
+		variant="ghost"
+		size="icon"
+		class="rounded-full"
 		onclick={() => (value = Math.min(max, value + 1))}
 		disabled={disabled || value >= max}
 	>
 		<MagnifyingGlassPlus size={20} />
-	</button>
+	</Button>
 </div>

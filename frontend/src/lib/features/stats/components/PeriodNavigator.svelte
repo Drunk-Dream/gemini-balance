@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CaretLeft from 'phosphor-svelte/lib/CaretLeft';
 	import CaretRight from 'phosphor-svelte/lib/CaretRight';
+	import { Button } from '$lib/components/ui/button';
 
 	let {
 		offset = $bindable(),
@@ -14,21 +15,21 @@
 </script>
 
 <div class="flex items-center space-x-2">
-	<button
-		class="btn btn-ghost"
+	<Button
+		variant="ghost"
 		onclick={() => (offset -= 1)}
 		aria-label="上一时间段"
 		disabled={disabled[0]}
 	>
 		<CaretLeft class="size-4" />
-	</button>
+	</Button>
 	<span class="text-muted-foreground text-sm">{periodText}</span>
-	<button
-		class="btn btn-ghost"
+	<Button
+		variant="ghost"
 		onclick={() => (offset += 1)}
 		aria-label="下一时间段"
 		disabled={disabled[1]}
 	>
 		<CaretRight class="size-4" />
-	</button>
+	</Button>
 </div>

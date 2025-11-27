@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { colorizeLog } from '$lib/features/realtime-logs/utils';
 	import ArrowDown from 'phosphor-svelte/lib/ArrowDown';
+	import { Button } from '$lib/components/ui/button';
 	import { tick } from 'svelte';
 
 	let { logs }: { logs: string[] } = $props();
@@ -61,7 +62,7 @@
 	class="h-[calc(100vh-180px)] overflow-y-auto rounded-lg bg-gray-900 p-2 font-mono text-sm text-gray-100 shadow-md sm:p-4"
 >
 	{#each logs as logLine}
-		<p class="whitespace-pre-wrap break-words">{@html colorizeLog(logLine)}</p>
+		<p class="break-words whitespace-pre-wrap">{@html colorizeLog(logLine)}</p>
 	{/each}
 	{#if logs.length === 0}
 		<p class="text-gray-500">等待日志数据...</p>
@@ -69,11 +70,12 @@
 </div>
 
 {#if showScrollToBottomButton}
-	<button
+	<Button
 		onclick={forceScrollToBottom}
-		class="btn btn-circle btn-primary fixed bottom-4 right-4"
+		size="icon"
+		class="fixed right-4 bottom-4 rounded-full shadow-lg"
 		aria-label="Scroll to bottom"
 	>
 		<ArrowDown class="size-6" />
-	</button>
+	</Button>
 {/if}
