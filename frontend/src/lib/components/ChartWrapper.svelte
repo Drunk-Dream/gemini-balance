@@ -2,6 +2,7 @@
 	import type { EChartsOption } from 'echarts';
 	import { init } from 'echarts/core';
 	import { Chart } from 'svelte-echarts';
+	import { Skeleton } from '$lib/components/ui/skeleton';
 
 	let {
 		loading,
@@ -25,8 +26,8 @@
 </script>
 
 {#if loading && isInitialLoad}
-	<!-- 使用 skeleton 作为加载占位符 -->
-	<div class="skeleton h-full w-full"></div>
+	<!-- 使用 shadcn-svelte Skeleton 作为加载占位符 -->
+	<Skeleton class="h-full w-full" />
 {:else if error}
 	<!-- 使用 alert 显示错误信息 -->
 	<div role="alert" class="alert alert-error">
