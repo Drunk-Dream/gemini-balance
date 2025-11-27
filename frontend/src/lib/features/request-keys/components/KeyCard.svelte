@@ -3,8 +3,9 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { SvelteMap } from 'svelte/reactivity';
 
-	const statusMap = new Map<
+	const statusMap = new SvelteMap<
 		string,
 		{ text: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
 	>();
@@ -39,35 +40,37 @@
 	} = $derived(keyStatus);
 </script>
 
-<Card.Root class="shadow-md">
-	<Card.Content class="p-6">
-		<div class="mb-2 flex items-center justify-between">
-			<h3 class="text-md font-semibold">密钥标识:</h3>
-			<span class="text-sm">{key_brief}</span>
+<Card.Root class="py-0 shadow-md">
+	<Card.Content class="px-5 py-4 sm:px-6 sm:py-5">
+		<div class="space-y-2">
+			<div class="flex items-center justify-between">
+				<h3 class="text-md font-semibold">密钥标识:</h3>
+				<span class="text-sm">{key_brief}</span>
+			</div>
+			<div class="flex items-center justify-between">
+				<h3 class="text-md font-semibold">状态:</h3>
+				<Badge variant={statusMap.get(status)?.variant || 'secondary'}>
+					{statusMap.get(status)?.text || '未知状态'}
+				</Badge>
+			</div>
+			<div class="flex items-center justify-between">
+				<h3 class="text-md font-semibold">剩余冷却时间:</h3>
+				<span class="text-sm">{cool_down_seconds_remaining} 秒</span>
+			</div>
+			<div class="flex items-center justify-between">
+				<h3 class="text-md font-semibold">连续失败次数:</h3>
+				<span class="text-sm">{failure_count}</span>
+			</div>
+			<div class="flex items-center justify-between">
+				<h3 class="text-md font-semibold">连续冷却次数:</h3>
+				<span class="text-sm">{cool_down_entry_count}</span>
+			</div>
+			<div class="flex items-center justify-between">
+				<h3 class="text-md font-semibold">当前冷却时长:</h3>
+				<span class="text-sm">{current_cool_down_seconds} 秒</span>
+			</div>
 		</div>
-		<div class="mb-2 flex items-center justify-between">
-			<h3 class="text-md font-semibold">状态:</h3>
-			<Badge variant={statusMap.get(status)?.variant || 'secondary'}>
-				{statusMap.get(status)?.text || '未知状态'}
-			</Badge>
-		</div>
-		<div class="mb-2 flex items-center justify-between">
-			<h3 class="text-md font-semibold">剩余冷却时间:</h3>
-			<span class="text-sm">{cool_down_seconds_remaining} 秒</span>
-		</div>
-		<div class="mb-2 flex items-center justify-between">
-			<h3 class="text-md font-semibold">连续失败次数:</h3>
-			<span class="text-sm">{failure_count}</span>
-		</div>
-		<div class="mb-2 flex items-center justify-between">
-			<h3 class="text-md font-semibold">连续冷却次数:</h3>
-			<span class="text-sm">{cool_down_entry_count}</span>
-		</div>
-		<div class="mb-2 flex items-center justify-between">
-			<h3 class="text-md font-semibold">当前冷却时长:</h3>
-			<span class="text-sm">{current_cool_down_seconds} 秒</span>
-		</div>
-		<div class="mt-4 flex justify-end space-x-2">
+		<div class="mt-3 flex justify-end space-x-2">
 			<Button
 				variant="secondary"
 				size="sm"
