@@ -2,30 +2,7 @@
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
-@plugin 'daisyui';
-@plugin 'daisyui/theme' {
-	name: 'light';
-	--color-primary: var(--primary);
-	--color-primary-content: var(--primary-foreground);
-}
-@plugin 'daisyui/theme' {
-	name: 'dark';
-	--color-primary: var(--primary);
-	--color-primary-content: var(--primary-foreground);
-}
 
-/* [data-theme='light'] {
-	.btn-muted {
-		--btn-color: var(--muted);
-		--btn-fg: var(--muted-foreground);
-	}
-}
-[data-theme='dark'] {
-	.btn-muted {
-		--btn-color: var(--muted);
-		--btn-fg: var(--muted-foreground);
-	}
-} */
 
 @theme inline {
 	--radius-sm: calc(var(--radius) - 4px);
@@ -138,6 +115,7 @@
 	* {
 		@apply border-border outline-ring/50;
 	}
+
 	body {
 		@apply bg-background text-foreground;
 	}

@@ -1,24 +1,15 @@
 <script lang="ts">
-		let { toggleSidebar } = $props();
+	import { Button } from '$lib/components/ui/button';
+	import List from 'phosphor-svelte/lib/List';
+
+	let { toggleSidebar } = $props();
 </script>
 
-<div class="navbar bg-background sticky top-0 z-10 min-h-8 lg:hidden">
-	<div class="navbar-start"></div>
-	<div class="navbar-end">
-		<button type="button" class="btn btn-ghost" onclick={toggleSidebar} aria-label="Toggle sidebar">
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="h-5 w-5"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				><path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M4 6h16M4 12h8m-8 6h16"
-				></path></svg
-			>
-		</button>
+<div class="bg-background sticky top-0 z-10 flex min-h-12 items-center px-4 shadow-sm lg:hidden">
+	<div class="flex-1"></div>
+	<div>
+		<Button variant="ghost" size="icon" onclick={toggleSidebar} aria-label="Toggle sidebar">
+			<List class="size-6" />
+		</Button>
 	</div>
 </div>

@@ -1,5 +1,8 @@
 <script lang="ts">
-	import { Dialog } from 'bits-ui';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { Button } from '$lib/components/ui/button';
+	import { Textarea } from '$lib/components/ui/textarea';
+	import { Label } from '$lib/components/ui/label';
 
 	let {
 		fetchKeyStatusResponse,
@@ -24,45 +27,37 @@
 </script>
 
 <div class="mb-6 flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
-	<button onclick={fetchKeyStatusResponse} class="btn btn-primary" disabled={loading}>
+	<Button onclick={fetchKeyStatusResponse} disabled={loading}>
 		{loading ? '刷新中...' : '立即刷新'}
-	</button>
+	</Button>
 
 	<Dialog.Root bind:open={addKeyDialogOpen}>
-		<Dialog.Trigger class="btn btn-primary">新增密钥</Dialog.Trigger>
-		<Dialog.Portal>
-			<Dialog.Overlay
-				class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
-			/>
-			<Dialog.Content
-				class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 bg-card fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border p-6 shadow-lg"
-			>
-				<Dialog.Title class="text-card-foreground mb-4 text-xl font-semibold">新增密钥</Dialog.Title
-				>
-				<Dialog.Description class="text-muted-foreground mb-4 text-sm">
-					单个或批量添加密钥，每行一个。
-				</Dialog.Description>
-				<div>
-					<label for="keysInput" class="text-foreground mb-2 block text-sm font-medium"
-						>API 密钥:</label
-					>
-					<textarea
+		<Dialog.Trigger>
+			{#snippet child({ props })}
+				<Button {...props}>新增密钥</Button>
+			{/snippet}
+		</Dialog.Trigger>
+		<Dialog.Content class="sm:max-w-[425px]">
+			<Dialog.Header>
+				<Dialog.Title>新增密钥</Dialog.Title>
+				<Dialog.Description>单个或批量添加密钥，每行一个。</Dialog.Description>
+			</Dialog.Header>
+			<div class="grid gap-4 py-4">
+				<div class="grid w-full gap-1.5">
+					<Label for="keysInput">API 密钥</Label>
+					<Textarea
 						id="keysInput"
 						bind:value={keysInput}
 						placeholder="输入新的API密钥，每行一个用于批量添加"
-						rows="5"
-						class="border-border focus:border-primary focus:ring-primary w-full rounded-md border p-2 focus:ring"
-					></textarea>
+						rows={5}
+					/>
 				</div>
-				<div class="mt-6 flex justify-end space-x-2">
-					<Dialog.Close class="btn btn-ghost">取消</Dialog.Close>
-					<button onclick={handleAddKeysSubmit} class="btn btn-primary">
-						添加密钥
-					</button>
-				</div>
-			</Dialog.Content>
-		</Dialog.Portal>
+			</div>
+			<Dialog.Footer>
+				<Button type="submit" onclick={handleAddKeysSubmit}>添加密钥</Button>
+			</Dialog.Footer>
+		</Dialog.Content>
 	</Dialog.Root>
 
-	<button onclick={resetAllKeys} class="btn btn-error"> 重置所有密钥状态 </button>
+	<Button variant="destructive" onclick={resetAllKeys}>重置所有密钥状态</Button>
 </div>

@@ -3,6 +3,8 @@
 	import ArrowClockwise from 'phosphor-svelte/lib/ArrowClockwise';
 	import type { Snippet } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
+	import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
 
 	let {
 		className,
@@ -19,24 +21,24 @@
 	} = $props();
 </script>
 
-<div class={cn('card bg-card text-card-foreground border shadow-lg', className)}>
-	<div class="card-body">
+<Card.Root class={cn('shadow-lg', className)}>
+	<Card.Content class="p-6">
 		{#if header}
-			<h2 class="card-title mb-4 flex-row items-center justify-between">
+			<div class="mb-4 flex flex-row items-center justify-between">
 				<div class="flex flex-col">
 					{@render header()}
 				</div>
 				{#if onRefresh}
-					<button class="btn btn-ghost btn-circle" onclick={onRefresh}>
+					<Button variant="ghost" size="icon" onclick={onRefresh}>
 						<ArrowClockwise size={20} />
-					</button>
+					</Button>
 				{/if}
-			</h2>
+			</div>
 		{/if}
 		<div class={twMerge('relative', heightClass)}>
 			{#if children}
 				{@render children()}
 			{/if}
 		</div>
-	</div>
-</div>
+	</Card.Content>
+</Card.Root>

@@ -3,10 +3,11 @@
 	import Header from '$lib/layout/Header.svelte';
 	import Sidebar from '$lib/layout/Sidebar.svelte';
 	import '../app.css';
+	import * as Sheet from '$lib/components/ui/sheet';
 
 	let { children } = $props();
 
-	let sidebarOpen = $state(false); // sidebarOpen will be controlled by the drawer-toggle checkbox
+	let sidebarOpen = $state(false);
 
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
@@ -18,18 +19,25 @@
 	});
 </script>
 
-<div class="drawer lg:drawer-open">
-	<input id="my-drawer-2" type="checkbox" class="drawer-toggle" bind:checked={sidebarOpen} />
-	<div class="drawer-content flex h-screen flex-col">
+<div class="bg-background flex h-screen w-full">
+	<!-- Desktop Sidebar -->
+	<div class="hidden h-full lg:block">
+		<Sidebar sidebarOpen={false} toggleSidebar={() => {}} />
+	</div>
+
+	<!-- Mobile Sidebar (Sheet) -->
+	<Sheet.Root bind:open={sidebarOpen}>
+		<Sheet.Content side="left" class="w-72 border-r-0 p-0">
+			<Sidebar {sidebarOpen} {toggleSidebar} />
+		</Sheet.Content>
+	</Sheet.Root>
+
+	<div class="flex flex-1 flex-col overflow-hidden">
 		<Header {toggleSidebar} />
 		<!-- Main content -->
-		<main class="bg-background flex-1 overflow-y-auto">
+		<main class="flex-1 overflow-y-auto p-4">
 			{@render children?.()}
 		</main>
-	</div>
-	<div class="drawer-side">
-		<label for="my-drawer-2" aria-label="close sidebar" class="drawer-overlay"></label>
-		<Sidebar {sidebarOpen} {toggleSidebar} />
 	</div>
 </div>
 
