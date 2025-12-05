@@ -14,31 +14,33 @@ services:
     environment:
       - APP_ENV=production
       # 根据需要配置代理环境，如不需要，可删除v2rayA
-      - HTTP_PROXY=http://v2raya:20170
-      - HTTPS_PROXY=http://v2raya:20170
-    depends_on:
-      - v2raya
+      # - HTTP_PROXY=http://v2raya:20170
+      # - HTTPS_PROXY=http://v2raya:20170
+      - HTTP_PROXY=http://clash-server:7890
+      - HTTPS_PROXY=http://clash-server:7890
+    # depends_on:
+    #   - v2raya
 
-  v2raya:
-    image: mzz2017/v2raya
-    container_name: v2raya
-    # 与Open Webui 共享网络，如果不需要，可删除shared_net
-    networks:
-      - shared_net
-    restart: always
-    ports:
-      - "2017:2017"
-      - "20170-20172:20170-20172"
-    environment:
-      - V2RAYA_V2RAY_BIN=/usr/local/bin/v2ray
-      - V2RAYA_LOG_FILE=/tmp/v2raya.log
-    volumes:
-      - v2raya_config:/etc/v2raya
+    #   v2raya:
+    #     image: mzz2017/v2raya
+    #     container_name: v2raya
+    #     # 与Open Webui 共享网络，如果不需要，可删除shared_net
+    #     networks:
+    #       - shared_net
+    #     restart: always
+    #     ports:
+    #       - "2017:2017"
+    #       - "20170-20172:20170-20172"
+    #     environment:
+    #       - V2RAYA_V2RAY_BIN=/usr/local/bin/v2ray
+    #       - V2RAYA_LOG_FILE=/tmp/v2raya.log
+    #     volumes:
+    #       - v2raya_config:/etc/v2raya
 
 volumes:
   v2raya_config:
 
-# 与Open Webui 共享网络，如果不需要，可删除shared_net
+    # 与Open Webui 共享网络，如果不需要，可删除shared_net
 networks:
   shared_net:
     external: true
