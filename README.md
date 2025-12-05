@@ -1,131 +1,88 @@
 # Gemini Balance: 为大语言模型设计的安全可观测 API 网关
 
-本项目是一个基于 Python FastAPI 的 Google Gemini 与 OpenAI API 请求转发服务。其核心是提供一个具备**用户认证**和**双层密钥管理**的中间层，能够无缝转发符合 Google Gemini 或 OpenAI API 格式的请求，并完整支持普通和流式响应。
+Gemini Balance 是一个基于 FastAPI 的转发网关，统一代理符合 Google Gemini 与 OpenAI 规范的请求，提供用户认证、双层密钥管理、请求日志与统计、前端可视化等能力。后端默认托管编译后的 SvelteKit 前端，便于一体化部署。
 
 ## 核心特性
+- 统一入口：兼容 OpenAI `/v1/chat/completions` 与 Gemini `/v1beta/models/...`，支持普通与流式响应
+- 双层密钥管理：用户级 API 密钥 CRUD + 服务密钥池（SQLite 持久化、冷却/超时处理、健康检查、背景任务恢复）
+- 认证与安全：基于 JWT 的登录与依赖注入校验，请求级唯一 ID 贯穿日志
+- 可观测性：请求日志查询与筛选、SSE 实时日志、模型/Token/成功率/热力图等统计接口
+- 并发与韧性：可配置的并发控制、请求/并发超时、httpx 客户端自动重建、启动时自动迁移
+- 前端体验：Svelte 5 Runes + Tailwind CSS 4，登录后自动跳转，统一的密钥管理表单，LogViewer，日期范围选择（基于实际日志数据限制），灰色调 UI 主题
 
-- **统一 API 入口**: 为客户端提供统一的访问端点，无需直接处理 Google Gemini 或 OpenAI API 的复杂性。
-- **分级安全与双层密钥管理**:
-  - **用户级 API 密钥**: 用户可通过登录系统，安全地生成、管理和轮换自己的 API 密钥，用于访问本服务。
-  - **服务级密钥池**: 集中管理用于请求上游大模型 API 的一组密钥，实现密钥轮询、冷却和状态持久化，减少客户端直接暴露密钥的风险。
-- **增强的可观测性**:
-  - **请求级 ID 追踪**: 为每个请求分配唯一 ID，贯穿日志系统，极大提升问题排查效率。
-  - **多维度统计图表**: 提供模型使用趋势、Token 使用趋势、请求成功率、每日使用热力图等多种可视化图表，帮助用户直观分析服务状态。
-  - **用户密钥调用次数跟踪**: 实时追踪每个用户 API 密钥的使用情况，通过聚合请求日志动态计算，更准确、可审计。
-  - **请求日志管理与前端筛选**: 提供详细的请求日志管理界面和筛选功能，使用户能够更好地监控和分析 API 使用情况。
-  - **服务密钥池状态可视化**: 提供密钥是否“使用中”的实时状态，并具备超时处理和自动健康检查机制，提升系统韧性。
-- **现代化、响应式的前后端架构**:
-  - **后端**: 基于 FastAPI，充分利用异步特性和依赖注入。
-  - **前端**: 使用 **Svelte 5 (Runes)** 和 **DaisyUI** 构建的响应式前端界面，由后端统一托管，提供暗/亮色主题切换。
+## 系统架构概览
+- 后端 (FastAPI)
+  - 路由：`/api/auth`、`/api/auth_keys`、`/api/keys`、`/api/request_logs`、`/api/realtime_logs`、`/v1` (OpenAI Chat) 、`/v1beta` (Gemini)
+  - 服务：`GeminiRequestService`、`OpenAIRequestService`（继承通用基类）、`RequestLogManager`、`ConcurrencyManager`
+  - 密钥池：`KeyStateManager` + `SQLiteDBManager`，含冷却、指数退避、卡死密钥超时与健康检查；`BackgroundTaskManager` 负责状态维护
+  - 数据与迁移：异步 `aiosqlite`，基于 `BaseMigrationManager` 的版本化迁移系统
+  - 前端托管：检测到 `frontend/build` 后托管静态资源，否则返回后台运行提示
+- 前端 (SvelteKit)
+  - 路由：`/login`、`/auth-keys`、`/request-keys`、`/request-logs`、`/realtime-logs`、`/stats` 等
+  - 组件：密钥管理表单、日志过滤/展示组件、通知与主题控制、基于实际数据限制的日期范围选择器、统一输入框
+  - 技术：Svelte 5 Runes、Tailwind CSS 4、bits-ui、tailwind-variants、@internationalized/date、echarts（图表）、Vite 构建
 
 ## 技术栈
-
-- **后端**: FastAPI, Pydantic, `uv`
-- **前端**: Svelte 5 (Runes), DaisyUI, Tailwind CSS, `bits-ui`
-- **认证**: JWT, `python-jose[cryptography]`, `passlib[bcrypt]`
-- **HTTP 客户端**: `httpx`
-- **异步**: Python `asyncio`, `aiosqlite`
-- **数据持久化**: SQLite
-- **容器化**: Docker, Docker Compose
+- 后端：Python 3.12+、FastAPI、Pydantic & pydantic-settings、httpx/httpx-sse、aiosqlite、python-jose[cryptography]、passlib[bcrypt]、Uvicorn、uv
+- 前端：SvelteKit (Svelte 5 Runes)、Vite、Tailwind CSS 4、bits-ui、tailwind-variants、@internationalized/date、echarts、lucide 图标
+- 其他：Docker、Docker Compose
 
 ## 项目结构
-
 ```
 gemini-balance/
 ├── backend/
 │   ├── app/
-│   │   ├── api/      # API 端点定义 (v1, api)
-│   │   ├── core/     # 核心配置、并发与安全
-│   │   └── services/ # 业务逻辑、密钥管理与聊天服务
-│   └── main.py     # 应用入口
+│   │   ├── api/                  # /api, /v1, /v1beta 路由
+│   │   ├── core/                 # 配置、并发与日志
+│   │   ├── services/             # 请求服务、密钥池、日志管理
+│   │   └── main.py               # FastAPI 应用构建
+│   ├── main.py                   # 读取 env，启动 uvicorn
+│   └── tests/                    # HTTP 场景用例
 ├── frontend/
-│   └── src/        # Svelte 5 前端源码
+│   ├── src/routes/               # Svelte 页面（登录、密钥管理、日志、统计等）
+│   └── build/                    # 生产构建产物（由后端托管）
 ├── docker-compose.yml
+├── pyproject.toml
 └── README.md
 ```
 
-## 安装与运行
-
-### 1. 使用 Docker Compose (推荐)
-
-这是最简单的启动方式，它会同时构建和运行所有服务。
-
-1.  **克隆仓库**
-    ```bash
-    git clone https://github.com/Drunk-Dream/gemini-balance.git
-    cd gemini-balance
-    ```
-2.  **配置环境变量**
-    复制 `.env.example` 为 `.env`，并根据需要修改其中的配置，如 `PASSWORD` 和 `SECRET_KEY`。
-    ```bash
-    cp .env.example .env
-    ```
-3.  **启动服务**
-    `bash
+## 快速开始
+### 1) 使用 Docker Compose（推荐）
+```bash
+git clone https://github.com/Drunk-Dream/gemini-balance.git
+cd gemini-balance
+cp .env.example .env  # 根据需要调整 SECRET_KEY、PASSWORD、API 基础配置等
 docker-compose up -d --build
-`
-    服务将在 `http://localhost:8090` 启动。
+```
+服务默认运行在 `http://localhost:8090`，并托管前端界面。
 
-### 2. 本地运行 (开发环境)
+### 2) 本地开发运行
+前端构建（或开发模式）：
+```bash
+npm install --prefix frontend
+npm run build --prefix frontend  # 或 npm run dev --prefix frontend -- --open
+```
+后端依赖与运行（使用 uv）：
+```bash
+uv sync
+uv run uvicorn backend.app.main:app --host 0.0.0.0 --port 8090 --reload
+```
+后台启动时会自动执行数据库迁移，并服务前端静态文件（若存在 `frontend/build`）。
 
-1.  **构建前端**
-    首先，编译前端静态文件。
+## API 速查
+- 认证：`POST /api/auth/login` 返回 JWT
+- 用户 API 密钥：`GET/POST/PUT/DELETE /api/auth_keys`
+- 服务密钥池：`GET/POST /api/keys`，`DELETE /api/keys/{key_identifier}`，`POST /api/keys/{key_identifier}/reset`，`POST /api/keys/reset`
+- 请求日志：`GET /api/request_logs`（查询筛选），`GET /api/logs/sse`（SSE 实时日志）
+- 统计：`GET /api/stats/{endpoint}` 提供模型/Token/成功率/热力图等图表数据
+- 代理：`POST /v1/chat/completions`（OpenAI 兼容），`POST /v1beta/models/{model_id}:generateContent|streamGenerateContent`（Gemini）
+- 健康检查：`GET /health`
 
-    ```bash
-    npm install --prefix frontend
-    npm run build --prefix frontend
-    ```
+## 开发约定
+- 依赖管理：统一使用 `uv` (`uv add/remove`, `uv run`)，勿直接修改 `pyproject.toml`
+- 路径：使用 `pathlib` 处理文件路径，不混用 `os.path`
+- 代码风格：遵循 PEP8，全部变量/函数均写类型提示，优先卫语句减少嵌套，移除未使用的 import
+- 异常处理：精确捕获异常并记录日志，避免裸 `except`
+- 脚本入口：定义 `main()` 并通过 `if __name__ == "__main__": raise SystemExit(main())` 调用
+- 文档：函数/类/模块需提供结构化 docstring（Google/Numpy 风格），与类型提示保持一致
 
-2.  **启动后端服务**
-    ```bash
-    uv sync
-    uv run uvicorn backend.app.main:app --host 0.0.0.0 --port 8090 --reload
-    ```
-    后端服务将在 `http://localhost:8090` 启动，并托管前端界面。
-
-## API 端点
-
-API 分为 `api` (管理) 和 `v1`,`v1beta` (转发) 两个版本。所有管理端点都需要通过 `/api/auth/login` 获取 Bearer Token 进行认证。
-
-### 认证 (`/api/auth`)
-
-- **POST** `/login`
-  - **描述**: 用户登录，成功后返回 JWT 访问令牌。
-  - **请求体**: `application/x-www-form-urlencoded`，包含 `username` (任意) 和 `password`。
-
-### 用户 API 密钥管理 (`/api/auth_keys`)
-
-- **GET / POST / PUT / DELETE** `/`
-  - **描述**: 对用户个人 API 密钥进行增、删、改、查操作。这些密钥用于认证对本转发服务的访问。
-
-### 服务密钥池管理 (`/api/keys`)
-
-- **GET / POST** `/`
-  - **描述**: 添加一个或多个服务密钥到池中，或获取池中所有密钥。
-- **DELETE** `/{key_identifier}`
-  - **描述**: 从池中删除一个指定的服务密钥。
-- **POST** `/{key_identifier}/reset`
-  - **描述**: 重置指定服务密钥的状态。
-- **POST** `/reset`
-  - **描述**: 重置所有服务密钥的状态。
-
-### API 代理 (`/v1`)
-
-- **POST** `/chat/completions`
-  - **描述**: 代理符合 OpenAI 格式的 `chat/completions` 请求，并根据请求内容自动转发至 Gemini 或 OpenAI。
-
-### API 代理 (`/v1beta`)
-
-- **POST** `/models/{model_id}:streamGenerateContent` | `/models/{model_id}:generateContent`
-  - **描述**: 代理符合 Gemini 格式的请求，并根据请求内容自动转发至 Gemini 。
-
-### 状态与统计 (`/api`)
-
-- **GET** `/keys/status`
-  - **描述**: 返回服务密钥池中所有 API 密钥的详细状态。
-- **GET** `/request-logs`
-  - **描述**: 提供查询和检索详细请求日志的功能，支持多种筛选条件。
-- **GET** `/stats/{endpoint}`
-  - **描述**: 提供多种统计数据接口，如 `daily_usage_chart`、`token_usage_chart`、`success_rate_chart` 等，用于前端图表展示。
-- **GET** `/logs/sse`
-  - **描述**: 通过 Server-Sent Events (SSE) 实时推送最新的日志。

@@ -1,0 +1,61 @@
+{
+  "project_name": "Gemini Balance",
+  "description": "FastAPI-based proxy that forwards Google Gemini and OpenAI requests with dual key management and a SvelteKit dashboard.",
+  "tech_stack": [
+    "Python 3.12+",
+    "FastAPI",
+    "Pydantic & pydantic-settings",
+    "httpx & httpx-sse",
+    "aiosqlite",
+    "JWT via python-jose and passlib[bcrypt]",
+    "Uvicorn",
+    "SvelteKit (Svelte 5 Runes)",
+    "Tailwind CSS",
+    "bits-ui",
+    "Docker & Docker Compose",
+    "uv"
+  ],
+  "project_structure": {
+    "root": "./",
+    "key_files": [
+      "backend/main.py",
+      "backend/app/main.py",
+      "backend/app/core/config.py",
+      "backend/app/api/api/endpoints/auth.py",
+      "backend/app/api/api/endpoints/auth_keys.py",
+      "backend/app/api/api/endpoints/request_keys.py",
+      "backend/app/api/api/endpoints/request_logs.py",
+      "backend/app/api/api/endpoints/realtime_logs.py",
+      "backend/app/api/v1/endpoints/chat.py",
+      "backend/app/api/v1beta/endpoints/gemini.py",
+      "backend/app/services/request_key_manager/key_state_manager.py",
+      "backend/app/services/request_key_manager/background_tasks.py",
+      "backend/app/services/request_service/gemini_request_service.py",
+      "backend/app/services/request_service/openai_request_service.py",
+      "frontend/src/routes/+page.svelte",
+      "frontend/src/routes/login/+page.svelte",
+      "frontend/src/routes/request-logs/+page.svelte",
+      "docker-compose.yml",
+      "pyproject.toml",
+      "frontend/package.json"
+    ]
+  },
+  "development_status": {
+    "current_phase": "Beta",
+    "completed_features": [
+      "JWT-based authentication and user API key CRUD under /api/auth and /api/auth_keys",
+      "Service key pool with SQLite persistence, cooldown handling, and background state recovery",
+      "Proxy endpoints for OpenAI-compatible chat/completions at /v1 and Gemini endpoints at /v1beta with streaming support",
+      "Request logging with SSE realtime feed, searchable request logs, and statistics endpoints for charts",
+      "Concurrency management, resilient HTTP client setup, and automatic DB migrations on startup",
+      "SvelteKit frontend with login flow, key management screens, request log viewer, stats dashboard, and realtime log viewer"
+    ],
+    "pending_tasks": [],
+    "known_issues": []
+  },
+  "conventions": {
+    "coding_style": "PEP8 with strict type hints, guard clauses, pathlib for paths; uv for dependency management",
+    "commit_message_format": "Not specified"
+  },
+  "last_updated": "2025-12-05 02:29:43"
+}
